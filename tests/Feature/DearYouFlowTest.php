@@ -56,11 +56,15 @@ class DearYouFlowTest extends TestCase
             'font_style' => 'classic',
             'allow_response' => 1,
             'response_mode' => 'message',
+            'positive_button_text' => '',
+            'negative_button_text' => '',
         ])->assertRedirect();
 
         $letter = Letter::query()->sole();
         $this->assertNull($letter->recipient_name);
         $this->assertNull($letter->sender_name);
+        $this->assertSame('Yes', $letter->positive_button_text);
+        $this->assertSame('No', $letter->negative_button_text);
 
         $letter->update(['status' => 'published']);
         $link = $letter->link()->create(['token' => str_repeat('n', 64), 'is_active' => true]);

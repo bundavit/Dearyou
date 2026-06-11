@@ -11,6 +11,8 @@ class LetterRequest extends FormRequest
     {
         $this->merge([
             'font_style' => $this->input('font_style', 'classic'),
+            'positive_button_text' => $this->input('positive_button_text') ?: 'Yes',
+            'negative_button_text' => $this->input('negative_button_text') ?: 'No',
         ]);
     }
 
