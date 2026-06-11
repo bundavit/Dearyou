@@ -15,11 +15,13 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        $admin = User::factory()->create([
-            'name' => 'DearYou Admin',
-            'email' => env('ADMIN_EMAIL', 'admin@dearyou.test'),
-            'password' => env('ADMIN_PASSWORD', 'ChangeMe123!'),
-        ]);
+        $admin = User::firstOrCreate(
+            ['email' => env('ADMIN_EMAIL', 'admin@dearyou.test')],
+            [
+                'name' => 'DearYou Admin',
+                'password' => env('ADMIN_PASSWORD', 'ChangeMe123!'),
+            ],
+        );
 
         $samples = [
             ['confession', 'Something I Need to Tell You', 'Do you want to give us a chance?', 'Yes, I do', 'Not right now'],
@@ -29,9 +31,12 @@ class DatabaseSeeder extends Seeder
             ['congratulations', 'You Did It!', 'How are you feeling?', 'Amazing', 'Leave a note'],
             ['custom', 'A Note for You', 'Would you like to reply?', 'Reply', 'Maybe later'],
         ];
-        foreach ($samples as [$category,$title,$question,$positive,$negative]) {
-            $admin->letters()->create([
-                'category' => $category, 'title' => $title, 'recipient_name' => 'Someone Special', 'sender_name' => 'Me',
+        foreach ($samples as [$category, $title, $question, $positive, $negative]) {
+            $admin->letters()->firstOrCreate([
+                'category' => $category,
+                'title' => $title,
+            ], [
+                'recipient_name' => 'Someone Special', 'sender_name' => 'Me',
                 'body' => "I made this little corner of the internet just for you.\n\nReplace this sample with the words you really want to say.",
                 'theme' => in_array($category, ['birthday', 'congratulations']) ? 'celebration' : ($category === 'valentine' ? 'romantic' : 'warm'),
                 'font_style' => 'classic',
