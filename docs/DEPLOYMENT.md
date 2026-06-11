@@ -9,7 +9,8 @@ under `storage/app/public`; a Droplet keeps those uploads on persistent disk.
 In DigitalOcean:
 
 1. Create an Ubuntu 24.04 Droplet.
-2. Choose at least 2 GB RAM for comfortable Composer and MySQL operation.
+2. Choose 1 GB RAM with a 2 GB swap file for a small installation, or 2 GB RAM
+   for more comfortable Composer and MySQL operation.
 3. Add an SSH key.
 4. Add a DigitalOcean Cloud Firewall allowing SSH (22), HTTP (80), and HTTPS
    (443). Restrict SSH to your IP when possible.
@@ -72,17 +73,44 @@ EXIT;
 
 ## 4. Clone DearYou
 
-The repository must be pushed to GitHub first.
+The repository must be pushed to GitHub first. It can remain private. For a
+private repository, give the deployment user a read-only GitHub deploy key:
 
 ```bash
 sudo mkdir -p /var/www
 sudo chown deploy:www-data /var/www
-git clone https://github.com/Vitkayo/Dearyou.git /var/www/dearyou
+sudo -u deploy mkdir -p /home/deploy/.ssh
+sudo -u deploy ssh-keygen -t ed25519 -C "dearyou-droplet" \
+  -f /home/deploy/.ssh/github_dearyou -N ""
+sudo -u deploy cat /home/deploy/.ssh/github_dearyou.pub
+```
+
+Copy the displayed public key into GitHub under **Repository Settings > Deploy
+keys > Add deploy key**. Name it `DearYou Droplet` and leave write access
+disabled. Then configure SSH and clone:
+
+```bash
+sudo -u deploy ssh-keyscan github.com >> /home/deploy/.ssh/known_hosts
+sudo -u deploy chmod 600 /home/deploy/.ssh/known_hosts
+sudo -u deploy sh -c 'cat > /home/deploy/.ssh/config <<EOF
+Host github.com
+    HostName github.com
+    User git
+    IdentityFile /home/deploy/.ssh/github_dearyou
+    IdentitiesOnly yes
+EOF'
+sudo -u deploy chmod 600 /home/deploy/.ssh/config
+
+sudo -u deploy git clone git@github.com:Vitkayo/Dearyou.git /var/www/dearyou
 cd /var/www/dearyou
 composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
 cp .env.production.example .env
 nano .env
 ```
+
+Do not enter your GitHub account password in `git clone`. GitHub HTTPS clones
+require a token, while the read-only deploy key above avoids storing a personal
+token on the server.
 
 Set these values in `.env`:
 
