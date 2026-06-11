@@ -8,7 +8,7 @@
     <link rel="icon" type="image/svg+xml" href="{{ asset('dearyou-admin-mark.svg') }}">
     <link rel="stylesheet" href="{{ asset('vendor/bootstrap/css/bootstrap.min.css') }}">
     <link rel="stylesheet" href="{{ asset('vendor/bootstrap-icons/bootstrap-icons.min.css') }}">
-    <link rel="stylesheet" href="{{ asset('assets/dearyou/app.css') }}">
+    <link rel="stylesheet" href="{{ asset('assets/dearyou/app.css') }}?v={{ filemtime(public_path('assets/dearyou/app.css')) }}">
 </head>
 @php
     $occasionCopy = [
@@ -161,6 +161,6 @@
     <figure><img data-lightbox-main alt=""><figcaption data-lightbox-caption></figcaption></figure>
     <button class="lightbox-nav lightbox-next" type="button" data-lightbox-next aria-label="Next picture"><i class="bi bi-chevron-right"></i></button>
 </dialog>
-<script src="{{ asset('assets/dearyou/app.js') }}"></script>
+<script src="{{ asset('assets/dearyou/app.js') }}?v={{ filemtime(public_path('assets/dearyou/app.js')) }}"></script>
 </body>
 </html>

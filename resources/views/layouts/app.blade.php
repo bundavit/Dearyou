@@ -7,7 +7,7 @@
     <link rel="icon" type="image/svg+xml" href="{{ asset('dearyou-admin-mark.svg') }}">
     <link rel="stylesheet" href="{{ asset('vendor/bootstrap/css/bootstrap.min.css') }}">
     <link rel="stylesheet" href="{{ asset('vendor/bootstrap-icons/bootstrap-icons.min.css') }}">
-    <link rel="stylesheet" href="{{ asset('assets/dearyou/app.css') }}">
+    <link rel="stylesheet" href="{{ asset('assets/dearyou/app.css') }}?v={{ filemtime(public_path('assets/dearyou/app.css')) }}">
 </head>
 <body class="admin-body">
 <div class="admin-shell">
@@ -28,6 +28,6 @@
     </main>
 </div>
 <script src="{{ asset('vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
-<script src="{{ asset('assets/dearyou/app.js') }}"></script>
+<script src="{{ asset('assets/dearyou/app.js') }}?v={{ filemtime(public_path('assets/dearyou/app.js')) }}"></script>
 </body>
 </html>
