@@ -1,0 +1,36 @@
+{
+  "info": {
+    "name": "DearYou API",
+    "description": "Create a token from Admin > Account. Use a read/write token for mutations.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {"key": "baseUrl", "value": "http://127.0.0.1:8000"},
+    {"key": "token", "value": ""},
+    {"key": "letterId", "value": "1"}
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [{"key": "token", "value": "{{token}}", "type": "string"}]
+  },
+  "item": [
+    {
+      "name": "Letters",
+      "item": [
+        {"name": "List letters", "request": {"method": "GET", "url": "{{baseUrl}}/api/letters"}},
+        {"name": "Get letter", "request": {"method": "GET", "url": "{{baseUrl}}/api/letters/{{letterId}}"}},
+        {"name": "Create letter", "request": {"method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\"category\":\"custom\",\"title\":\"A note\",\"recipient_name\":\"Alex\",\"sender_name\":\"Sam\",\"body\":\"Hello\",\"theme\":\"warm\",\"primary_color\":\"#d85b78\",\"secondary_color\":\"#fff1e8\",\"decoration_type\":\"sparkles\",\"allow_response\":true,\"response_mode\":\"message\",\"question_text\":\"Would you like to reply?\"}"}, "url": "{{baseUrl}}/api/letters"}},
+        {"name": "Update letter", "request": {"method": "PUT", "header": [{"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\"category\":\"custom\",\"title\":\"Updated note\",\"recipient_name\":\"Alex\",\"sender_name\":\"Sam\",\"body\":\"Updated message\",\"theme\":\"warm\",\"primary_color\":\"#d85b78\",\"secondary_color\":\"#fff1e8\",\"decoration_type\":\"sparkles\",\"allow_response\":true,\"response_mode\":\"message\"}"}, "url": "{{baseUrl}}/api/letters/{{letterId}}"}},
+        {"name": "Publish letter", "request": {"method": "POST", "url": "{{baseUrl}}/api/letters/{{letterId}}/publish"}},
+        {"name": "Unpublish letter", "request": {"method": "POST", "url": "{{baseUrl}}/api/letters/{{letterId}}/unpublish"}},
+        {"name": "Delete letter", "request": {"method": "DELETE", "url": "{{baseUrl}}/api/letters/{{letterId}}"}}
+      ]
+    },
+    {
+      "name": "Responses",
+      "item": [
+        {"name": "List responses", "request": {"method": "GET", "url": "{{baseUrl}}/api/responses"}}
+      ]
+    }
+  ]
+}

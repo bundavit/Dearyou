@@ -1,0 +1,13 @@
+[Unit]
+Description=DearYou Laravel queue worker
+After=network.target mysql.service
+
+[Service]
+User=www-data
+Group=www-data
+Restart=always
+ExecStart=/usr/bin/php /var/www/dearyou/artisan queue:work --sleep=3 --tries=3 --max-time=3600
+WorkingDirectory=/var/www/dearyou
+
+[Install]
+WantedBy=multi-user.target
