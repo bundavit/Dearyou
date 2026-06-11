@@ -66,6 +66,9 @@ linear-gradient(145deg,color-mix(in srgb,var(--paper),white 24%),color-mix(in sr
 .envelope-flap{z-index:4;inset:32px 0 auto;height:150px;border-radius:10px 10px 0 0;background:color-mix(in srgb,var(--accent),white 17%);clip-path:polygon(0 0,100% 0,50% 92%);transform:none;transform-origin:top center;backface-visibility:hidden;transition:transform .75s cubic-bezier(.3,.7,.2,1),z-index 0s .35s}
 .envelope-seal{z-index:5;top:57%;width:54px;height:54px;border:4px solid rgba(255,255,255,.7);background:#fff;color:var(--accent);box-shadow:0 8px 18px #59303e2b;font-size:1.15rem;transition:opacity .25s ease,transform .45s ease}
 .recipient-open-button{position:relative;z-index:2;margin-top:.65rem;min-width:205px;border-radius:999px;padding-inline:1.35rem}
+.recipient-page .btn-dearyou{background:linear-gradient(135deg,color-mix(in srgb,var(--accent),white 12%),color-mix(in srgb,var(--accent),black 10%));border-color:color-mix(in srgb,var(--accent),black 10%);color:#fff;box-shadow:0 8px 20px color-mix(in srgb,var(--accent),transparent 68%)}
+.recipient-page .btn-dearyou:hover{background:linear-gradient(135deg,color-mix(in srgb,var(--accent),white 20%),color-mix(in srgb,var(--accent),black 18%));border-color:color-mix(in srgb,var(--accent),black 18%);color:#fff}
+.recipient-page .btn-dearyou:focus-visible{outline-color:color-mix(in srgb,var(--accent),white 35%)}
 .opening .envelope-flap{z-index:0;transform:rotateX(180deg)}
 .opening .envelope-seal{opacity:0;transform:translate(-50%,-80%) scale(.65)}
 .opening .envelope-letter{z-index:6;transform:translateY(-115px) rotate(-1deg)}
