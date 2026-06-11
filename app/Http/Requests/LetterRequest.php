@@ -24,8 +24,8 @@ class LetterRequest extends FormRequest
         return [
             'category' => ['required', Rule::in(['confession', 'apology', 'birthday', 'anniversary', 'valentine', 'congratulations', 'thank-you', 'friendship', 'graduation', 'celebration', 'custom'])],
             'title' => 'required|string|max:150',
-            'recipient_name' => 'required|string|max:100',
-            'sender_name' => 'required|string|max:100',
+            'recipient_name' => 'nullable|string|max:100',
+            'sender_name' => 'nullable|string|max:100',
             'body' => 'required|string|max:20000',
             'image' => 'nullable|image|mimes:jpg,jpeg,png,webp,gif|max:5120',
             'image_alt' => 'nullable|string|max:150',

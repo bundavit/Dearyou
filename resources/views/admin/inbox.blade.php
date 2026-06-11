@@ -29,11 +29,11 @@
     </div>
     @foreach($responses as $response)
         <article class="response-card {{ $response->read_at ? '' : 'is-unread' }}">
-            <input class="form-check-input mt-1" type="checkbox" name="response_ids[]" value="{{ $response->id }}" aria-label="Select response from {{ $response->letter->recipient_name }}">
+            <input class="form-check-input mt-1" type="checkbox" name="response_ids[]" value="{{ $response->id }}" aria-label="Select response from {{ $response->letter->recipientLabel() }}">
             <div class="flex-grow-1">
                 <div class="d-flex flex-wrap gap-2 align-items-center">
                     @unless($response->read_at)<span class="unread-dot" aria-label="Unread"></span>@endunless
-                    <strong>{{ $response->letter->recipient_name }}</strong>
+                    <strong>{{ $response->letter->recipientLabel() }}</strong>
                     <span>replied to</span>
                     <a href="{{ route('admin.letters.edit',$response->letter) }}">{{ $response->letter->title }}</a>
                 </div>

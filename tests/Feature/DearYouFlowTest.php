@@ -39,6 +39,38 @@ class DearYouFlowTest extends TestCase
         $this->assertNotNull($letter->fresh()->link);
     }
 
+    public function test_recipient_and_sender_names_are_optional(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->post('/admin/letters', [
+            'category' => 'custom',
+            'title' => 'A nameless letter',
+            'recipient_name' => '',
+            'sender_name' => '',
+            'body' => 'Some words do not need names.',
+            'theme' => 'warm',
+            'primary_color' => '#d85b78',
+            'secondary_color' => '#fff1e8',
+            'decoration_type' => 'hearts',
+            'font_style' => 'classic',
+            'allow_response' => 1,
+            'response_mode' => 'message',
+        ])->assertRedirect();
+
+        $letter = Letter::query()->sole();
+        $this->assertNull($letter->recipient_name);
+        $this->assertNull($letter->sender_name);
+
+        $letter->update(['status' => 'published']);
+        $link = $letter->link()->create(['token' => str_repeat('n', 64), 'is_active' => true]);
+
+        $this->get("/l/{$link->token}")
+            ->assertOk()
+            ->assertSee('Dear Someone special,')
+            ->assertSee('Anonymous');
+    }
+
     public function test_login_is_rate_limited(): void
     {
         User::factory()->create(['email' => 'admin@example.com']);

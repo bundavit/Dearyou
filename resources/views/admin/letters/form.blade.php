@@ -11,8 +11,8 @@
 @php($categories=['confession','apology','birthday','anniversary','valentine','congratulations','thank-you','friendship','graduation','celebration','custom'])
 <div class="col-md-6"><label class="form-label">Occasion</label><div class="input-group"><select name="category" id="category" class="form-select">@foreach($categories as $c)<option value="{{ $c }}" @selected(old('category',$letter->category)===$c)>{{ ucfirst($c) }}</option>@endforeach</select><button class="btn btn-outline-secondary" type="button" id="apply-preset"><i class="bi bi-magic"></i> Apply preset</button></div><div class="form-text">Presets update theme and response fields only when you click Apply.</div></div>
 <div class="col-md-6"><label class="form-label">Title</label><input name="title" class="form-control" value="{{ old('title',$letter->title) }}" required></div>
-<div class="col-md-6"><label class="form-label">Recipient name</label><input name="recipient_name" class="form-control" value="{{ old('recipient_name',$letter->recipient_name) }}" required data-chapter-recipient-name></div>
-<div class="col-md-6"><label class="form-label">Sender name</label><input name="sender_name" class="form-control" value="{{ old('sender_name',$letter->sender_name) }}" required data-chapter-sender-name></div>
+<div class="col-md-6"><label class="form-label">Recipient name <span class="text-secondary">(optional)</span></label><input name="recipient_name" class="form-control" value="{{ old('recipient_name',$letter->recipient_name) }}" placeholder="Someone special" data-chapter-recipient-name></div>
+<div class="col-md-6"><label class="form-label">Sender name <span class="text-secondary">(optional)</span></label><input name="sender_name" class="form-control" value="{{ old('sender_name',$letter->sender_name) }}" placeholder="Anonymous" data-chapter-sender-name></div>
 <div class="col-12"><label class="form-label">Message</label><textarea name="body" class="form-control" rows="10" required>{{ old('body',$letter->body) }}</textarea></div>
 <div class="col-md-8"><label class="form-label">Optional image or GIF</label><input type="file" name="image" class="form-control @error('image') is-invalid @enderror" accept=".jpg,.jpeg,.png,.webp,.gif,image/jpeg,image/png,image/webp,image/gif" data-image-upload><div class="form-text">JPG, PNG, WebP, or animated GIF up to 5 MB. GIFs play automatically in the letter.</div>@error('image')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror</div>
 <div class="col-md-4"><label class="form-label">Image description</label><input name="image_alt" class="form-control" value="{{ old('image_alt',$letter->image_alt) }}" placeholder="A shared memory"></div>
@@ -60,16 +60,16 @@
     <div class="chapter-preview-profiles">
         <div>
             <span class="chapter-preview-avatar" data-chapter-sender-avatar>
-                @if($letter->sender_profile_path)<img src="{{ Storage::url($letter->sender_profile_path) }}" alt="">@else<span data-chapter-sender-initial>{{ strtoupper(substr(old('sender_name',$letter->sender_name ?: 'Y'),0,1)) }}</span>@endif
+                @if($letter->sender_profile_path)<img src="{{ Storage::url($letter->sender_profile_path) }}" alt="">@else<span data-chapter-sender-initial>{{ strtoupper(substr(old('sender_name',$letter->sender_name ?: 'Anonymous'),0,1)) }}</span>@endif
             </span>
-            <strong data-chapter-sender-label>{{ old('sender_name',$letter->sender_name ?: 'You') }}</strong>
+            <strong data-chapter-sender-label>{{ old('sender_name',$letter->sender_name ?: 'Anonymous') }}</strong>
         </div>
         <span class="chapter-preview-connector" aria-hidden="true">&#9829;</span>
         <div>
             <span class="chapter-preview-avatar" data-chapter-recipient-avatar>
-                @if($letter->recipient_profile_path)<img src="{{ Storage::url($letter->recipient_profile_path) }}" alt="">@else<span data-chapter-recipient-initial>{{ strtoupper(substr(old('recipient_name',$letter->recipient_name ?: 'T'),0,1)) }}</span>@endif
+                @if($letter->recipient_profile_path)<img src="{{ Storage::url($letter->recipient_profile_path) }}" alt="">@else<span data-chapter-recipient-initial>{{ strtoupper(substr(old('recipient_name',$letter->recipient_name ?: 'Someone special'),0,1)) }}</span>@endif
             </span>
-            <strong data-chapter-recipient-label>{{ old('recipient_name',$letter->recipient_name ?: 'Them') }}</strong>
+            <strong data-chapter-recipient-label>{{ old('recipient_name',$letter->recipient_name ?: 'Someone special') }}</strong>
         </div>
     </div>
     <p class="chapter-preview-date" data-chapter-date-label>

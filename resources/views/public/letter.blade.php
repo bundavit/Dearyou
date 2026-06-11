@@ -65,13 +65,13 @@
         <div class="envelope-welcome text-center">
             <span class="occasion-pill">{{ ucfirst($letter->category) }}</span>
             <p class="eyebrow">{{ $copy['label'] }}</p>
-            <h1>{{ $letter->recipient_name }}</h1>
+            <h1>{{ $letter->recipientLabel() }}</h1>
             <p class="envelope-intro">{{ $copy['hint'] }}</p>
         </div>
 
         <button id="open-letter" class="envelope-button" aria-controls="letter-content" aria-expanded="false">
             <span class="envelope-letter">
-                <span>For {{ $letter->recipient_name }}</span>
+                <span>For {{ $letter->recipientLabel() }}</span>
                 <strong>{{ $letter->title }}</strong>
             </span>
             <span class="envelope-back"></span>
@@ -98,7 +98,7 @@
         <span class="opened-envelope-seal"><i class="bi bi-heart-fill"></i></span>
     </div>
     <article class="paper">
-        <p class="letter-to">Dear {{ $letter->recipient_name }},</p>
+        <p class="letter-to">Dear {{ $letter->recipientLabel() }},</p>
         <h1>{{ $letter->title }}</h1>
         <div class="letter-body">{!! nl2br(e($letter->body)) !!}</div>
         @if($letter->category === 'anniversary' && $letter->memories->isNotEmpty())
@@ -121,7 +121,7 @@
                 @endforeach
             </section>
         @endif
-        <p class="letter-signoff">With care,<br><strong>{{ $letter->sender_name }}</strong></p>
+        <p class="letter-signoff">With care,<br><strong>{{ $letter->senderLabel() }}</strong></p>
         @if($letter->image_path)
             <figure class="letter-image letter-image-after-message"><img src="{{ Storage::url($letter->image_path) }}" alt="{{ $letter->image_alt ?: '' }}">@if($letter->image_alt)<figcaption>{{ $letter->image_alt }}</figcaption>@endif</figure>
         @endif

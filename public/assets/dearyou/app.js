@@ -96,8 +96,8 @@ const chapterPreview = document.querySelector("[data-chapter-preview]");
 const updateChapterPreview = () => {
   if (!chapterPreview) return;
 
-  const sender = document.querySelector("[data-chapter-sender-name]")?.value.trim() || "You";
-  const recipient = document.querySelector("[data-chapter-recipient-name]")?.value.trim() || "Them";
+  const sender = document.querySelector("[data-chapter-sender-name]")?.value.trim() || "Anonymous";
+  const recipient = document.querySelector("[data-chapter-recipient-name]")?.value.trim() || "Someone special";
   const dateValue = document.querySelector("[data-chapter-date]")?.value;
   const accent = document.querySelector("[data-chapter-color]")?.value;
   const senderLabel = chapterPreview.querySelector("[data-chapter-sender-label]");

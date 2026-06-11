@@ -17,7 +17,7 @@
 <div class="col-md-6 col-xl-4"><article class="letter-card letter-card-clickable h-100">
     <a class="letter-card-link" href="{{ route('admin.letters.show',$letter) }}" aria-label="View {{ $letter->title }}"></a>
     <div class="d-flex justify-content-between"><span class="category">{{ ucfirst($letter->category) }}</span><span class="badge text-bg-{{ $letter->status === 'published' ? 'success' : ($letter->status === 'draft' ? 'secondary' : 'warning') }}">{{ $letter->status }}</span></div>
-    <h2>{{ $letter->title }}</h2><p>For {{ $letter->recipient_name }}, from {{ $letter->sender_name }}</p>
+    <h2>{{ $letter->title }}</h2><p>For {{ $letter->recipientLabel() }}, from {{ $letter->senderLabel() }}</p>
     <div class="letter-card-footer">
         <div class="letter-meta"><span><i class="bi bi-chat-heart"></i> {{ $letter->responses()->count() }}</span>@if($letter->expires_at)<span><i class="bi bi-clock"></i> {{ $letter->expires_at->isPast() ? 'Expired' : $letter->expires_at->diffForHumans() }}</span>@endif</div>
         <div class="letter-card-actions">

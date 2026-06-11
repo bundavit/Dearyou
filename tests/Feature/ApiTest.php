@@ -59,6 +59,19 @@ class ApiTest extends TestCase
         $this->withToken($token)->deleteJson("/api/letters/{$created['id']}")->assertNoContent();
     }
 
+    public function test_api_can_create_a_letter_without_names(): void
+    {
+        $user = User::factory()->create();
+        $token = $user->createToken('write', ['letters:write'])->plainTextToken;
+        $payload = $this->payload();
+        unset($payload['recipient_name'], $payload['sender_name']);
+
+        $this->withToken($token)->postJson('/api/letters', $payload)
+            ->assertCreated()
+            ->assertJsonPath('recipient_name', null)
+            ->assertJsonPath('sender_name', null);
+    }
+
     public function test_api_cannot_access_another_admins_letter_or_response(): void
     {
         $user = User::factory()->create();

@@ -35,7 +35,7 @@
                     <span class="dashboard-item-icon"><i class="bi bi-envelope-heart"></i></span>
                     <span class="dashboard-item-copy">
                         <strong>{{ $letter->title }}</strong>
-                        <small>For {{ $letter->recipient_name }} · {{ $letter->updated_at->diffForHumans() }}</small>
+                        <small>For {{ $letter->recipientLabel() }} · {{ $letter->updated_at->diffForHumans() }}</small>
                     </span>
                     <span class="dashboard-item-side">
                         <span class="badge text-bg-{{ $letter->status === 'published' ? 'success' : ($letter->status === 'draft' ? 'secondary' : 'warning') }}">{{ $letter->status }}</span>
@@ -58,7 +58,7 @@
                 <a class="dashboard-list-item" href="{{ route('admin.responses.show', $response) }}">
                     <span class="dashboard-item-icon {{ $response->read_at ? '' : 'is-unread' }}"><i class="bi bi-chat-heart"></i></span>
                     <span class="dashboard-item-copy">
-                        <strong>{{ $response->letter->recipient_name }}</strong>
+                        <strong>{{ $response->letter->recipientLabel() }}</strong>
                         <small>{{ Str::limit($response->message ?: ucfirst($response->response_value), 58) }}</small>
                     </span>
                     <span class="dashboard-item-side"><small>{{ $response->submitted_at->diffForHumans() }}</small></span>

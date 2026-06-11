@@ -43,6 +43,16 @@ class Letter extends Model
         return $this->hasMany(LetterMemory::class)->orderBy('sort_order')->orderBy('memory_date');
     }
 
+    public function recipientLabel(): string
+    {
+        return $this->recipient_name ?: 'Someone special';
+    }
+
+    public function senderLabel(): string
+    {
+        return $this->sender_name ?: 'Anonymous';
+    }
+
     public function isPubliclyAvailable(): bool
     {
         return $this->status === 'published'

@@ -20,7 +20,7 @@
             <div>
                 <span class="badge text-bg-{{ $letter->status === 'published' ? 'success' : ($letter->status === 'draft' ? 'secondary' : 'warning') }}">{{ ucfirst($letter->status) }}</span>
                 <p class="mt-3 mb-1 text-secondary">For</p>
-                <h2>{{ $letter->recipient_name }}</h2>
+                <h2>{{ $letter->recipientLabel() }}</h2>
             </div>
             <div class="letter-detail-theme" style="--detail-primary: {{ $letter->primary_color }}; --detail-paper: {{ $letter->secondary_color }}">
                 <span title="Primary color"></span><span title="Paper color"></span>
@@ -35,7 +35,7 @@
         @endif
 
         <div class="letter-detail-body">{{ $letter->body }}</div>
-        <p class="letter-detail-signoff">From,<br><strong>{{ $letter->sender_name }}</strong></p>
+        <p class="letter-detail-signoff">From,<br><strong>{{ $letter->senderLabel() }}</strong></p>
     </article>
 
     <aside class="letter-detail-sidebar">

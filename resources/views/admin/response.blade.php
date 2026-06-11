@@ -4,7 +4,7 @@
 <a class="btn btn-link px-0 mb-3" href="{{ route('admin.inbox') }}"><i class="bi bi-arrow-left"></i> Back to inbox</a>
 <article class="form-card response-detail">
     <div class="d-flex flex-wrap justify-content-between gap-3">
-        <div><p class="eyebrow">{{ strtoupper($response->letter->category) }}</p><h1>Response from {{ $response->letter->recipient_name }}</h1><p>For <a href="{{ route('admin.letters.edit',$response->letter) }}">{{ $response->letter->title }}</a></p></div>
+        <div><p class="eyebrow">{{ strtoupper($response->letter->category) }}</p><h1>Response from {{ $response->letter->recipientLabel() }}</h1><p>For <a href="{{ route('admin.letters.edit',$response->letter) }}">{{ $response->letter->title }}</a></p></div>
         <span class="response-value align-self-start">{{ ucfirst($response->response_value) }}</span>
     </div>
     @if($response->message)<blockquote class="response-message">{{ $response->message }}</blockquote>@else<p class="text-secondary">No additional message was included.</p>@endif
