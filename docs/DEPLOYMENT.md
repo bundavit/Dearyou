@@ -1,22 +1,220 @@
-# DearYou deployment
+# DearYou on DigitalOcean
 
-Deployment is intentionally the final project stage. Use Ubuntu, Nginx, PHP-FPM, Composer, and MySQL on a DigitalOcean Droplet.
+Use an Ubuntu 24.04 Droplet with Nginx, PHP 8.3, and MySQL. A Droplet is used
+instead of App Platform because DearYou stores private images, GIFs, and music
+under `storage/app/public`; a Droplet keeps those uploads on persistent disk.
 
-1. Point the Nginx document root to `public/`.
-2. Copy `.env.example` to `.env`, use production database credentials, set `APP_ENV=production`, `APP_DEBUG=false`, and a correct `APP_URL`.
-3. Run `composer install --no-dev --optimize-autoloader`, `php artisan key:generate`, and `php artisan migrate --force`.
-4. Create the first admin with `ADMIN_EMAIL` and `ADMIN_PASSWORD`, then run `php artisan db:seed --force`. Change the seeded password immediately.
-5. Give the web user write access to `storage/` and `bootstrap/cache/`.
-6. Run `php artisan optimize` and configure HTTPS with Certbot/Let's Encrypt.
-7. Back up MySQL and `.env`; never commit `.env`.
+## 1. Create the Droplet
 
-For API access, create a Sanctum token for the admin in a trusted console and send it as `Authorization: Bearer TOKEN`.
+In DigitalOcean:
 
-Included production templates:
+1. Create an Ubuntu 24.04 Droplet.
+2. Choose at least 2 GB RAM for comfortable Composer and MySQL operation.
+3. Add an SSH key.
+4. Add a DigitalOcean Cloud Firewall allowing SSH (22), HTTP (80), and HTTPS
+   (443). Restrict SSH to your IP when possible.
+5. Point your domain's `A` record to the Droplet IP.
 
-- `deploy/nginx-dearyou.conf`
-- `deploy/dearyou-worker.service`
-- `deploy/backup.sh`
-- `.env.production.example`
+Connect from your computer:
 
-Before deployment, replace every example domain and credential, enable HTTPS, test a backup restore, and change the seeded admin password.
+```bash
+ssh root@YOUR_DROPLET_IP
+```
+
+## 2. Install the server packages
+
+```bash
+apt update && apt upgrade -y
+apt install -y nginx mysql-server git unzip curl \
+  php8.3-fpm php8.3-cli php8.3-mysql php8.3-mbstring php8.3-xml \
+  php8.3-curl php8.3-zip php8.3-gd php8.3-bcmath
+
+curl -sS https://getcomposer.org/installer -o /tmp/composer-setup.php
+php /tmp/composer-setup.php --install-dir=/usr/local/bin --filename=composer
+rm /tmp/composer-setup.php
+```
+
+Create a non-root deployment user:
+
+```bash
+adduser deploy
+usermod -aG sudo,www-data deploy
+mkdir -p /home/deploy/.ssh
+cp /root/.ssh/authorized_keys /home/deploy/.ssh/authorized_keys
+chown -R deploy:deploy /home/deploy/.ssh
+chmod 700 /home/deploy/.ssh
+chmod 600 /home/deploy/.ssh/authorized_keys
+```
+
+Reconnect:
+
+```bash
+ssh deploy@YOUR_DROPLET_IP
+```
+
+## 3. Create MySQL
+
+Generate a long random database password and keep it private.
+
+```bash
+sudo mysql
+```
+
+Run inside MySQL:
+
+```sql
+CREATE DATABASE dearyou CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER 'dearyou'@'localhost' IDENTIFIED BY 'YOUR_LONG_DB_PASSWORD';
+GRANT ALL PRIVILEGES ON dearyou.* TO 'dearyou'@'localhost';
+FLUSH PRIVILEGES;
+EXIT;
+```
+
+## 4. Clone DearYou
+
+The repository must be pushed to GitHub first.
+
+```bash
+sudo mkdir -p /var/www
+sudo chown deploy:www-data /var/www
+git clone https://github.com/Vitkayo/Dearyou.git /var/www/dearyou
+cd /var/www/dearyou
+composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
+cp .env.production.example .env
+nano .env
+```
+
+Set these values in `.env`:
+
+```dotenv
+APP_ENV=production
+APP_DEBUG=false
+APP_URL=https://YOUR_DOMAIN
+
+DB_HOST=127.0.0.1
+DB_DATABASE=dearyou
+DB_USERNAME=dearyou
+DB_PASSWORD="YOUR_LONG_DB_PASSWORD"
+
+ADMIN_EMAIL=YOUR_ADMIN_EMAIL
+ADMIN_PASSWORD="YOUR_ADMIN_PASSWORD"
+```
+
+Passwords containing `#`, spaces, or other punctuation must stay inside quotes.
+Never commit the production `.env`.
+
+Initialize Laravel and the first admin:
+
+```bash
+php artisan key:generate
+php artisan migrate --force
+php artisan db:seed --force
+php artisan storage:link
+php artisan optimize
+
+sudo chown -R deploy:www-data /var/www/dearyou
+sudo find storage bootstrap/cache -type d -exec chmod 2775 {} \;
+sudo find storage bootstrap/cache -type f -exec chmod 0664 {} \;
+```
+
+Run `db:seed` only for the initial installation. Running it repeatedly creates
+more sample data.
+
+## 5. Configure Nginx
+
+```bash
+sudo cp deploy/nginx-dearyou.conf /etc/nginx/sites-available/dearyou
+sudo nano /etc/nginx/sites-available/dearyou
+```
+
+Replace `example.com` and `www.example.com` with your real domain. Then:
+
+```bash
+sudo ln -s /etc/nginx/sites-available/dearyou /etc/nginx/sites-enabled/dearyou
+sudo rm -f /etc/nginx/sites-enabled/default
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+Before DNS and HTTPS are ready, you can temporarily use the Droplet IP as
+`server_name` and visit `http://YOUR_DROPLET_IP`.
+
+## 6. Enable HTTPS
+
+After the domain points to the Droplet:
+
+```bash
+sudo apt install -y certbot python3-certbot-nginx
+sudo certbot --nginx -d YOUR_DOMAIN -d www.YOUR_DOMAIN
+sudo certbot renew --dry-run
+```
+
+Confirm `.env` uses `APP_URL=https://YOUR_DOMAIN`, then run:
+
+```bash
+cd /var/www/dearyou
+php artisan optimize
+```
+
+## 7. Queue worker and updates
+
+Install the included worker:
+
+```bash
+sudo cp deploy/dearyou-worker.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now dearyou-worker
+```
+
+For future GitHub updates:
+
+```bash
+cd /var/www/dearyou
+chmod +x deploy/deploy.sh
+./deploy/deploy.sh
+```
+
+The deployment script pulls `main`, installs production dependencies, runs
+migrations, refreshes Laravel caches, fixes writable-directory permissions,
+and restarts PHP and the queue worker.
+
+## 8. Backups
+
+The included backup script saves both MySQL and uploaded media:
+
+```bash
+sudo chmod +x /var/www/dearyou/deploy/backup.sh
+sudo mkdir -p /var/backups/dearyou
+sudo /var/www/dearyou/deploy/backup.sh
+```
+
+Schedule it only after testing a backup and restore:
+
+```bash
+sudo crontab -e
+```
+
+Example daily schedule:
+
+```cron
+30 2 * * * /var/www/dearyou/deploy/backup.sh >> /var/log/dearyou-backup.log 2>&1
+```
+
+Copy backups to a second location. A backup stored only on the same Droplet is
+not enough if the Droplet is lost.
+
+## Production checklist
+
+```bash
+curl -I https://YOUR_DOMAIN/up
+sudo systemctl status nginx php8.3-fpm mysql dearyou-worker
+cd /var/www/dearyou
+php artisan about
+```
+
+- Test admin login.
+- Upload an image, GIF, and music file.
+- Open a public letter link.
+- Submit and read a response.
+- Create a new Postman token; local API tokens are not transferred.
+- Enable DigitalOcean Droplet backups or snapshots.

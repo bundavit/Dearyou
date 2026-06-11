@@ -1,35 +1,185 @@
 {
   "info": {
     "name": "DearYou API",
-    "description": "Create a token from Admin > Account. Use a read/write token for mutations.",
+    "description": "Create a token from Admin > Account > Advanced: API access. Paste the complete token into the collection variable named token. Use Read and write access for create, update, publish, unpublish, and delete requests.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
-    {"key": "baseUrl", "value": "http://127.0.0.1:8000"},
-    {"key": "token", "value": ""},
-    {"key": "letterId", "value": "1"}
+    {
+      "key": "baseUrl",
+      "value": "http://127.0.0.1:8000"
+    },
+    {
+      "key": "token",
+      "value": ""
+    },
+    {
+      "key": "letterId",
+      "value": "1"
+    }
   ],
   "auth": {
     "type": "bearer",
-    "bearer": [{"key": "token", "value": "{{token}}", "type": "string"}]
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
   },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "if (!pm.collectionVariables.get('token')) {",
+          "    throw new Error('DearYou API token is missing. Create one in Admin > Account > Advanced: API access, then paste it into the collection variable named token.');",
+          "}"
+        ]
+      }
+    }
+  ],
   "item": [
     {
       "name": "Letters",
       "item": [
-        {"name": "List letters", "request": {"method": "GET", "url": "{{baseUrl}}/api/letters"}},
-        {"name": "Get letter", "request": {"method": "GET", "url": "{{baseUrl}}/api/letters/{{letterId}}"}},
-        {"name": "Create letter", "request": {"method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\"category\":\"custom\",\"title\":\"A note\",\"recipient_name\":\"Alex\",\"sender_name\":\"Sam\",\"body\":\"Hello\",\"theme\":\"warm\",\"primary_color\":\"#d85b78\",\"secondary_color\":\"#fff1e8\",\"decoration_type\":\"sparkles\",\"allow_response\":true,\"response_mode\":\"message\",\"question_text\":\"Would you like to reply?\"}"}, "url": "{{baseUrl}}/api/letters"}},
-        {"name": "Update letter", "request": {"method": "PUT", "header": [{"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\"category\":\"custom\",\"title\":\"Updated note\",\"recipient_name\":\"Alex\",\"sender_name\":\"Sam\",\"body\":\"Updated message\",\"theme\":\"warm\",\"primary_color\":\"#d85b78\",\"secondary_color\":\"#fff1e8\",\"decoration_type\":\"sparkles\",\"allow_response\":true,\"response_mode\":\"message\"}"}, "url": "{{baseUrl}}/api/letters/{{letterId}}"}},
-        {"name": "Publish letter", "request": {"method": "POST", "url": "{{baseUrl}}/api/letters/{{letterId}}/publish"}},
-        {"name": "Unpublish letter", "request": {"method": "POST", "url": "{{baseUrl}}/api/letters/{{letterId}}/unpublish"}},
-        {"name": "Delete letter", "request": {"method": "DELETE", "url": "{{baseUrl}}/api/letters/{{letterId}}"}}
+        {
+          "name": "List letters",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/letters"
+          }
+        },
+        {
+          "name": "Get letter",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/letters/{{letterId}}"
+          }
+        },
+        {
+          "name": "Create letter",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"category\": \"custom\",\n  \"title\": \"A note\",\n  \"recipient_name\": \"Alex\",\n  \"sender_name\": \"Sam\",\n  \"body\": \"Hello\",\n  \"theme\": \"warm\",\n  \"primary_color\": \"#d85b78\",\n  \"secondary_color\": \"#fff1e8\",\n  \"decoration_type\": \"sparkles\",\n  \"allow_response\": true,\n  \"response_mode\": \"message\",\n  \"question_text\": \"Would you like to reply?\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/api/letters"
+          }
+        },
+        {
+          "name": "Update letter",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"category\": \"custom\",\n  \"title\": \"Updated note\",\n  \"recipient_name\": \"Alex\",\n  \"sender_name\": \"Sam\",\n  \"body\": \"Updated message\",\n  \"theme\": \"warm\",\n  \"primary_color\": \"#d85b78\",\n  \"secondary_color\": \"#fff1e8\",\n  \"decoration_type\": \"sparkles\",\n  \"allow_response\": true,\n  \"response_mode\": \"message\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/api/letters/{{letterId}}"
+          }
+        },
+        {
+          "name": "Publish letter",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/letters/{{letterId}}/publish"
+          }
+        },
+        {
+          "name": "Unpublish letter",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/letters/{{letterId}}/unpublish"
+          }
+        },
+        {
+          "name": "Delete letter",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/letters/{{letterId}}"
+          }
+        }
       ]
     },
     {
       "name": "Responses",
       "item": [
-        {"name": "List responses", "request": {"method": "GET", "url": "{{baseUrl}}/api/responses"}}
+        {
+          "name": "List responses",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/responses"
+          }
+        }
       ]
     }
   ]

@@ -19,7 +19,7 @@ php artisan serve
 
 Open `http://127.0.0.1:8000/admin/login`.
 
-Default seeded account:
+Default local seeded account:
 
 - Email: `admin@dearyou.test`
 - Password: `ChangeMe123!`
@@ -41,4 +41,6 @@ Create a read-only or read/write token under **Admin > Account**. Import `postma
 
 ## Production
 
-Production and DigitalOcean preparation is documented in `docs/DEPLOYMENT.md`. Never commit `.env`, database exports, API tokens, or uploaded private images.
+The complete DigitalOcean Droplet guide is in `docs/DEPLOYMENT.md`. It includes
+server installation, MySQL, Nginx, HTTPS, deployment updates, and backups.
+Never commit `.env`, database exports, API tokens, or uploaded private images.
