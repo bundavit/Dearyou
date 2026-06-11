@@ -1,8 +1,72 @@
 *.log
 .DS_Store
+
+# Environment files and local credentials
 .env
-.env.backup
-.env.production
+.env.*
+!.env.example
+!.env.production.example
+*.local
+auth.json
+
+# Secrets, certificates, and SSH keys
+*.key
+*.pem
+*.p12
+*.pfx
+*.crt
+*.cer
+id_rsa
+id_rsa.pub
+id_ed25519
+id_ed25519.pub
+
+# Databases, exports, and backups
+*.sqlite
+*.sqlite3
+*.db
+*.sql
+*.sql.gz
+*.dump
+*.bak
+*.backup
+/backups/
+/database/backups/
+/deploy/backups/
+
+# User uploads and generated storage
+/public/storage
+/storage/app/private/*
+!/storage/app/private/.gitignore
+/storage/app/public/*
+!/storage/app/public/.gitignore
+/storage/framework/cache/data/*
+!/storage/framework/cache/data/.gitignore
+/storage/framework/sessions/*
+!/storage/framework/sessions/.gitignore
+/storage/framework/views/*
+!/storage/framework/views/.gitignore
+/storage/logs/*
+!/storage/logs/.gitignore
+
+# Postman local secrets and environments
+*.postman_environment.json
+postman/environments/
+postman/local/
+
+# PHP, Node, and generated frontend files
+/vendor/
+/node_modules/
+/public/build/
+/public/hot
+
+# Laravel runtime
+/bootstrap/cache/*.php
+!/bootstrap/cache/.gitignore
+/storage/*.key
+/storage/pail
+
+# IDE and operating-system files
 .phpactor.json
 .phpunit.result.cache
 /.fleet
@@ -11,14 +75,6 @@
 /.phpunit.cache
 /.vscode
 /.zed
-/auth.json
-/node_modules
-/public/build
-/public/hot
-/public/storage
-/storage/*.key
-/storage/pail
-/vendor
 Homestead.json
 Homestead.yaml
 Thumbs.db

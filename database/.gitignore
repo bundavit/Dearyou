@@ -1,1 +1,10 @@
-*.sqlite*
+*.sqlite
+*.sqlite3
+*.db
+*.sql
+*.sql.gz
+*.dump
+*.bak
+*.backup
+
+!.gitignore
