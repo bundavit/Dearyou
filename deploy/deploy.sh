@@ -24,6 +24,14 @@ composer install \
     --prefer-dist \
     --optimize-autoloader
 
+sudo install -m 0644 deploy/dearyou-uploads.ini /etc/php/8.4/fpm/conf.d/99-dearyou-uploads.ini
+sudo install -m 0644 deploy/dearyou-uploads.ini /etc/php/8.4/cli/conf.d/99-dearyou-uploads.ini
+if [[ -f /etc/nginx/sites-available/dearyou ]]; then
+    sudo sed -i -E 's/client_max_body_size[[:space:]]+[0-9]+[KMG];/client_max_body_size 128M;/' /etc/nginx/sites-available/dearyou
+    sudo nginx -t
+    sudo systemctl reload nginx
+fi
+
 php artisan migrate --force
 php artisan storage:link
 php artisan optimize

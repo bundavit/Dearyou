@@ -58,6 +58,7 @@ class DearYouFlowTest extends TestCase
             'response_mode' => 'message',
             'positive_button_text' => '',
             'negative_button_text' => '',
+            'chapter_heading' => '',
         ])->assertRedirect();
 
         $letter = Letter::query()->sole();
@@ -65,6 +66,7 @@ class DearYouFlowTest extends TestCase
         $this->assertNull($letter->sender_name);
         $this->assertSame('Yes', $letter->positive_button_text);
         $this->assertSame('No', $letter->negative_button_text);
+        $this->assertSame('A beautiful new chapter begins.', $letter->chapter_heading);
 
         $letter->update(['status' => 'published']);
         $link = $letter->link()->create(['token' => str_repeat('n', 64), 'is_active' => true]);
@@ -325,7 +327,7 @@ class DearYouFlowTest extends TestCase
         Storage::fake('public');
         $user = User::factory()->create();
         $letter = $this->letter($user);
-        $gif = base64_decode('R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==');
+        $gif = base64_decode('R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==').str_repeat("\0", 6 * 1024 * 1024);
         $payload = [
             'category' => 'confession',
             'title' => 'A playful letter',
