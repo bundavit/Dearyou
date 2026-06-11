@@ -42,7 +42,7 @@ class InboxController extends Controller
         $this->own($response);
         $response->update(['read_at' => null]);
 
-        return back()->with('success', 'Response marked unread.');
+        return redirect()->route('admin.inbox')->with('success', 'Response marked unread.');
     }
 
     public function bulk(Request $request)

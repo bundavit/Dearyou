@@ -19,6 +19,7 @@ class DearYouFlowTest extends TestCase
         return $user->letters()->create(array_merge([
             'category' => 'confession', 'title' => 'A letter', 'recipient_name' => 'Alex', 'sender_name' => 'Sam', 'body' => 'Hello',
             'theme' => 'warm', 'primary_color' => '#d85b78', 'secondary_color' => '#fff1e8', 'decoration_type' => 'hearts',
+            'font_style' => 'classic',
             'status' => 'draft', 'allow_response' => true, 'response_mode' => 'buttons_with_message',
         ], $overrides));
     }
@@ -30,6 +31,7 @@ class DearYouFlowTest extends TestCase
         $this->actingAs($user)->post('/admin/letters', [
             'category' => 'confession', 'title' => 'Hi', 'recipient_name' => 'Alex', 'sender_name' => 'Sam', 'body' => 'Hello',
             'theme' => 'warm', 'primary_color' => '#d85b78', 'secondary_color' => '#fff1e8', 'decoration_type' => 'hearts',
+            'font_style' => 'handwritten',
             'allow_response' => 1, 'response_mode' => 'buttons_with_message',
         ])->assertRedirect();
         $letter = Letter::first();
@@ -67,10 +69,24 @@ class DearYouFlowTest extends TestCase
         $this->get("/l/{$link->token}")
             ->assertOk()
             ->assertSee('Open Letter')
+            ->assertSee('id="close-letter"', false)
+            ->assertDontSee('Made especially for you')
+            ->assertDontSee('Close and reread')
             ->assertSee('name="response_value"', false)
             ->assertSee('value="positive"', false)
             ->assertSee('value="negative"', false);
-        $this->post("/l/{$link->token}/response", ['response_value' => 'positive', 'message' => 'Yes!'])->assertRedirect();
+        $this->post("/l/{$link->token}/response", ['response_value' => 'positive', 'message' => 'Yes!'])
+            ->assertRedirect();
+        $this->get("/l/{$link->token}")
+            ->assertOk();
+        $responsePage = $this->withSession(['response_sent' => true, 'response_value' => 'positive'])
+            ->get("/l/{$link->token}");
+        $responsePage
+            ->assertOk()
+            ->assertSee('A beautiful new chapter begins.')
+            ->assertSee('id="envelope-stage" class="envelope-stage"  hidden', false)
+            ->assertSee('opened-letter-scene')
+            ->assertSee('revealed');
         $this->assertDatabaseHas('responses', ['letter_id' => $letter->id, 'message' => 'Yes!']);
         $letter->update(['status' => 'unpublished']);
         $this->get("/l/{$link->token}")->assertNotFound();
@@ -113,8 +129,67 @@ class DearYouFlowTest extends TestCase
             ->assertSee('A private answer');
         $this->assertNotNull($response->fresh()->read_at);
 
-        $this->actingAs($user)->patch("/admin/responses/{$response->id}/unread")->assertRedirect();
+        $this->actingAs($user)
+            ->patch("/admin/responses/{$response->id}/unread")
+            ->assertRedirect('/admin/inbox');
         $this->assertNull($response->fresh()->read_at);
+    }
+
+    public function test_create_letter_shows_the_accepted_confession_preview(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)
+            ->get('/admin/letters/create')
+            ->assertOk()
+            ->assertSee('Positive response preview')
+            ->assertSee('A beautiful new chapter begins.')
+            ->assertSee('data-chapter-sender-image', false)
+            ->assertSee('data-chapter-recipient-image', false)
+            ->assertSee('class="editor-section"', false);
+    }
+
+    public function test_chapter_heading_music_and_async_response_are_supported(): void
+    {
+        Storage::fake('public');
+        $user = User::factory()->create();
+        $letter = $this->letter($user, ['status' => 'published']);
+        $link = $letter->link()->create(['token' => str_repeat('k', 64), 'is_active' => true]);
+        $payload = [
+            'category' => 'confession',
+            'title' => 'A letter',
+            'recipient_name' => 'Alex',
+            'sender_name' => 'Sam',
+            'body' => 'Hello',
+            'theme' => 'warm',
+            'font_style' => 'classic',
+            'primary_color' => '#d85b78',
+            'secondary_color' => '#fff1e8',
+            'decoration_type' => 'hearts',
+            'allow_response' => 1,
+            'response_mode' => 'buttons',
+            'chapter_heading' => 'Our story starts here.',
+            'audio' => UploadedFile::fake()->create('song.mp3', 10, 'audio/mpeg'),
+        ];
+
+        $this->actingAs($user)->put("/admin/letters/{$letter->id}", $payload)->assertRedirect();
+        $letter->refresh();
+        Storage::disk('public')->assertExists($letter->audio_path);
+
+        $this->get("/l/{$link->token}")
+            ->assertOk()
+            ->assertSee('Play music')
+            ->assertSee('data-async-response', false);
+
+        $asyncResponse = $this->postJson("/l/{$link->token}/response", ['response_value' => 'positive'])
+            ->assertOk();
+        $this->assertStringContainsString('Our story starts here.', $asyncResponse->json('html'));
+
+        $audioPath = $letter->audio_path;
+        unset($payload['audio']);
+        $payload['remove_audio'] = 1;
+        $this->actingAs($user)->put("/admin/letters/{$letter->id}", $payload)->assertRedirect();
+        Storage::disk('public')->assertMissing($audioPath);
     }
 
     public function test_deleting_response_returns_to_full_inbox(): void
@@ -209,6 +284,42 @@ class DearYouFlowTest extends TestCase
         $this->assertNull($letter->fresh()->image_path);
     }
 
+    public function test_admin_can_use_animated_gifs_in_letters_and_memories(): void
+    {
+        Storage::fake('public');
+        $user = User::factory()->create();
+        $letter = $this->letter($user);
+        $gif = base64_decode('R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==');
+        $payload = [
+            'category' => 'confession',
+            'title' => 'A playful letter',
+            'recipient_name' => 'Alex',
+            'sender_name' => 'Sam',
+            'body' => 'Hello',
+            'theme' => 'warm',
+            'primary_color' => '#d85b78',
+            'secondary_color' => '#fff1e8',
+            'decoration_type' => 'hearts',
+            'allow_response' => 1,
+            'response_mode' => 'buttons_with_message',
+            'image' => UploadedFile::fake()->createWithContent('playful.gif', $gif),
+        ];
+
+        $this->actingAs($user)->put("/admin/letters/{$letter->id}", $payload)->assertRedirect();
+        Storage::disk('public')->assertExists($letter->fresh()->image_path);
+
+        $this->actingAs($user)->post("/admin/letters/{$letter->id}/memories", [
+            'title' => 'A funny moment',
+            'memory_images' => [
+                UploadedFile::fake()->createWithContent('memory.gif', $gif),
+            ],
+        ])->assertRedirect();
+
+        $memory = $letter->memories()->first();
+        $this->assertCount(1, $memory->images);
+        Storage::disk('public')->assertExists($memory->images->first()->image_path);
+    }
+
     public function test_category_specific_recipient_copy_and_decorations_are_rendered(): void
     {
         $user = User::factory()->create();
@@ -297,20 +408,54 @@ class DearYouFlowTest extends TestCase
             'title' => 'Our first trip',
             'memory_date' => '2025-12-20',
             'caption' => 'A day we still talk about.',
-            'memory_image' => UploadedFile::fake()->image('trip.jpg'),
+            'memory_images' => [
+                UploadedFile::fake()->image('trip-one.jpg'),
+                UploadedFile::fake()->image('trip-two.jpg'),
+            ],
         ])->assertRedirect();
 
         $memory = $letter->memories()->first();
-        Storage::disk('public')->assertExists($memory->image_path);
+        $this->assertCount(2, $memory->images);
+        $memory->images->each(fn ($image) => Storage::disk('public')->assertExists($image->image_path));
         $this->get("/l/{$link->token}")
             ->assertOk()
             ->assertSee('Moments worth remembering')
             ->assertSee('Our first trip')
-            ->assertSee('December 20, 2025');
+            ->assertSee('December 20, 2025')
+            ->assertSee('picture 1')
+            ->assertSee('picture 2')
+            ->assertSee('data-memory-lightbox', false)
+            ->assertSee('data-lightbox-image', false);
 
-        $path = $memory->image_path;
+        $removedImage = $memory->images->first();
+        $this->actingAs($user)->put("/admin/memories/{$memory->id}", [
+            'title' => 'Our first trip',
+            'memory_date' => '2025-12-20',
+            'caption' => 'A day we still talk about.',
+            'remove_memory_images' => [$removedImage->id],
+            'memory_images' => [UploadedFile::fake()->image('trip-three.jpg')],
+        ])->assertRedirect();
+
+        Storage::disk('public')->assertMissing($removedImage->image_path);
+        $memory->refresh();
+        $this->assertCount(2, $memory->images);
+
+        $secondMemory = $letter->memories()->create(['title' => 'Another day', 'sort_order' => 1]);
+        $this->actingAs($user)->patchJson("/admin/letters/{$letter->id}/memories/reorder", [
+            'order' => [$secondMemory->id, $memory->id],
+        ])->assertNoContent();
+        $this->assertSame(0, $secondMemory->fresh()->sort_order);
+        $this->assertSame(1, $memory->fresh()->sort_order);
+
+        $images = $memory->images()->get();
+        $this->actingAs($user)->patchJson("/admin/memories/{$memory->id}/images/reorder", [
+            'order' => $images->pluck('id')->reverse()->values()->all(),
+        ])->assertNoContent();
+        $this->assertSame($images->last()->id, $memory->images()->first()->id);
+
+        $remainingPaths = $memory->images->pluck('image_path');
         $this->actingAs($user)->delete("/admin/memories/{$memory->id}")->assertRedirect();
-        Storage::disk('public')->assertMissing($path);
+        $remainingPaths->each(fn ($path) => Storage::disk('public')->assertMissing($path));
     }
 
     public function test_admin_can_search_and_filter_letters(): void
@@ -323,6 +468,27 @@ class DearYouFlowTest extends TestCase
             ->assertOk()
             ->assertSee('Birthday for Taylor')
             ->assertDontSee('Private apology');
+    }
+
+    public function test_admin_can_choose_a_font_style_for_the_recipient_letter(): void
+    {
+        $user = User::factory()->create();
+        $letter = $this->letter($user, [
+            'font_style' => 'handwritten',
+            'status' => 'published',
+        ]);
+        $link = $letter->link()->create(['token' => str_repeat('j', 64), 'is_active' => true]);
+
+        $this->actingAs($user)->get("/admin/letters/{$letter->id}/edit")
+            ->assertOk()
+            ->assertSee('Handwritten')
+            ->assertSee('data-font-select', false)
+            ->assertDontSee('data-font-preview', false);
+
+        $this->get("/l/{$link->token}")
+            ->assertOk()
+            ->assertSee('font-handwritten', false)
+            ->assertSee('--letter-font:', false);
     }
 
     public function test_admin_can_view_an_owned_letter_but_not_another_users_letter(): void

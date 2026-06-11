@@ -30,7 +30,7 @@ class LetterController extends Controller
         $this->own($letter);
         $this->requireAbility('letters:read');
 
-        return $letter->load('link', 'responses', 'memories');
+        return $letter->load('link', 'responses', 'memories.images');
     }
 
     public function update(LetterRequest $request, Letter $letter)
@@ -46,11 +46,17 @@ class LetterController extends Controller
     {
         $this->own($letter);
         $this->requireAbility('letters:write');
+        $memoryImages = $letter->memories()->with('images')->get()
+            ->flatMap(fn ($memory) => $memory->images->pluck('image_path'))
+            ->all();
+
         Storage::disk('public')->delete(array_filter([
             $letter->image_path,
+            $letter->audio_path,
             $letter->sender_profile_path,
             $letter->recipient_profile_path,
             ...$letter->memories()->pluck('image_path')->filter()->all(),
+            ...$memoryImages,
         ]));
         $letter->delete();
 

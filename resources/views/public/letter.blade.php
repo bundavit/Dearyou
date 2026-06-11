@@ -3,6 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ $letter->title }} | DearYou</title>
     <link rel="icon" type="image/svg+xml" href="{{ asset('dearyou-admin-mark.svg') }}">
     <link rel="stylesheet" href="{{ asset('vendor/bootstrap/css/bootstrap.min.css') }}">
@@ -33,18 +34,32 @@
         'sparkles' => ['&#10022;', '&#10023;', '&#10022;', '&#10023;'],
         'none' => [],
     ];
+    $fontStacks = [
+        'classic' => 'Georgia, serif',
+        'elegant' => '"Lucida Calligraphy", "Monotype Corsiva", cursive',
+        'modern' => '"Segoe UI", Arial, sans-serif',
+        'friendly' => '"Comic Sans MS", "Segoe Print", cursive',
+        'typewriter' => '"Courier New", Courier, monospace',
+        'handwritten' => '"Segoe Print", "Bradley Hand", cursive',
+        'formal' => '"Copperplate Gothic Light", Cambria, serif',
+    ];
 @endphp
-<body class="recipient-page theme-{{ $letter->theme }} category-{{ $letter->category }}" style="--accent:{{ $letter->primary_color }};--paper:{{ $letter->secondary_color }}">
+<body class="recipient-page theme-{{ $letter->theme }} category-{{ $letter->category }} font-{{ $letter->font_style ?: 'classic' }}" style="--accent:{{ $letter->primary_color }};--paper:{{ $letter->secondary_color }};--letter-font:{{ $fontStacks[$letter->font_style] ?? $fontStacks['classic'] }}">
 <div class="floaters decoration-{{ $letter->decoration_type }}" aria-hidden="true">
     @foreach($decorations[$letter->decoration_type] ?? $decorations['sparkles'] as $symbol)<span>{!! $symbol !!}</span>@endforeach
 </div>
 <main class="recipient-main">
     @if(!empty($preview))<div class="preview-ribbon">Preview</div>@endif
-    <section id="envelope-stage" class="envelope-stage">
+    @if($letter->audio_path)
+        <div class="letter-audio-player">
+            <button type="button" data-audio-toggle aria-label="Play background music"><i class="bi bi-play-fill"></i><span>Play music</span></button>
+            <audio data-letter-audio preload="metadata" src="{{ Storage::url($letter->audio_path) }}"></audio>
+        </div>
+    @endif
+    <section id="envelope-stage" class="envelope-stage" @if(session('response_sent')) hidden @endif>
         <header class="recipient-app-header">
             <span class="recipient-brand-mark">D</span>
             <span>DearYou</span>
-            <span class="private-note"><i class="bi bi-lock-fill"></i><span>Private</span></span>
         </header>
 
         <div class="envelope-welcome text-center">
@@ -71,14 +86,20 @@
         <button class="btn btn-dearyou btn-wide recipient-open-button" id="open-letter-text">
             <i class="bi bi-envelope-open-heart"></i> Open Letter
         </button>
-        <p class="recipient-privacy"><i class="bi bi-shield-check"></i> Made especially for you</p>
     </section>
-    <article id="letter-content" class="paper" hidden>
+    <section id="letter-content" class="opened-letter-scene @if(session('response_sent')) revealed @endif" @unless(session('response_sent')) hidden @endunless>
+    <button class="letter-close-button" id="close-letter" type="button" aria-label="Close letter">
+        <i class="bi bi-x-lg" aria-hidden="true"></i>
+    </button>
+    <div class="opened-envelope" aria-hidden="true">
+        <span class="opened-envelope-back"></span>
+        <span class="opened-envelope-flap"></span>
+        <span class="opened-envelope-front"></span>
+        <span class="opened-envelope-seal"><i class="bi bi-heart-fill"></i></span>
+    </div>
+    <article class="paper">
         <p class="letter-to">Dear {{ $letter->recipient_name }},</p>
         <h1>{{ $letter->title }}</h1>
-        @if($letter->image_path)
-            <figure class="letter-image"><img src="{{ Storage::url($letter->image_path) }}" alt="{{ $letter->image_alt ?: '' }}">@if($letter->image_alt)<figcaption>{{ $letter->image_alt }}</figcaption>@endif</figure>
-        @endif
         <div class="letter-body">{!! nl2br(e($letter->body)) !!}</div>
         @if($letter->category === 'anniversary' && $letter->memories->isNotEmpty())
             <section class="memory-timeline" aria-labelledby="memory-heading">
@@ -89,7 +110,11 @@
                         <div class="memory-card">
                             @if($memory->memory_date)<time datetime="{{ $memory->memory_date->format('Y-m-d') }}">{{ $memory->memory_date->format('F j, Y') }}</time>@endif
                             <h3>{{ $memory->title }}</h3>
-                            @if($memory->image_path)<img src="{{ Storage::url($memory->image_path) }}" alt="{{ $memory->title }}">@endif
+                            @if($memory->images->isNotEmpty())
+                                <div class="memory-gallery memory-gallery-{{ min($memory->images->count(), 4) }}">
+                                    @foreach($memory->images as $image)<button type="button" class="memory-gallery-button" data-lightbox-image="{{ Storage::url($image->image_path) }}" data-lightbox-alt="{{ $memory->title }} picture {{ $loop->iteration }}"><img src="{{ Storage::url($image->image_path) }}" alt="{{ $memory->title }} picture {{ $loop->iteration }}"></button>@endforeach
+                                </div>
+                            @endif
                             @if($memory->caption)<p>{{ $memory->caption }}</p>@endif
                         </div>
                     </article>
@@ -97,28 +122,14 @@
             </section>
         @endif
         <p class="letter-signoff">With care,<br><strong>{{ $letter->sender_name }}</strong></p>
+        @if($letter->image_path)
+            <figure class="letter-image letter-image-after-message"><img src="{{ Storage::url($letter->image_path) }}" alt="{{ $letter->image_alt ?: '' }}">@if($letter->image_alt)<figcaption>{{ $letter->image_alt }}</figcaption>@endif</figure>
+        @endif
 
         @if(session('response_sent'))
-            <div class="response-thanks">
-                @if(session('response_value') === 'positive' && $letter->category === 'confession')
-                    <p class="accepted-mark" aria-hidden="true">&#9829;</p>
-                    <h2>A beautiful new chapter begins.</h2>
-                    <p>Your answer was sent privately. Thank you for meeting these words with honesty.</p>
-                    @if($letter->sender_profile_path || $letter->recipient_profile_path)
-                        <div class="confession-profiles">
-                            <div>@if($letter->sender_profile_path)<img src="{{ Storage::url($letter->sender_profile_path) }}" alt="{{ $letter->sender_name }}">@else<span class="profile-placeholder">{{ strtoupper(substr($letter->sender_name,0,1)) }}</span>@endif<strong>{{ $letter->sender_name }}</strong></div>
-                            <span class="profile-heart" aria-hidden="true">&#9829;</span>
-                            <div>@if($letter->recipient_profile_path)<img src="{{ Storage::url($letter->recipient_profile_path) }}" alt="{{ $letter->recipient_name }}">@else<span class="profile-placeholder">{{ strtoupper(substr($letter->recipient_name,0,1)) }}</span>@endif<strong>{{ $letter->recipient_name }}</strong></div>
-                        </div>
-                    @endif
-                    @if($letter->relationship_started_at)<p class="started-date">Started from {{ $letter->relationship_started_at->format('F j, Y') }}</p>@endif
-                @else
-                    <h2>{{ session('response_value') === 'positive' ? 'Thank you for this warm answer.' : 'Thank you for answering honestly.' }}</h2>
-                    <p>Your response was sent privately and respectfully.</p>
-                @endif
-            </div>
+            @include('public.partials.response-result', ['responseValue' => session('response_value')])
         @elseif($letter->allow_response && empty($preview) && $letter->response_mode !== 'none')
-            <form class="response-form" method="post" action="{{ route('letters.respond',$link->token) }}" data-response-form data-mode="{{ $letter->response_mode }}">
+            <form class="response-form" method="post" action="{{ route('letters.respond',$link->token) }}" data-response-form data-async-response data-mode="{{ $letter->response_mode }}">
                 @csrf
                 <h2>{{ $letter->question_text ?: 'Would you like to reply?' }}</h2>
                 @if($letter->response_mode === 'message')
@@ -141,9 +152,15 @@
                 @endif
             </form>
         @endif
-        <button class="btn btn-link d-flex mx-auto mt-4" id="reread"><i class="bi bi-arrow-counterclockwise"></i> Close and reread</button>
     </article>
+    </section>
 </main>
+<dialog class="memory-lightbox" data-memory-lightbox aria-label="Memory picture viewer">
+    <button class="lightbox-close" type="button" data-lightbox-close aria-label="Close picture viewer"><i class="bi bi-x-lg"></i></button>
+    <button class="lightbox-nav lightbox-prev" type="button" data-lightbox-prev aria-label="Previous picture"><i class="bi bi-chevron-left"></i></button>
+    <figure><img data-lightbox-main alt=""><figcaption data-lightbox-caption></figcaption></figure>
+    <button class="lightbox-nav lightbox-next" type="button" data-lightbox-next aria-label="Next picture"><i class="bi bi-chevron-right"></i></button>
+</dialog>
 <script src="{{ asset('assets/dearyou/app.js') }}"></script>
 </body>
 </html>

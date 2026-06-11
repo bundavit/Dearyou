@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'DearYou Admin')</title>
     <link rel="icon" type="image/svg+xml" href="{{ asset('dearyou-admin-mark.svg') }}">
     <link rel="stylesheet" href="{{ asset('vendor/bootstrap/css/bootstrap.min.css') }}">
@@ -22,7 +23,7 @@
         <form action="{{ route('logout') }}" method="post" class="mt-auto">@csrf<button class="btn btn-outline-light w-100"><i class="bi bi-box-arrow-left"></i> Log out</button></form>
     </aside>
     <main class="admin-main">
-        @if(session('success'))<div class="alert alert-success">{{ session('success') }}</div>@endif
+        @if(session('success'))<div class="alert alert-success auto-dismiss-alert" role="status" data-auto-dismiss-alert>{{ session('success') }}</div>@endif
         @yield('content')
     </main>
 </div>

@@ -17,4 +17,9 @@ class LetterMemory extends Model
     {
         return $this->belongsTo(Letter::class);
     }
+
+    public function images()
+    {
+        return $this->hasMany(LetterMemoryImage::class)->orderBy('sort_order')->orderBy('id');
+    }
 }

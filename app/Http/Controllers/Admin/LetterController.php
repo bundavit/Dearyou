@@ -52,7 +52,7 @@ class LetterController extends Controller
         $this->own($letter);
 
         return view('admin.letters.show', [
-            'letter' => $letter->load(['link', 'memories'])->loadCount('responses'),
+            'letter' => $letter->load(['link', 'memories.images'])->loadCount('responses'),
         ]);
     }
 
@@ -60,7 +60,7 @@ class LetterController extends Controller
     {
         $this->own($letter);
 
-        return view('admin.letters.form', ['letter' => $letter->load('memories')]);
+        return view('admin.letters.form', ['letter' => $letter->load('memories.images')]);
     }
 
     public function update(LetterRequest $request, Letter $letter)
@@ -74,6 +74,8 @@ class LetterController extends Controller
     public function preview(Letter $letter)
     {
         $this->own($letter);
+
+        $letter->load('memories.images');
 
         return view('public.letter', compact('letter'))->with('preview', true);
     }
@@ -114,11 +116,17 @@ class LetterController extends Controller
     public function destroy(Letter $letter)
     {
         $this->own($letter);
+        $memoryImages = $letter->memories()->with('images')->get()
+            ->flatMap(fn ($memory) => $memory->images->pluck('image_path'))
+            ->all();
+
         Storage::disk('public')->delete(array_filter([
             $letter->image_path,
+            $letter->audio_path,
             $letter->sender_profile_path,
             $letter->recipient_profile_path,
             ...$letter->memories()->pluck('image_path')->filter()->all(),
+            ...$memoryImages,
         ]));
         $letter->delete();
 
@@ -135,6 +143,8 @@ class LetterController extends Controller
         $data = $request->safe()->except([
             'image',
             'remove_image',
+            'audio',
+            'remove_audio',
             'sender_profile',
             'recipient_profile',
             'remove_sender_profile',
@@ -143,6 +153,7 @@ class LetterController extends Controller
         $data['allow_response'] = $request->boolean('allow_response');
 
         $this->handleUpload($request, $letter, $data, 'image', 'image_path', 'remove_image', 'letters');
+        $this->handleUpload($request, $letter, $data, 'audio', 'audio_path', 'remove_audio', 'letters/audio');
         $this->handleUpload($request, $letter, $data, 'sender_profile', 'sender_profile_path', 'remove_sender_profile', 'letters/profiles');
         $this->handleUpload($request, $letter, $data, 'recipient_profile', 'recipient_profile_path', 'remove_recipient_profile', 'letters/profiles');
 

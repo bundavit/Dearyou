@@ -34,6 +34,7 @@ class DatabaseSeeder extends Seeder
                 'category' => $category, 'title' => $title, 'recipient_name' => 'Someone Special', 'sender_name' => 'Me',
                 'body' => "I made this little corner of the internet just for you.\n\nReplace this sample with the words you really want to say.",
                 'theme' => in_array($category, ['birthday', 'congratulations']) ? 'celebration' : ($category === 'valentine' ? 'romantic' : 'warm'),
+                'font_style' => 'classic',
                 'primary_color' => '#d85b78', 'secondary_color' => '#fff1e8',
                 'decoration_type' => match ($category) {
                     'birthday' => 'balloons',

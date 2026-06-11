@@ -44,6 +44,7 @@
             <dl class="letter-detail-list">
                 <div><dt>Occasion</dt><dd>{{ ucfirst($letter->category) }}</dd></div>
                 <div><dt>Theme</dt><dd>{{ ucfirst($letter->theme) }}</dd></div>
+                <div><dt>Font</dt><dd>{{ ucfirst($letter->font_style ?: 'classic') }}</dd></div>
                 <div><dt>Decorations</dt><dd>{{ ucfirst($letter->decoration_type) }}</dd></div>
                 <div><dt>Responses</dt><dd>{{ $letter->responses_count }}</dd></div>
                 <div><dt>Created</dt><dd>{{ $letter->created_at->format('M j, Y') }}</dd></div>
@@ -84,7 +85,7 @@
     <div class="letter-detail-memories">
         @foreach($letter->memories as $memory)
             <article class="memory-card">
-                @if($memory->image_path)<img src="{{ Storage::url($memory->image_path) }}" alt="{{ $memory->title }}">@endif
+                @if($memory->images->isNotEmpty())<div class="memory-gallery memory-gallery-{{ min($memory->images->count(), 4) }}">@foreach($memory->images as $image)<img src="{{ Storage::url($image->image_path) }}" alt="{{ $memory->title }} picture {{ $loop->iteration }}">@endforeach</div>@endif
                 @if($memory->memory_date)<time datetime="{{ $memory->memory_date->format('Y-m-d') }}">{{ $memory->memory_date->format('F j, Y') }}</time>@endif
                 <h3>{{ $memory->title }}</h3>
                 @if($memory->caption)<p>{{ $memory->caption }}</p>@endif

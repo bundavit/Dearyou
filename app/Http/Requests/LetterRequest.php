@@ -7,6 +7,13 @@ use Illuminate\Validation\Rule;
 
 class LetterRequest extends FormRequest
 {
+    protected function prepareForValidation(): void
+    {
+        $this->merge([
+            'font_style' => $this->input('font_style', 'classic'),
+        ]);
+    }
+
     public function authorize(): bool
     {
         return auth()->check();
@@ -20,15 +27,19 @@ class LetterRequest extends FormRequest
             'recipient_name' => 'required|string|max:100',
             'sender_name' => 'required|string|max:100',
             'body' => 'required|string|max:20000',
-            'image' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5120',
+            'image' => 'nullable|image|mimes:jpg,jpeg,png,webp,gif|max:5120',
             'image_alt' => 'nullable|string|max:150',
             'remove_image' => 'boolean',
+            'audio' => 'nullable|file|mimes:mp3,wav,ogg,m4a,aac|max:12288',
+            'remove_audio' => 'boolean',
             'relationship_started_at' => 'nullable|date',
+            'chapter_heading' => 'nullable|string|max:150',
             'sender_profile' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5120',
             'recipient_profile' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5120',
             'remove_sender_profile' => 'boolean',
             'remove_recipient_profile' => 'boolean',
             'theme' => 'required|string|max:40',
+            'font_style' => ['required', Rule::in(['classic', 'elegant', 'modern', 'friendly', 'typewriter', 'handwritten', 'formal'])],
             'primary_color' => 'required|regex:/^#[0-9a-fA-F]{6}$/',
             'secondary_color' => 'required|regex:/^#[0-9a-fA-F]{6}$/',
             'decoration_type' => ['required', Rule::in(['hearts', 'stars', 'balloons', 'confetti', 'flowers', 'sparkles', 'none'])],

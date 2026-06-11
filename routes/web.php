@@ -35,6 +35,8 @@ Route::prefix('admin')->name('admin.')->middleware('auth')->group(function () {
     Route::post('/letters/{letter}/memories', [MemoryController::class, 'store'])->name('memories.store');
     Route::put('/memories/{memory}', [MemoryController::class, 'update'])->name('memories.update');
     Route::patch('/memories/{memory}/move/{direction}', [MemoryController::class, 'move'])->name('memories.move');
+    Route::patch('/letters/{letter}/memories/reorder', [MemoryController::class, 'reorderMemories'])->name('memories.reorder');
+    Route::patch('/memories/{memory}/images/reorder', [MemoryController::class, 'reorderImages'])->name('memory-images.reorder');
     Route::delete('/memories/{memory}', [MemoryController::class, 'destroy'])->name('memories.destroy');
     Route::get('/inbox', [InboxController::class, 'index'])->name('inbox');
     Route::post('/inbox/bulk', [InboxController::class, 'bulk'])->name('inbox.bulk');
