@@ -4,7 +4,7 @@ DearYou is a private digital-letter application for confessions, apologies, birt
 
 ## Local setup
 
-Requirements: PHP 8.3+, Composer, Node.js, npm, and either SQLite or MySQL.
+Requirements: PHP 8.4.1+, Composer, Node.js, npm, and either SQLite or MySQL.
 
 ```bash
 composer install

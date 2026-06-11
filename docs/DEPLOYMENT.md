@@ -1,6 +1,6 @@
 # DearYou on DigitalOcean
 
-Use an Ubuntu 24.04 Droplet with Nginx, PHP 8.3, and MySQL. A Droplet is used
+Use an Ubuntu 24.04 Droplet with Nginx, PHP 8.4, and MySQL. A Droplet is used
 instead of App Platform because DearYou stores private images, GIFs, and music
 under `storage/app/public`; a Droplet keeps those uploads on persistent disk.
 
@@ -26,9 +26,11 @@ ssh root@YOUR_DROPLET_IP
 
 ```bash
 apt update && apt upgrade -y
-apt install -y nginx mysql-server git unzip curl \
-  php8.3-fpm php8.3-cli php8.3-mysql php8.3-mbstring php8.3-xml \
-  php8.3-curl php8.3-zip php8.3-gd php8.3-bcmath
+apt install -y nginx mysql-server git unzip curl software-properties-common
+add-apt-repository ppa:ondrej/php -y
+apt update
+apt install -y php8.4-fpm php8.4-cli php8.4-mysql php8.4-mbstring \
+  php8.4-xml php8.4-curl php8.4-zip php8.4-gd php8.4-bcmath
 
 curl -sS https://getcomposer.org/installer -o /tmp/composer-setup.php
 php /tmp/composer-setup.php --install-dir=/usr/local/bin --filename=composer
@@ -117,7 +119,7 @@ Set these values in `.env`:
 ```dotenv
 APP_ENV=production
 APP_DEBUG=false
-APP_URL=https://YOUR_DOMAIN
+APP_URL=https://dearyous.app
 
 DB_HOST=127.0.0.1
 DB_DATABASE=dearyou
@@ -155,7 +157,8 @@ sudo cp deploy/nginx-dearyou.conf /etc/nginx/sites-available/dearyou
 sudo nano /etc/nginx/sites-available/dearyou
 ```
 
-Replace `example.com` and `www.example.com` with your real domain. Then:
+The included configuration already uses `dearyous.app` and
+`www.dearyous.app`. Enable it:
 
 ```bash
 sudo ln -s /etc/nginx/sites-available/dearyou /etc/nginx/sites-enabled/dearyou
@@ -173,11 +176,11 @@ After the domain points to the Droplet:
 
 ```bash
 sudo apt install -y certbot python3-certbot-nginx
-sudo certbot --nginx -d YOUR_DOMAIN -d www.YOUR_DOMAIN
+sudo certbot --nginx -d dearyous.app -d www.dearyous.app
 sudo certbot renew --dry-run
 ```
 
-Confirm `.env` uses `APP_URL=https://YOUR_DOMAIN`, then run:
+Confirm `.env` uses `APP_URL=https://dearyous.app`, then run:
 
 ```bash
 cd /var/www/dearyou
@@ -234,8 +237,8 @@ not enough if the Droplet is lost.
 ## Production checklist
 
 ```bash
-curl -I https://YOUR_DOMAIN/up
-sudo systemctl status nginx php8.3-fpm mysql dearyou-worker
+curl -I https://dearyous.app/up
+sudo systemctl status nginx php8.4-fpm mysql dearyou-worker
 cd /var/www/dearyou
 php artisan about
 ```

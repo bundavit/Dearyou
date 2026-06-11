@@ -3,7 +3,7 @@ set -euo pipefail
 
 APP_DIR="${APP_DIR:-/var/www/dearyou}"
 BRANCH="${BRANCH:-main}"
-PHP_FPM_SERVICE="${PHP_FPM_SERVICE:-php8.3-fpm}"
+PHP_FPM_SERVICE="${PHP_FPM_SERVICE:-php8.4-fpm}"
 
 cd "$APP_DIR"
 
