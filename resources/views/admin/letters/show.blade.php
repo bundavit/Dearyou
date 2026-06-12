@@ -45,6 +45,7 @@
                 <div><dt>Occasion</dt><dd>{{ ucfirst($letter->category) }}</dd></div>
                 <div><dt>Theme</dt><dd>{{ ucfirst($letter->theme) }}</dd></div>
                 <div><dt>Font</dt><dd>{{ ucfirst($letter->font_style ?: 'classic') }}</dd></div>
+                <div><dt>Envelope</dt><dd>{{ ucfirst($letter->envelope_style ?: 'classic') }}</dd></div>
                 <div><dt>Decorations</dt><dd>{{ ucfirst($letter->decoration_type) }}</dd></div>
                 <div><dt>Responses</dt><dd>{{ $letter->responses_count }}</dd></div>
                 <div><dt>Created</dt><dd>{{ $letter->created_at->format('M j, Y') }}</dd></div>

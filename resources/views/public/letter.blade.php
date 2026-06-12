@@ -44,7 +44,7 @@
         'formal' => '"Copperplate Gothic Light", Cambria, serif',
     ];
 @endphp
-<body class="recipient-page theme-{{ $letter->theme }} category-{{ $letter->category }} font-{{ $letter->font_style ?: 'classic' }}" style="--accent:{{ $letter->primary_color }};--paper:{{ $letter->secondary_color }};--letter-font:{{ $fontStacks[$letter->font_style] ?? $fontStacks['classic'] }}">
+<body class="recipient-page theme-{{ $letter->theme }} category-{{ $letter->category }} font-{{ $letter->font_style ?: 'classic' }} envelope-style-{{ $letter->envelope_style ?: 'classic' }}" style="--accent:{{ $letter->primary_color }};--paper:{{ $letter->secondary_color }};--letter-font:{{ $fontStacks[$letter->font_style] ?? $fontStacks['classic'] }}">
 <div class="floaters decoration-{{ $letter->decoration_type }}" aria-hidden="true">
     @foreach($decorations[$letter->decoration_type] ?? $decorations['sparkles'] as $symbol)<span>{!! $symbol !!}</span>@endforeach
 </div>

@@ -180,3 +180,59 @@ linear-gradient(145deg,color-mix(in srgb,var(--paper),white 24%),color-mix(in sr
 .letter-detail-memories .memory-gallery video{height:130px}
 .memory-lightbox video{max-width:100%;max-height:calc(100vh - 9rem);border-radius:12px}
 @media(max-width:767px){.letter-audio-player{top:.75rem;right:.75rem;bottom:auto;left:auto}.letter-audio-player~.preview-ribbon{top:4.25rem}.memory-gallery-button video{height:130px}.memory-gallery-3 .memory-gallery-button:not(:first-child) video{height:95px}}
+
+/* Envelope style picker */
+.envelope-style-picker{display:grid;grid-template-columns:repeat(5,minmax(130px,1fr));gap:.75rem}
+.envelope-style-option{position:relative;display:grid;grid-template-rows:82px auto auto;gap:.3rem;min-width:0;padding:.75rem;border:1px solid #dfd2d7;border-radius:15px;background:#fff;cursor:pointer;transition:border-color .18s ease,box-shadow .18s ease,transform .18s ease}
+.envelope-style-option:hover{transform:translateY(-2px);box-shadow:0 10px 22px #55313c17}
+.envelope-style-option input{position:absolute;opacity:0;pointer-events:none}
+.envelope-style-option:has(input:checked){border-color:var(--rose);box-shadow:0 0 0 3px #d85b7824,0 12px 24px #55313c1c}
+.envelope-style-option:has(input:focus-visible){outline:3px solid #e9a9b9;outline-offset:2px}
+.envelope-style-option strong{font-size:.9rem}.envelope-style-option small{color:#806b73;font-size:.75rem;line-height:1.3}
+.envelope-style-swatch{position:relative;display:block;width:100%;height:72px;overflow:hidden;border-radius:9px;background:#d85b78;box-shadow:0 7px 14px #65334220}
+.envelope-style-swatch::before,.envelope-style-swatch::after{content:"";position:absolute;inset:0}
+.envelope-style-swatch::before{background:#e77d97;clip-path:polygon(0 0,100% 0,50% 60%)}
+.envelope-style-swatch::after{background:#c94d6b;clip-path:polygon(0 100%,50% 43%,100% 100%)}
+.envelope-style-swatch i{position:absolute;z-index:2;left:50%;top:55%;width:18px;height:18px;border-radius:50%;transform:translate(-50%,-50%);background:#fff}
+.envelope-style-swatch-rounded{border-radius:22px;background:#e58ba1}.envelope-style-swatch-rounded::before{border-radius:22px 22px 0 0;clip-path:polygon(0 0,100% 0,50% 72%)}.envelope-style-swatch-rounded::after{background:#d66582}.envelope-style-swatch-rounded i{width:24px;height:17px;border-radius:999px}
+.envelope-style-swatch-airmail{padding:5px;background:repeating-linear-gradient(135deg,#df526f 0 8px,#fff 8px 16px,#4d83bd 16px 24px,#fff 24px 32px)}.envelope-style-swatch-airmail::before{inset:5px;background:#f8f4ec;clip-path:polygon(0 0,100% 0,50% 62%)}.envelope-style-swatch-airmail::after{inset:5px;background:#eee5d8}.envelope-style-swatch-airmail i{background:#4d83bd}
+.envelope-style-swatch-vintage{border-radius:3px;background:#b78e5f;filter:sepia(.25)}.envelope-style-swatch-vintage::before{background:#d8bc8f}.envelope-style-swatch-vintage::after{background:#a77b4c}.envelope-style-swatch-vintage i{width:22px;height:22px;border-radius:3px;background:#8b3e32;transform:translate(-50%,-50%) rotate(8deg)}
+.envelope-style-swatch-gift{border-radius:15px;background:#d85b78}.envelope-style-swatch-gift::before{background:#e9829a}.envelope-style-swatch-gift::after{background:#c84c69}.envelope-style-swatch-gift i{top:0;width:24px;height:100%;border-radius:0;background:#f5d88d}.envelope-style-swatch-gift i::after{content:"";position:absolute;left:50%;top:52%;width:100vw;height:18px;transform:translate(-50%,-50%);background:#f5d88d}
+@media(max-width:1100px){.envelope-style-picker{grid-template-columns:repeat(3,1fr)}}@media(max-width:650px){.envelope-style-picker{grid-template-columns:repeat(2,1fr)}}@media(max-width:420px){.envelope-style-picker{grid-template-columns:1fr}}
+
+/* Recipient envelope variants */
+.envelope-style-rounded .envelope-back,.envelope-style-rounded .envelope-fold{border-radius:34px}
+.envelope-style-rounded .envelope-flap{border-radius:34px 34px 0 0;clip-path:polygon(0 0,100% 0,50% 82%)}
+.envelope-style-rounded .envelope-letter{left:10%;right:10%;border-radius:24px}
+.envelope-style-rounded .envelope-seal{width:68px;height:48px;border-radius:999px}
+.envelope-style-rounded .opened-envelope-back,.envelope-style-rounded .opened-envelope-front{border-radius:44px}
+.envelope-style-rounded .opened-envelope-flap{border-radius:44px 44px 0 0}
+.envelope-style-rounded .opened-envelope-seal{width:72px;height:50px;border-radius:999px}
+
+.envelope-style-airmail .envelope-button{padding:7px;background:repeating-linear-gradient(135deg,#dc4f68 0 12px,#fff 12px 23px,#497cb5 23px 35px,#fff 35px 46px);border-radius:14px}
+.envelope-style-airmail .envelope-back,.envelope-style-airmail .envelope-fold{inset:39px 7px 7px;border-radius:6px}
+.envelope-style-airmail .envelope-flap{inset:39px 7px auto;height:145px;border-radius:6px 6px 0 0;background:#f1e8da}
+.envelope-style-airmail .envelope-fold-left{background:#eee3d2}.envelope-style-airmail .envelope-fold-right{background:#e8dac6}.envelope-style-airmail .envelope-fold-bottom{background:#f5ecdf}
+.envelope-style-airmail .envelope-seal{background:#497cb5;color:#fff;border-color:#fff;box-shadow:0 0 0 3px #dc4f68}
+.envelope-style-airmail .opened-envelope{padding:9px;border-radius:28px;background:repeating-linear-gradient(135deg,#dc4f68 0 15px,#fff 15px 28px,#497cb5 28px 43px,#fff 43px 56px)}
+.envelope-style-airmail .opened-envelope-back,.envelope-style-airmail .opened-envelope-front{inset:9px}.envelope-style-airmail .opened-envelope-flap{left:12px;right:12px}
+.envelope-style-airmail .opened-envelope-front{background:#f2e8da}.envelope-style-airmail .opened-envelope-seal{background:#497cb5;color:#fff}
+
+.envelope-style-vintage .envelope-button{filter:drop-shadow(0 24px 20px #6b4a2b40) sepia(.18);transform:rotate(-1deg)}
+.envelope-style-vintage .envelope-back,.envelope-style-vintage .envelope-fold{border-radius:3px}
+.envelope-style-vintage .envelope-back{background:#c7a477}.envelope-style-vintage .envelope-flap{border-radius:3px 3px 0 0;background:#d5b88d}
+.envelope-style-vintage .envelope-fold-left{background:#b98f5e}.envelope-style-vintage .envelope-fold-right{background:#ae8251}.envelope-style-vintage .envelope-fold-bottom{background:#a77a48}
+.envelope-style-vintage .envelope-letter{border-radius:2px;background:#f4e5c7;color:#6b4c33;box-shadow:inset 0 0 0 1px #9b744a40}
+.envelope-style-vintage .envelope-seal{width:58px;height:58px;border-radius:6px;transform:translate(-50%,-50%) rotate(8deg);background:#8d4238;color:#f6dfbd;border-color:#c68b6d}
+.envelope-style-vintage .opening .envelope-seal{transform:translate(-50%,-80%) rotate(8deg) scale(.65)}
+.envelope-style-vintage .opened-envelope{filter:drop-shadow(0 28px 28px #68472645) sepia(.2)}
+.envelope-style-vintage .opened-envelope-back,.envelope-style-vintage .opened-envelope-front{border-radius:5px}.envelope-style-vintage .opened-envelope-back{background:#c7a477}.envelope-style-vintage .opened-envelope-flap{border-radius:5px 5px 0 0;background:#d5b88d}.envelope-style-vintage .opened-envelope-front{background:#a77a48}.envelope-style-vintage .opened-envelope-seal{border-radius:6px;background:#8d4238;color:#f6dfbd}
+
+.envelope-style-gift .envelope-button::before,.envelope-style-gift .envelope-button::after{content:"";position:absolute;z-index:5;pointer-events:none;background:#f4d27f;box-shadow:0 2px 8px #684a1833}
+.envelope-style-gift .envelope-button::before{left:50%;top:32px;bottom:0;width:34px;transform:translateX(-50%)}
+.envelope-style-gift .envelope-button::after{left:0;right:0;top:58%;height:30px}
+.envelope-style-gift .envelope-back,.envelope-style-gift .envelope-fold{border-radius:18px}.envelope-style-gift .envelope-flap{border-radius:18px 18px 0 0}
+.envelope-style-gift .envelope-seal{z-index:6;width:66px;height:66px;background:#fff7dc;color:#b98425;border-color:#f4d27f}
+.envelope-style-gift .opened-envelope::before,.envelope-style-gift .opened-envelope::after{content:"";position:absolute;z-index:5;background:#f4d27f}
+.envelope-style-gift .opened-envelope::before{left:50%;top:0;bottom:0;width:44px;transform:translateX(-50%)}.envelope-style-gift .opened-envelope::after{left:0;right:0;top:57%;height:38px}
+.envelope-style-gift .opened-envelope-seal{z-index:6;background:#fff7dc;color:#b98425;border-color:#f4d27f}

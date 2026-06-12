@@ -555,6 +555,41 @@ class DearYouFlowTest extends TestCase
             ->assertSee('--letter-font:', false);
     }
 
+    public function test_admin_can_choose_an_envelope_style_for_the_recipient_letter(): void
+    {
+        $user = User::factory()->create();
+        $letter = $this->letter($user, ['status' => 'published']);
+        $link = $letter->link()->create(['token' => str_repeat('s', 64), 'is_active' => true]);
+        $payload = [
+            'category' => 'birthday',
+            'title' => 'A wrapped surprise',
+            'recipient_name' => 'Alex',
+            'sender_name' => 'Sam',
+            'body' => 'Open me',
+            'theme' => 'celebration',
+            'font_style' => 'friendly',
+            'envelope_style' => 'gift',
+            'primary_color' => '#7b68c7',
+            'secondary_color' => '#fff6cf',
+            'decoration_type' => 'balloons',
+            'allow_response' => 1,
+            'response_mode' => 'message',
+        ];
+
+        $this->actingAs($user)
+            ->put("/admin/letters/{$letter->id}", $payload)
+            ->assertRedirect();
+
+        $this->assertSame('gift', $letter->fresh()->envelope_style);
+        $this->get("/l/{$link->token}")
+            ->assertOk()
+            ->assertSee('envelope-style-gift', false);
+
+        $this->actingAs($user)
+            ->put("/admin/letters/{$letter->id}", array_merge($payload, ['envelope_style' => 'unknown']))
+            ->assertSessionHasErrors('envelope_style');
+    }
+
     public function test_admin_can_view_an_owned_letter_but_not_another_users_letter(): void
     {
         $user = User::factory()->create();
