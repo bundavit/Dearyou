@@ -105,9 +105,9 @@ class MemoryController extends Controller
             'title' => 'required|string|max:120',
             'memory_date' => 'nullable|date',
             'caption' => 'nullable|string|max:1000',
-            'memory_image' => 'nullable|file|mimes:jpg,jpeg,png,webp,gif,mp4|max:10240',
+            'memory_image' => 'nullable|file|mimes:jpg,jpeg,png,webp,gif,mp4,webm|max:10240',
             'memory_images' => 'nullable|array|max:10',
-            'memory_images.*' => 'file|mimes:jpg,jpeg,png,webp,gif,mp4|max:10240',
+            'memory_images.*' => 'file|mimes:jpg,jpeg,png,webp,gif,mp4,webm|max:10240',
             'remove_memory_images' => 'nullable|array',
             'remove_memory_images.*' => 'integer',
         ]);

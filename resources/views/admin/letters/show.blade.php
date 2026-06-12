@@ -11,6 +11,11 @@
     <div class="d-flex flex-wrap gap-2">
         <a class="btn btn-outline-secondary" target="_blank" rel="noopener" href="{{ route('admin.letters.preview', $letter) }}"><i class="bi bi-eye"></i> Preview</a>
         <a class="btn btn-dearyou" href="{{ route('admin.letters.edit', $letter) }}"><i class="bi bi-pencil-square"></i> Edit letter</a>
+        <form method="post" action="{{ route('admin.letters.destroy', $letter) }}" onsubmit="return confirm('Permanently delete this letter and all of its responses and memories?')">
+            @csrf
+            @method('DELETE')
+            <button class="btn btn-outline-danger" type="submit"><i class="bi bi-trash"></i> Delete letter</button>
+        </form>
     </div>
 </div>
 
@@ -29,7 +34,7 @@
 
         @if($letter->image_path)
             <figure class="letter-detail-image">
-                @if(str_ends_with(strtolower($letter->image_path), '.mp4'))<video src="{{ Storage::url($letter->image_path) }}" autoplay muted loop playsinline aria-label="{{ $letter->image_alt ?: 'Letter video' }}"></video>@else<img src="{{ Storage::url($letter->image_path) }}" alt="{{ $letter->image_alt ?: 'Letter image' }}">@endif
+                @if(\App\Models\Letter::isVideoMediaPath($letter->image_path))<video src="{{ Storage::url($letter->image_path) }}" autoplay muted loop playsinline aria-label="{{ $letter->image_alt ?: 'Letter video' }}"></video>@else<img src="{{ Storage::url($letter->image_path) }}" alt="{{ $letter->image_alt ?: 'Letter image' }}">@endif
                 @if($letter->image_alt)<figcaption>{{ $letter->image_alt }}</figcaption>@endif
             </figure>
         @endif
@@ -88,7 +93,7 @@
     <div class="letter-detail-memories">
         @foreach($letter->memories as $memory)
             <article class="memory-card">
-                @if($memory->images->isNotEmpty())<div class="memory-gallery memory-gallery-{{ min($memory->images->count(), 4) }}">@foreach($memory->images as $image)@if(str_ends_with(strtolower($image->image_path), '.mp4'))<video src="{{ Storage::url($image->image_path) }}" autoplay muted loop playsinline aria-label="{{ $memory->title }} memory {{ $loop->iteration }}"></video>@else<img src="{{ Storage::url($image->image_path) }}" alt="{{ $memory->title }} memory {{ $loop->iteration }}">@endif @endforeach</div>@endif
+                @if($memory->images->isNotEmpty())<div class="memory-gallery memory-gallery-{{ min($memory->images->count(), 4) }}">@foreach($memory->images as $image)@if(\App\Models\Letter::isVideoMediaPath($image->image_path))<video src="{{ Storage::url($image->image_path) }}" autoplay muted loop playsinline aria-label="{{ $memory->title }} memory {{ $loop->iteration }}"></video>@else<img src="{{ Storage::url($image->image_path) }}" alt="{{ $memory->title }} memory {{ $loop->iteration }}">@endif @endforeach</div>@endif
                 @if($memory->memory_date)<time datetime="{{ $memory->memory_date->format('Y-m-d') }}">{{ $memory->memory_date->format('F j, Y') }}</time>@endif
                 <h3>{{ $memory->title }}</h3>
                 @if($memory->caption)<p>{{ $memory->caption }}</p>@endif

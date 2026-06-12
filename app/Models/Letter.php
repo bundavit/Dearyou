@@ -61,4 +61,10 @@ class Letter extends Model
             && $this->link?->is_active
             && (! $this->link?->expires_at || $this->link->expires_at->isFuture());
     }
+
+    public static function isVideoMediaPath(?string $path): bool
+    {
+        return $path !== null
+            && in_array(strtolower(pathinfo($path, PATHINFO_EXTENSION)), ['mp4', 'webm'], true);
+    }
 }

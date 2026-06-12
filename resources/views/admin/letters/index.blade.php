@@ -23,6 +23,11 @@
         <div class="letter-card-actions">
             <a href="{{ route('admin.letters.show',$letter) }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i> View</a>
             <a href="{{ route('admin.letters.edit',$letter) }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil-square"></i> Edit</a>
+            <form method="post" action="{{ route('admin.letters.destroy', $letter) }}" onsubmit="return confirm('Permanently delete this letter and all of its responses and memories?')">
+                @csrf
+                @method('DELETE')
+                <button class="btn btn-sm btn-outline-danger" type="submit" aria-label="Delete {{ $letter->title }}"><i class="bi bi-trash"></i> Delete</button>
+            </form>
         </div>
     </div>
 </article></div>
