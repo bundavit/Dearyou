@@ -18,6 +18,7 @@ class DashboardController extends Controller
                 'published' => (clone $letters)->where('status', 'published')->count(),
                 'drafts' => (clone $letters)->where('status', 'draft')->count(),
                 'expired' => (clone $letters)->where('expires_at', '<', now())->count(),
+                'opens' => (clone $letters)->sum('open_count'),
                 'responses' => Response::whereHas('letter', fn ($query) => $query->where('user_id', $user->id))->count(),
                 'unread' => Response::whereNull('read_at')->whereHas('letter', fn ($query) => $query->where('user_id', $user->id))->count(),
             ],

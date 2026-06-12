@@ -130,6 +130,60 @@ class DearYouFlowTest extends TestCase
         $this->get("/l/{$link->token}")->assertNotFound();
     }
 
+    public function test_every_valid_public_link_open_is_counted(): void
+    {
+        $user = User::factory()->create();
+        $letter = $this->letter($user, ['status' => 'published']);
+        $link = $letter->link()->create(['token' => str_repeat('o', 64), 'is_active' => true]);
+
+        $this->get("/l/{$link->token}")->assertOk();
+        $firstOpenedAt = $letter->fresh()->opened_at;
+
+        $this->get("/l/{$link->token}")->assertOk();
+
+        $letter->refresh();
+        $this->assertSame(2, $letter->open_count);
+        $this->assertNotNull($firstOpenedAt);
+        $this->assertTrue($letter->opened_at->equalTo($firstOpenedAt));
+
+        $this->actingAs($user)
+            ->get("/admin/letters/{$letter->id}/preview")
+            ->assertOk();
+
+        $this->assertSame(2, $letter->fresh()->open_count);
+
+        $letter->update(['status' => 'unpublished']);
+        $this->get("/l/{$link->token}")->assertNotFound();
+        $this->assertSame(2, $letter->fresh()->open_count);
+    }
+
+    public function test_admin_pages_show_letter_open_totals(): void
+    {
+        $user = User::factory()->create();
+        $letter = $this->letter($user, [
+            'open_count' => 12,
+            'opened_at' => now()->subHour(),
+        ]);
+
+        $this->actingAs($user)
+            ->get('/admin/dashboard')
+            ->assertOk()
+            ->assertSee('Link opens')
+            ->assertSee('12');
+
+        $this->actingAs($user)
+            ->get('/admin/letters')
+            ->assertOk()
+            ->assertSee('12');
+
+        $this->actingAs($user)
+            ->get("/admin/letters/{$letter->id}")
+            ->assertOk()
+            ->assertSee('Link opens')
+            ->assertSee('First opened')
+            ->assertSee('12');
+    }
+
     public function test_expired_and_regenerated_links_are_protected(): void
     {
         $user = User::factory()->create();

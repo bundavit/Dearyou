@@ -19,6 +19,7 @@ class Letter extends Model
             'expires_at' => 'datetime',
             'published_at' => 'datetime',
             'opened_at' => 'datetime',
+            'open_count' => 'integer',
             'relationship_started_at' => 'date',
         ];
     }

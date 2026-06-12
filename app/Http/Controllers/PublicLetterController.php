@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\LetterLink;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class PublicLetterController extends Controller
 {
@@ -11,7 +12,10 @@ class PublicLetterController extends Controller
     {
         $link = LetterLink::with('letter.memories.images')->where('token', $token)->first();
         abort_unless($link?->letter?->isPubliclyAvailable(), 404);
-        $link->letter->updateQuietly(['opened_at' => $link->letter->opened_at ?? now()]);
+        DB::table('letters')->where('id', $link->letter->id)->update([
+            'open_count' => DB::raw('open_count + 1'),
+            'opened_at' => DB::raw('COALESCE(opened_at, CURRENT_TIMESTAMP)'),
+        ]);
 
         return view('public.letter', ['letter' => $link->letter, 'link' => $link]);
     }

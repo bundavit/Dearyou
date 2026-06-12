@@ -100,7 +100,7 @@ linear-gradient(145deg,color-mix(in srgb,var(--paper),white 24%),color-mix(in sr
 .sidebar .nav-link.active,.sidebar .nav-link:hover{backdrop-filter:none}
 .sidebar-brand-logo{width:46px;height:46px;flex:0 0 46px;object-fit:cover;border:3px solid rgba(255,255,255,.8);border-radius:14px;box-shadow:0 8px 20px rgba(17,8,13,.28)}
 .dashboard-subtitle{margin:.45rem 0 0;color:#6f5962;text-shadow:0 1px 10px rgba(255,255,255,.9)}
-.dashboard-stats{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:1rem}
+.dashboard-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:1rem}
 .dashboard-stat{position:relative;min-height:138px;text-decoration:none;color:var(--ink);transition:transform .16s ease,box-shadow .16s ease}
 .dashboard-stat:hover{color:var(--ink);transform:translateY(-3px);box-shadow:0 17px 38px rgba(74,41,53,.2)}
 .dashboard-stat-icon{width:36px;height:36px;display:grid;place-items:center;margin-bottom:.85rem;border-radius:11px;background:#f8e4ea;color:var(--rose)}

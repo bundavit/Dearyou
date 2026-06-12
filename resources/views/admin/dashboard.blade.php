@@ -10,6 +10,7 @@
     'published' => ['Published', 'bi-send-check', route('admin.letters.index', ['status' => 'published'])],
     'drafts' => ['Drafts', 'bi-pencil-square', route('admin.letters.index', ['status' => 'draft'])],
     'expired' => ['Expired', 'bi-clock-history', route('admin.letters.index')],
+    'opens' => ['Link opens', 'bi-eye', route('admin.letters.index')],
     'responses' => ['Responses', 'bi-chat-heart', route('admin.inbox')],
     'unread' => ['Unread', 'bi-envelope-exclamation', route('admin.inbox', ['status' => 'unread'])],
 ])
@@ -39,7 +40,7 @@
                     </span>
                     <span class="dashboard-item-side">
                         <span class="badge text-bg-{{ $letter->status === 'published' ? 'success' : ($letter->status === 'draft' ? 'secondary' : 'warning') }}">{{ $letter->status }}</span>
-                        <small><i class="bi bi-chat-heart"></i> {{ $letter->responses_count }}</small>
+                        <small><i class="bi bi-eye"></i> {{ $letter->open_count }} &middot; <i class="bi bi-chat-heart"></i> {{ $letter->responses_count }}</small>
                     </span>
                 </a>
             @empty

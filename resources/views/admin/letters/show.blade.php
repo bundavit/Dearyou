@@ -47,7 +47,9 @@
                 <div><dt>Font</dt><dd>{{ ucfirst($letter->font_style ?: 'classic') }}</dd></div>
                 <div><dt>Envelope</dt><dd>{{ ucfirst($letter->envelope_style ?: 'classic') }}</dd></div>
                 <div><dt>Decorations</dt><dd>{{ ucfirst($letter->decoration_type) }}</dd></div>
+                <div><dt>Link opens</dt><dd>{{ number_format($letter->open_count) }}</dd></div>
                 <div><dt>Responses</dt><dd>{{ $letter->responses_count }}</dd></div>
+                <div><dt>First opened</dt><dd>{{ $letter->opened_at?->format('M j, Y g:i A') ?? 'Not opened yet' }}</dd></div>
                 <div><dt>Created</dt><dd>{{ $letter->created_at->format('M j, Y') }}</dd></div>
                 <div><dt>Expires</dt><dd>{{ $letter->expires_at?->format('M j, Y g:i A') ?? 'Never' }}</dd></div>
             </dl>

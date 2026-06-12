@@ -19,7 +19,7 @@
     <div class="d-flex justify-content-between"><span class="category">{{ ucfirst($letter->category) }}</span><span class="badge text-bg-{{ $letter->status === 'published' ? 'success' : ($letter->status === 'draft' ? 'secondary' : 'warning') }}">{{ $letter->status }}</span></div>
     <h2>{{ $letter->title }}</h2><p>For {{ $letter->recipientLabel() }}, from {{ $letter->senderLabel() }}</p>
     <div class="letter-card-footer">
-        <div class="letter-meta"><span><i class="bi bi-chat-heart"></i> {{ $letter->responses()->count() }}</span>@if($letter->expires_at)<span><i class="bi bi-clock"></i> {{ $letter->expires_at->isPast() ? 'Expired' : $letter->expires_at->diffForHumans() }}</span>@endif</div>
+        <div class="letter-meta"><span title="Total link opens"><i class="bi bi-eye"></i> {{ $letter->open_count }}</span><span><i class="bi bi-chat-heart"></i> {{ $letter->responses()->count() }}</span>@if($letter->expires_at)<span><i class="bi bi-clock"></i> {{ $letter->expires_at->isPast() ? 'Expired' : $letter->expires_at->diffForHumans() }}</span>@endif</div>
         <div class="letter-card-actions">
             <a href="{{ route('admin.letters.show',$letter) }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i> View</a>
             <a href="{{ route('admin.letters.edit',$letter) }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil-square"></i> Edit</a>
