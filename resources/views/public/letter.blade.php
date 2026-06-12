@@ -49,13 +49,13 @@
     @foreach($decorations[$letter->decoration_type] ?? $decorations['sparkles'] as $symbol)<span>{!! $symbol !!}</span>@endforeach
 </div>
 <main class="recipient-main">
-    @if(!empty($preview))<div class="preview-ribbon">Preview</div>@endif
     @if($letter->audio_path)
         <div class="letter-audio-player">
-            <button type="button" data-audio-toggle aria-label="Play background music"><i class="bi bi-play-fill"></i><span>Play music</span></button>
-            <audio data-letter-audio preload="metadata" src="{{ Storage::url($letter->audio_path) }}"></audio>
+            <button type="button" data-audio-toggle aria-label="Mute background music"><i class="bi bi-volume-up-fill"></i><span>Mute music</span></button>
+            <audio data-letter-audio autoplay loop preload="auto" src="{{ Storage::url($letter->audio_path) }}"></audio>
         </div>
     @endif
+    @if(!empty($preview))<div class="preview-ribbon">Preview</div>@endif
     <section id="envelope-stage" class="envelope-stage" @if(session('response_sent')) hidden @endif>
         <header class="recipient-app-header">
             <span class="recipient-brand-mark">D</span>
@@ -112,7 +112,7 @@
                             <h3>{{ $memory->title }}</h3>
                             @if($memory->images->isNotEmpty())
                                 <div class="memory-gallery memory-gallery-{{ min($memory->images->count(), 4) }}">
-                                    @foreach($memory->images as $image)<button type="button" class="memory-gallery-button" data-lightbox-image="{{ Storage::url($image->image_path) }}" data-lightbox-alt="{{ $memory->title }} picture {{ $loop->iteration }}"><img src="{{ Storage::url($image->image_path) }}" alt="{{ $memory->title }} picture {{ $loop->iteration }}"></button>@endforeach
+                                    @foreach($memory->images as $image)<button type="button" class="memory-gallery-button" data-lightbox-image="{{ Storage::url($image->image_path) }}" data-lightbox-type="{{ str_ends_with(strtolower($image->image_path), '.mp4') ? 'video' : 'image' }}" data-lightbox-alt="{{ $memory->title }} picture {{ $loop->iteration }}">@if(str_ends_with(strtolower($image->image_path), '.mp4'))<video src="{{ Storage::url($image->image_path) }}" autoplay muted loop playsinline aria-label="{{ $memory->title }} picture {{ $loop->iteration }}"></video>@else<img src="{{ Storage::url($image->image_path) }}" alt="{{ $memory->title }} picture {{ $loop->iteration }}">@endif</button>@endforeach
                                 </div>
                             @endif
                             @if($memory->caption)<p>{{ $memory->caption }}</p>@endif
@@ -123,7 +123,7 @@
         @endif
         <p class="letter-signoff">With care,<br><strong>{{ $letter->senderLabel() }}</strong></p>
         @if($letter->image_path)
-            <figure class="letter-image letter-image-after-message"><img src="{{ Storage::url($letter->image_path) }}" alt="{{ $letter->image_alt ?: '' }}">@if($letter->image_alt)<figcaption>{{ $letter->image_alt }}</figcaption>@endif</figure>
+            <figure class="letter-image letter-image-after-message">@if(str_ends_with(strtolower($letter->image_path), '.mp4'))<video src="{{ Storage::url($letter->image_path) }}" autoplay muted loop playsinline aria-label="{{ $letter->image_alt ?: 'Letter video' }}"></video>@else<img src="{{ Storage::url($letter->image_path) }}" alt="{{ $letter->image_alt ?: '' }}">@endif @if($letter->image_alt)<figcaption>{{ $letter->image_alt }}</figcaption>@endif</figure>
         @endif
 
         @if(session('response_sent'))
@@ -158,7 +158,7 @@
 <dialog class="memory-lightbox" data-memory-lightbox aria-label="Memory picture viewer">
     <button class="lightbox-close" type="button" data-lightbox-close aria-label="Close picture viewer"><i class="bi bi-x-lg"></i></button>
     <button class="lightbox-nav lightbox-prev" type="button" data-lightbox-prev aria-label="Previous picture"><i class="bi bi-chevron-left"></i></button>
-    <figure><img data-lightbox-main alt=""><figcaption data-lightbox-caption></figcaption></figure>
+    <figure><img data-lightbox-main alt=""><video data-lightbox-video controls loop playsinline hidden></video><figcaption data-lightbox-caption></figcaption></figure>
     <button class="lightbox-nav lightbox-next" type="button" data-lightbox-next aria-label="Next picture"><i class="bi bi-chevron-right"></i></button>
 </dialog>
 <script src="{{ asset('assets/dearyou/app.js') }}?v={{ filemtime(public_path('assets/dearyou/app.js')) }}"></script>

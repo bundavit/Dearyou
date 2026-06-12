@@ -1,7 +1,37 @@
+const audio = document.querySelector("[data-letter-audio]");
+const audioToggle = document.querySelector("[data-audio-toggle]");
+
+const updateAudioToggle = () => {
+  if (!audio || !audioToggle) return;
+
+  if (audio.paused) {
+    audioToggle.classList.remove("is-playing");
+    audioToggle.setAttribute("aria-label", "Play background music");
+    audioToggle.innerHTML = '<i class="bi bi-play-fill"></i><span>Play music</span>';
+    return;
+  }
+
+  audioToggle.classList.add("is-playing");
+  audioToggle.setAttribute("aria-label", audio.muted ? "Unmute background music" : "Mute background music");
+  audioToggle.innerHTML = audio.muted
+    ? '<i class="bi bi-volume-mute-fill"></i><span>Unmute music</span>'
+    : '<i class="bi bi-volume-up-fill"></i><span>Mute music</span>';
+};
+
+const startLetterAudio = async () => {
+  if (!audio || !audio.paused) return;
+  try {
+    await audio.play();
+  } catch {
+    updateAudioToggle();
+  }
+};
+
 const openLetter = () => {
   const stage = document.querySelector("#envelope-stage");
   const letter = document.querySelector("#letter-content");
   if (!stage || !letter) return;
+  startLetterAudio();
   stage.classList.add("opening");
   document.querySelector("#open-letter")?.setAttribute("aria-expanded", "true");
   setTimeout(() => {
@@ -66,7 +96,7 @@ document.querySelectorAll("[data-image-upload]").forEach(input => input.addEvent
   const oldError = input.parentElement.querySelector("[data-upload-error]");
   oldError?.remove();
   input.classList.remove("is-invalid");
-  const oversized = files.find(file => file.size > 5 * 1024 * 1024);
+  const oversized = files.find(file => file.size > 10 * 1024 * 1024);
   if (!oversized) return;
 
   input.value = "";
@@ -74,7 +104,7 @@ document.querySelectorAll("[data-image-upload]").forEach(input => input.addEvent
   const error = document.createElement("div");
   error.className = "invalid-feedback d-block";
   error.dataset.uploadError = "";
-  error.textContent = `${oversized.name} is larger than 5 MB. Please choose a smaller image.`;
+  error.textContent = `${oversized.name} is larger than 10 MB. Please choose a smaller media file.`;
   input.insertAdjacentElement("afterend", error);
 }));
 document.querySelector("[data-audio-upload]")?.addEventListener("change", event => {
@@ -221,21 +251,21 @@ document.querySelector("[data-async-response]")?.addEventListener("submit", asyn
   }
 });
 
-const audio = document.querySelector("[data-letter-audio]");
-const audioToggle = document.querySelector("[data-audio-toggle]");
 audioToggle?.addEventListener("click", async () => {
   if (!audio) return;
-  if (audio.paused) await audio.play();
-  else audio.pause();
+  if (audio.paused) {
+    audio.muted = false;
+    await startLetterAudio();
+  } else {
+    audio.muted = !audio.muted;
+  }
+  updateAudioToggle();
 });
-audio?.addEventListener("play", () => {
-  audioToggle?.classList.add("is-playing");
-  if (audioToggle) audioToggle.innerHTML = '<i class="bi bi-pause-fill"></i><span>Pause music</span>';
-});
-audio?.addEventListener("pause", () => {
-  audioToggle?.classList.remove("is-playing");
-  if (audioToggle) audioToggle.innerHTML = '<i class="bi bi-play-fill"></i><span>Play music</span>';
-});
+audio?.addEventListener("play", updateAudioToggle);
+audio?.addEventListener("pause", updateAudioToggle);
+audio?.addEventListener("volumechange", updateAudioToggle);
+updateAudioToggle();
+startLetterAudio();
 
 const lightbox = document.querySelector("[data-memory-lightbox]");
 const lightboxItems = Array.from(document.querySelectorAll("[data-lightbox-image]"));
@@ -243,11 +273,27 @@ let lightboxIndex = 0;
 const renderLightbox = () => {
   const item = lightboxItems[lightboxIndex];
   const image = lightbox?.querySelector("[data-lightbox-main]");
+  const video = lightbox?.querySelector("[data-lightbox-video]");
   const caption = lightbox?.querySelector("[data-lightbox-caption]");
-  if (!item || !image || !caption) return;
-  image.src = item.dataset.lightboxImage;
-  image.alt = item.dataset.lightboxAlt || "";
-  caption.textContent = `${image.alt} (${lightboxIndex + 1} of ${lightboxItems.length})`;
+  if (!item || !image || !video || !caption) return;
+
+  const isVideo = item.dataset.lightboxType === "video";
+  const alt = item.dataset.lightboxAlt || "";
+  image.hidden = isVideo;
+  video.hidden = !isVideo;
+  video.pause();
+
+  if (isVideo) {
+    image.removeAttribute("src");
+    video.src = item.dataset.lightboxImage;
+    video.play().catch(() => {});
+  } else {
+    video.removeAttribute("src");
+    video.load();
+    image.src = item.dataset.lightboxImage;
+    image.alt = alt;
+  }
+  caption.textContent = `${alt} (${lightboxIndex + 1} of ${lightboxItems.length})`;
 };
 lightboxItems.forEach((item, index) => item.addEventListener("click", () => {
   lightboxIndex = index;
@@ -266,6 +312,7 @@ document.querySelector("[data-lightbox-next]")?.addEventListener("click", () => 
 lightbox?.addEventListener("click", event => {
   if (event.target === lightbox) lightbox.close();
 });
+lightbox?.addEventListener("close", () => lightbox.querySelector("[data-lightbox-video]")?.pause());
 lightbox?.addEventListener("keydown", event => {
   if (event.key === "ArrowLeft") document.querySelector("[data-lightbox-prev]")?.click();
   if (event.key === "ArrowRight") document.querySelector("[data-lightbox-next]")?.click();

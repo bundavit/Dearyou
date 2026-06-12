@@ -30,7 +30,7 @@ class LetterRequest extends FormRequest
             'recipient_name' => 'nullable|string|max:100',
             'sender_name' => 'nullable|string|max:100',
             'body' => 'required|string|max:20000',
-            'image' => 'nullable|image|mimes:jpg,jpeg,png,webp,gif|max:10240',
+            'image' => 'nullable|file|mimes:jpg,jpeg,png,webp,gif,mp4|max:10240',
             'image_alt' => 'nullable|string|max:150',
             'remove_image' => 'boolean',
             'audio' => 'nullable|file|mimes:mp3,wav,ogg,m4a,aac|max:12288',

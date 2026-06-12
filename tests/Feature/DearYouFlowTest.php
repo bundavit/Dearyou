@@ -216,7 +216,8 @@ class DearYouFlowTest extends TestCase
 
         $this->get("/l/{$link->token}")
             ->assertOk()
-            ->assertSee('Play music')
+            ->assertSee('Mute music')
+            ->assertSee('data-letter-audio autoplay loop', false)
             ->assertSee('data-async-response', false);
 
         $asyncResponse = $this->postJson("/l/{$link->token}/response", ['response_value' => 'positive'])
@@ -322,7 +323,7 @@ class DearYouFlowTest extends TestCase
         $this->assertNull($letter->fresh()->image_path);
     }
 
-    public function test_admin_can_use_animated_gifs_in_letters_and_memories(): void
+    public function test_admin_can_use_animated_gifs_and_mp4s_in_letters_and_memories(): void
     {
         Storage::fake('public');
         $user = User::factory()->create();
@@ -356,6 +357,31 @@ class DearYouFlowTest extends TestCase
         $memory = $letter->memories()->first();
         $this->assertCount(1, $memory->images);
         Storage::disk('public')->assertExists($memory->images->first()->image_path);
+
+        $payload['category'] = 'anniversary';
+        $payload['image'] = UploadedFile::fake()->create('playful.mp4', 100, 'video/mp4');
+        $this->actingAs($user)->put("/admin/letters/{$letter->id}", $payload)->assertRedirect();
+        $letter->refresh();
+        Storage::disk('public')->assertExists($letter->image_path);
+        $this->assertStringEndsWith('.mp4', $letter->image_path);
+
+        $this->actingAs($user)->post("/admin/letters/{$letter->id}/memories", [
+            'title' => 'A video memory',
+            'memory_images' => [
+                UploadedFile::fake()->create('memory.mp4', 100, 'video/mp4'),
+            ],
+        ])->assertRedirect();
+
+        $videoMemory = $letter->memories()->where('title', 'A video memory')->firstOrFail();
+        Storage::disk('public')->assertExists($videoMemory->images->first()->image_path);
+        $this->assertStringEndsWith('.mp4', $videoMemory->images->first()->image_path);
+
+        $letter->update(['status' => 'published']);
+        $link = $letter->link()->create(['token' => str_repeat('v', 64), 'is_active' => true]);
+        $this->get("/l/{$link->token}")
+            ->assertOk()
+            ->assertSee('<video src="'.Storage::url($letter->image_path).'" autoplay muted loop playsinline', false)
+            ->assertSee('data-lightbox-type="video"', false);
     }
 
     public function test_category_specific_recipient_copy_and_decorations_are_rendered(): void

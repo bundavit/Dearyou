@@ -29,7 +29,7 @@
 
         @if($letter->image_path)
             <figure class="letter-detail-image">
-                <img src="{{ Storage::url($letter->image_path) }}" alt="{{ $letter->image_alt ?: 'Letter image' }}">
+                @if(str_ends_with(strtolower($letter->image_path), '.mp4'))<video src="{{ Storage::url($letter->image_path) }}" autoplay muted loop playsinline aria-label="{{ $letter->image_alt ?: 'Letter video' }}"></video>@else<img src="{{ Storage::url($letter->image_path) }}" alt="{{ $letter->image_alt ?: 'Letter image' }}">@endif
                 @if($letter->image_alt)<figcaption>{{ $letter->image_alt }}</figcaption>@endif
             </figure>
         @endif
@@ -85,7 +85,7 @@
     <div class="letter-detail-memories">
         @foreach($letter->memories as $memory)
             <article class="memory-card">
-                @if($memory->images->isNotEmpty())<div class="memory-gallery memory-gallery-{{ min($memory->images->count(), 4) }}">@foreach($memory->images as $image)<img src="{{ Storage::url($image->image_path) }}" alt="{{ $memory->title }} picture {{ $loop->iteration }}">@endforeach</div>@endif
+                @if($memory->images->isNotEmpty())<div class="memory-gallery memory-gallery-{{ min($memory->images->count(), 4) }}">@foreach($memory->images as $image)@if(str_ends_with(strtolower($image->image_path), '.mp4'))<video src="{{ Storage::url($image->image_path) }}" autoplay muted loop playsinline aria-label="{{ $memory->title }} memory {{ $loop->iteration }}"></video>@else<img src="{{ Storage::url($image->image_path) }}" alt="{{ $memory->title }} memory {{ $loop->iteration }}">@endif @endforeach</div>@endif
                 @if($memory->memory_date)<time datetime="{{ $memory->memory_date->format('Y-m-d') }}">{{ $memory->memory_date->format('F j, Y') }}</time>@endif
                 <h3>{{ $memory->title }}</h3>
                 @if($memory->caption)<p>{{ $memory->caption }}</p>@endif
