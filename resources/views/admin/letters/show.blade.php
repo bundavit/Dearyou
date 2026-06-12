@@ -51,6 +51,7 @@
                 <div><dt>Theme</dt><dd>{{ ucfirst($letter->theme) }}</dd></div>
                 <div><dt>Font</dt><dd>{{ ucfirst($letter->font_style ?: 'classic') }}</dd></div>
                 <div><dt>Envelope</dt><dd>{{ ucfirst($letter->envelope_style ?: 'classic') }}</dd></div>
+                <div><dt>Seal</dt><dd>{{ ucfirst($letter->seal_style ?: 'round') }}</dd></div>
                 <div><dt>Decorations</dt><dd>{{ ucfirst($letter->decoration_type) }}</dd></div>
                 <div><dt>Link opens</dt><dd>{{ number_format($letter->open_count) }}</dd></div>
                 <div><dt>Responses</dt><dd>{{ $letter->responses_count }}</dd></div>

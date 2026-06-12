@@ -50,6 +50,26 @@
         </div>
     </fieldset>
 </div>
+<div class="col-12">
+    <fieldset>
+        <legend class="form-label">Seal shape</legend>
+        <div class="seal-style-picker">
+            @foreach([
+                'round' => ['Classic round', 'bi-heart-fill'],
+                'heart' => ['Heart', 'bi-heart-fill'],
+                'star' => ['Star', 'bi-star-fill'],
+                'flower' => ['Flower', 'bi-flower1'],
+                'diamond' => ['Diamond', 'bi-gem'],
+            ] as $value => [$label, $icon])
+                <label class="seal-style-option">
+                    <input type="radio" name="seal_style" value="{{ $value }}" @checked(old('seal_style',$letter->seal_style ?: 'round')===$value)>
+                    <span class="seal-style-preview seal-style-preview-{{ $value }}" aria-hidden="true"><i class="bi {{ $icon }}"></i></span>
+                    <strong>{{ $label }}</strong>
+                </label>
+            @endforeach
+        </div>
+    </fieldset>
+</div>
 <div class="col-md-6 col-xl"><label class="form-label">Theme</label><select name="theme" class="form-select">@foreach(['warm','romantic','celebration','peaceful','friendship','midnight'] as $t)<option @selected(old('theme',$letter->theme)===$t)>{{ ucfirst($t) }}</option>@endforeach</select></div>
 <div class="col-md-6 col-xl"><label class="form-label" for="font-style">Letter font</label><select name="font_style" id="font-style" class="form-select font-style-select" data-font-select>@foreach($fontStyles as $value => [$label, $stack])<option value="{{ $value }}" style="font-family:{{ $stack }}" data-font-stack="{{ $stack }}" @selected(old('font_style',$letter->font_style ?: 'classic')===$value)>{{ $label }} - Dear You</option>@endforeach</select></div>
 <div class="col-md-6 col-xl"><label class="form-label">Decorations</label><select name="decoration_type" class="form-select">@foreach(['hearts','stars','balloons','confetti','flowers','sparkles','none'] as $d)<option value="{{ $d }}" @selected(old('decoration_type',$letter->decoration_type ?: 'hearts')===$d)>{{ ucfirst($d) }}</option>@endforeach</select></div>

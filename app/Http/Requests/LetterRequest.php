@@ -12,6 +12,7 @@ class LetterRequest extends FormRequest
         $this->merge([
             'font_style' => $this->input('font_style', 'classic'),
             'envelope_style' => $this->input('envelope_style', 'classic'),
+            'seal_style' => $this->input('seal_style', 'round'),
             'positive_button_text' => $this->input('positive_button_text') ?: 'Yes',
             'negative_button_text' => $this->input('negative_button_text') ?: 'No',
             'chapter_heading' => $this->input('chapter_heading') ?: 'A beautiful new chapter begins.',
@@ -51,6 +52,7 @@ class LetterRequest extends FormRequest
             'theme' => 'required|string|max:40',
             'font_style' => ['required', Rule::in(['classic', 'elegant', 'modern', 'friendly', 'typewriter', 'handwritten', 'formal'])],
             'envelope_style' => ['required', Rule::in(['classic', 'rounded', 'airmail', 'vintage', 'gift'])],
+            'seal_style' => ['required', Rule::in(['round', 'heart', 'star', 'flower', 'diamond'])],
             'primary_color' => 'required|regex:/^#[0-9a-fA-F]{6}$/',
             'secondary_color' => 'required|regex:/^#[0-9a-fA-F]{6}$/',
             'decoration_type' => ['required', Rule::in(['hearts', 'stars', 'balloons', 'confetti', 'flowers', 'sparkles', 'none'])],

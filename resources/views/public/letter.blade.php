@@ -44,7 +44,18 @@
         'formal' => '"Copperplate Gothic Light", Cambria, serif',
     ];
 @endphp
-<body class="recipient-page theme-{{ $letter->theme }} category-{{ $letter->category }} font-{{ $letter->font_style ?: 'classic' }} envelope-style-{{ $letter->envelope_style ?: 'classic' }}" style="--accent:{{ $letter->primary_color }};--paper:{{ $letter->secondary_color }};--letter-font:{{ $fontStacks[$letter->font_style] ?? $fontStacks['classic'] }}">
+@php
+    $sealIcons = [
+        'round' => 'bi-heart-fill',
+        'heart' => 'bi-heart-fill',
+        'star' => 'bi-star-fill',
+        'flower' => 'bi-flower1',
+        'diamond' => 'bi-gem',
+    ];
+    $sealStyle = $letter->seal_style ?: 'round';
+    $sealIcon = $sealIcons[$sealStyle] ?? $sealIcons['round'];
+@endphp
+<body class="recipient-page theme-{{ $letter->theme }} category-{{ $letter->category }} font-{{ $letter->font_style ?: 'classic' }} envelope-style-{{ $letter->envelope_style ?: 'classic' }} seal-style-{{ $sealStyle }}" style="--accent:{{ $letter->primary_color }};--paper:{{ $letter->secondary_color }};--letter-font:{{ $fontStacks[$letter->font_style] ?? $fontStacks['classic'] }}">
 <div class="floaters decoration-{{ $letter->decoration_type }}" aria-hidden="true">
     @foreach($decorations[$letter->decoration_type] ?? $decorations['sparkles'] as $symbol)<span>{!! $symbol !!}</span>@endforeach
 </div>
@@ -79,7 +90,7 @@
             <span class="envelope-fold envelope-fold-right"></span>
             <span class="envelope-fold envelope-fold-bottom"></span>
             <span class="envelope-flap"></span>
-            <span class="envelope-seal"><i class="bi bi-heart-fill"></i></span>
+            <span class="envelope-seal"><i class="bi {{ $sealIcon }}"></i></span>
             <span class="visually-hidden">Open letter</span>
         </button>
 
@@ -95,7 +106,7 @@
         <span class="opened-envelope-back"></span>
         <span class="opened-envelope-flap"></span>
         <span class="opened-envelope-front"></span>
-        <span class="opened-envelope-seal"><i class="bi bi-heart-fill"></i></span>
+        <span class="opened-envelope-seal"><i class="bi {{ $sealIcon }}"></i></span>
     </div>
     <article class="paper">
         <p class="letter-to">Dear {{ $letter->recipientLabel() }},</p>

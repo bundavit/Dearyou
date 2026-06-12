@@ -41,6 +41,7 @@ class DatabaseSeeder extends Seeder
                 'theme' => in_array($category, ['birthday', 'congratulations']) ? 'celebration' : ($category === 'valentine' ? 'romantic' : 'warm'),
                 'font_style' => 'classic',
                 'envelope_style' => 'classic',
+                'seal_style' => 'round',
                 'primary_color' => '#d85b78', 'secondary_color' => '#fff1e8',
                 'decoration_type' => match ($category) {
                     'birthday' => 'balloons',
