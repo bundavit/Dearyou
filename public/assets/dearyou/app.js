@@ -51,6 +51,7 @@ document.querySelector("#close-letter")?.addEventListener("click", () => {
 
   letter.hidden = true;
   letter.classList.remove("revealed");
+  audio?.pause();
   stage.hidden = false;
   stage.classList.remove("opening");
   document.querySelector("#open-letter")?.setAttribute("aria-expanded", "false");
@@ -265,7 +266,6 @@ audio?.addEventListener("play", updateAudioToggle);
 audio?.addEventListener("pause", updateAudioToggle);
 audio?.addEventListener("volumechange", updateAudioToggle);
 updateAudioToggle();
-startLetterAudio();
 
 const lightbox = document.querySelector("[data-memory-lightbox]");
 const lightboxItems = Array.from(document.querySelectorAll("[data-lightbox-image]"));

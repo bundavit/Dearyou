@@ -62,8 +62,8 @@
 <main class="recipient-main">
     @if($letter->audio_path)
         <div class="letter-audio-player">
-            <button type="button" data-audio-toggle aria-label="Mute background music"><i class="bi bi-volume-up-fill"></i><span>Mute music</span></button>
-            <audio data-letter-audio autoplay loop preload="auto" src="{{ Storage::url($letter->audio_path) }}"></audio>
+            <button type="button" data-audio-toggle aria-label="Play background music"><i class="bi bi-play-fill"></i><span>Play music</span></button>
+            <audio data-letter-audio loop preload="metadata" src="{{ Storage::url($letter->audio_path) }}"></audio>
         </div>
     @endif
     @if(!empty($preview))<div class="preview-ribbon">Preview</div>@endif

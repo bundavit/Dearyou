@@ -261,7 +261,7 @@ class DearYouFlowTest extends TestCase
             'allow_response' => 1,
             'response_mode' => 'buttons',
             'chapter_heading' => 'Our story starts here.',
-            'audio' => UploadedFile::fake()->create('song.mp3', 10, 'audio/mpeg'),
+            'audio' => UploadedFile::fake()->create('song.mp3', 13 * 1024, 'application/octet-stream'),
         ];
 
         $this->actingAs($user)->put("/admin/letters/{$letter->id}", $payload)->assertRedirect();
@@ -270,8 +270,9 @@ class DearYouFlowTest extends TestCase
 
         $this->get("/l/{$link->token}")
             ->assertOk()
-            ->assertSee('Mute music')
-            ->assertSee('data-letter-audio autoplay loop', false)
+            ->assertSee('Play music')
+            ->assertSee('data-letter-audio loop preload="metadata"', false)
+            ->assertDontSee('data-letter-audio autoplay', false)
             ->assertSee('data-async-response', false);
 
         $asyncResponse = $this->postJson("/l/{$link->token}/response", ['response_value' => 'positive'])
@@ -377,7 +378,7 @@ class DearYouFlowTest extends TestCase
         $this->assertNull($letter->fresh()->image_path);
     }
 
-    public function test_admin_can_use_animated_gifs_and_mp4s_in_letters_and_memories(): void
+    public function test_admin_can_use_gifs_mp4s_and_telegram_webms_in_letters_and_memories(): void
     {
         Storage::fake('public');
         $user = User::factory()->create();
@@ -429,6 +430,23 @@ class DearYouFlowTest extends TestCase
         $videoMemory = $letter->memories()->where('title', 'A video memory')->firstOrFail();
         Storage::disk('public')->assertExists($videoMemory->images->first()->image_path);
         $this->assertStringEndsWith('.mp4', $videoMemory->images->first()->image_path);
+
+        $payload['image'] = UploadedFile::fake()->create('telegram-animation.webm', 100, 'video/webm');
+        $this->actingAs($user)->put("/admin/letters/{$letter->id}", $payload)->assertRedirect();
+        $letter->refresh();
+        Storage::disk('public')->assertExists($letter->image_path);
+        $this->assertStringEndsWith('.webm', $letter->image_path);
+
+        $this->actingAs($user)->post("/admin/letters/{$letter->id}/memories", [
+            'title' => 'A Telegram animation',
+            'memory_images' => [
+                UploadedFile::fake()->create('telegram-memory.webm', 100, 'video/webm'),
+            ],
+        ])->assertRedirect();
+
+        $telegramMemory = $letter->memories()->where('title', 'A Telegram animation')->firstOrFail();
+        Storage::disk('public')->assertExists($telegramMemory->images->first()->image_path);
+        $this->assertStringEndsWith('.webm', $telegramMemory->images->first()->image_path);
 
         $letter->update(['status' => 'published']);
         $link = $letter->link()->create(['token' => str_repeat('v', 64), 'is_active' => true]);
@@ -623,6 +641,7 @@ class DearYouFlowTest extends TestCase
             'theme' => 'celebration',
             'font_style' => 'friendly',
             'envelope_style' => 'gift',
+            'seal_style' => 'diamond',
             'primary_color' => '#7b68c7',
             'secondary_color' => '#fff6cf',
             'decoration_type' => 'balloons',
@@ -635,13 +654,20 @@ class DearYouFlowTest extends TestCase
             ->assertRedirect();
 
         $this->assertSame('gift', $letter->fresh()->envelope_style);
+        $this->assertSame('diamond', $letter->fresh()->seal_style);
         $this->get("/l/{$link->token}")
             ->assertOk()
-            ->assertSee('envelope-style-gift', false);
+            ->assertSee('envelope-style-gift', false)
+            ->assertSee('seal-style-diamond', false)
+            ->assertSee('bi-gem', false);
 
         $this->actingAs($user)
             ->put("/admin/letters/{$letter->id}", array_merge($payload, ['envelope_style' => 'unknown']))
             ->assertSessionHasErrors('envelope_style');
+
+        $this->actingAs($user)
+            ->put("/admin/letters/{$letter->id}", array_merge($payload, ['seal_style' => 'unknown']))
+            ->assertSessionHasErrors('seal_style');
     }
 
     public function test_admin_can_view_an_owned_letter_but_not_another_users_letter(): void
@@ -658,6 +684,35 @@ class DearYouFlowTest extends TestCase
 
         $this->actingAs($user)->get("/admin/letters/{$foreignLetter->id}")
             ->assertForbidden();
+    }
+
+    public function test_admin_can_delete_an_owned_letter_from_letter_pages(): void
+    {
+        Storage::fake('public');
+
+        $user = User::factory()->create();
+        $letter = $this->letter($user, ['image_path' => 'letters/delete-me.jpg']);
+        Storage::disk('public')->put('letters/delete-me.jpg', 'image');
+
+        $this->actingAs($user)
+            ->get('/admin/letters')
+            ->assertOk()
+            ->assertSee(route('admin.letters.destroy', $letter), false)
+            ->assertSee('Delete');
+
+        $this->actingAs($user)
+            ->get("/admin/letters/{$letter->id}")
+            ->assertOk()
+            ->assertSee(route('admin.letters.destroy', $letter), false)
+            ->assertSee('Delete letter');
+
+        $this->actingAs($user)
+            ->delete("/admin/letters/{$letter->id}")
+            ->assertRedirect('/admin/letters')
+            ->assertSessionHas('success', 'Letter deleted.');
+
+        $this->assertSoftDeleted($letter);
+        Storage::disk('public')->assertMissing('letters/delete-me.jpg');
     }
 
     public function test_admin_can_update_profile_with_current_password(): void
