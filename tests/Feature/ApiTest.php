@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use App\Support\PlatformSettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -55,7 +56,9 @@ class ApiTest extends TestCase
             ->assertJsonPath('title', 'Updated');
         $this->withToken($token)->postJson("/api/letters/{$created['id']}/publish")
             ->assertOk()
-            ->assertJsonPath('status', 'published');
+            ->assertJsonPath('status', 'published')
+            ->assertJsonPath('expiry_minutes', 60)
+            ->assertJsonPath('link.is_active', true);
         $this->withToken($token)->deleteJson("/api/letters/{$created['id']}")->assertNoContent();
     }
 
@@ -70,6 +73,20 @@ class ApiTest extends TestCase
             ->assertCreated()
             ->assertJsonPath('recipient_name', null)
             ->assertJsonPath('sender_name', null);
+    }
+
+    public function test_api_respects_enabled_letter_categories(): void
+    {
+        app(PlatformSettings::class)->update(['enabled_categories' => ['custom']]);
+        $user = User::factory()->create();
+        $token = $user->createToken('write', ['letters:write'])->plainTextToken;
+
+        $this->withToken($token)->postJson('/api/letters', $this->payload([
+            'category' => 'birthday',
+        ]))->assertUnprocessable()->assertJsonValidationErrors('category');
+
+        $this->withToken($token)->postJson('/api/letters', $this->payload())
+            ->assertCreated();
     }
 
     public function test_api_cannot_access_another_admins_letter_or_response(): void
@@ -90,18 +107,18 @@ class ApiTest extends TestCase
         $this->withToken($token)->getJson('/api/responses')->assertOk()->assertJsonMissing(['message' => 'Private']);
     }
 
-    public function test_admin_can_create_and_revoke_api_token_from_account(): void
+    public function test_creator_can_create_and_revoke_api_token_from_account(): void
     {
         $user = User::factory()->create();
 
-        $this->actingAs($user)->post('/admin/account/tokens', [
+        $this->actingAs($user)->post('/account/tokens', [
             'token_name' => 'Postman',
             'access' => 'write',
         ])->assertRedirect()->assertSessionHas('new_api_token');
 
         $token = $user->tokens()->first();
         $this->assertContains('letters:write', $token->abilities);
-        $this->actingAs($user)->delete("/admin/account/tokens/{$token->id}")->assertRedirect();
+        $this->actingAs($user)->delete("/account/tokens/{$token->id}")->assertRedirect();
         $this->assertDatabaseMissing('personal_access_tokens', ['id' => $token->id]);
     }
 }

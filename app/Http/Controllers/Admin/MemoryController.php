@@ -6,15 +6,18 @@ use App\Http\Controllers\Controller;
 use App\Models\Letter;
 use App\Models\LetterMemory;
 use App\Models\LetterMemoryImage;
+use App\Support\CreatorStorage;
+use App\Support\PlatformSettings;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
 class MemoryController extends Controller
 {
-    public function store(Request $request, Letter $letter)
+    public function store(Request $request, Letter $letter, CreatorStorage $storage)
     {
-        $this->ownLetter($letter);
+        $this->authorize('update', $letter);
         $data = $this->validated($request);
+        $storage->ensureWithinQuota($request->user(), $this->uploadedFiles($request));
         unset($data['memory_image'], $data['memory_images']);
         $data['sort_order'] = ($letter->memories()->max('sort_order') ?? -1) + 1;
         $memory = $letter->memories()->create($data);
@@ -23,10 +26,22 @@ class MemoryController extends Controller
         return back()->with('success', 'Memory added.');
     }
 
-    public function update(Request $request, LetterMemory $memory)
+    public function update(Request $request, LetterMemory $memory, CreatorStorage $storage)
     {
-        $this->ownMemory($memory);
+        $this->authorize('update', $memory);
         $data = $this->validated($request);
+        $removedImages = $memory->images()
+            ->whereIn('id', $request->input('remove_memory_images', []))
+            ->pluck('image_path');
+        $replacedPaths = $removedImages;
+        if ($request->boolean('remove_memory_image') || $request->hasFile('memory_image')) {
+            $replacedPaths->push($memory->image_path);
+        }
+        $storage->ensureWithinQuota(
+            $request->user(),
+            $this->uploadedFiles($request),
+            $replacedPaths,
+        );
         unset($data['memory_image'], $data['memory_images'], $data['remove_memory_images']);
         if ($request->boolean('remove_memory_image') || $request->hasFile('memory_image')) {
             Storage::disk('public')->delete($memory->image_path);
@@ -41,7 +56,7 @@ class MemoryController extends Controller
 
     public function move(LetterMemory $memory, string $direction)
     {
-        $this->ownMemory($memory);
+        $this->authorize('update', $memory);
         abort_unless(in_array($direction, ['up', 'down']), 404);
         $comparison = $direction === 'up' ? '<' : '>';
         $order = $direction === 'up' ? 'desc' : 'asc';
@@ -61,7 +76,7 @@ class MemoryController extends Controller
 
     public function reorderMemories(Request $request, Letter $letter)
     {
-        $this->ownLetter($letter);
+        $this->authorize('update', $letter);
         $data = $request->validate(['order' => 'required|array', 'order.*' => 'integer']);
         $ownedIds = $letter->memories()->whereIn('id', $data['order'])->pluck('id')->all();
         abort_unless(count($ownedIds) === count($data['order']), 422);
@@ -75,7 +90,7 @@ class MemoryController extends Controller
 
     public function reorderImages(Request $request, LetterMemory $memory)
     {
-        $this->ownMemory($memory);
+        $this->authorize('update', $memory);
         $data = $request->validate(['order' => 'required|array', 'order.*' => 'integer']);
         $ownedIds = $memory->images()->whereIn('id', $data['order'])->pluck('id')->all();
         abort_unless(count($ownedIds) === count($data['order']), 422);
@@ -89,7 +104,7 @@ class MemoryController extends Controller
 
     public function destroy(LetterMemory $memory)
     {
-        $this->ownMemory($memory);
+        $this->authorize('delete', $memory);
         Storage::disk('public')->delete(array_filter([
             $memory->image_path,
             ...$memory->images()->pluck('image_path')->all(),
@@ -101,13 +116,16 @@ class MemoryController extends Controller
 
     private function validated(Request $request): array
     {
+        $settings = app(PlatformSettings::class);
+        $mediaLimit = $settings->kilobytes($settings->letterMediaLimitMb());
+
         return $request->validate([
             'title' => 'required|string|max:120',
             'memory_date' => 'nullable|date',
             'caption' => 'nullable|string|max:1000',
-            'memory_image' => 'nullable|file|mimes:jpg,jpeg,png,webp,gif,mp4,webm|max:10240',
-            'memory_images' => 'nullable|array|max:10',
-            'memory_images.*' => 'file|mimes:jpg,jpeg,png,webp,gif,mp4,webm|max:10240',
+            'memory_image' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,gif,mp4,webm', 'max:'.$mediaLimit],
+            'memory_images' => ['nullable', 'array', 'max:'.$settings->memoryFilesPerUpload()],
+            'memory_images.*' => ['file', 'mimes:jpg,jpeg,png,webp,gif,mp4,webm', 'max:'.$mediaLimit],
             'remove_memory_images' => 'nullable|array',
             'remove_memory_images.*' => 'integer',
         ]);
@@ -136,13 +154,11 @@ class MemoryController extends Controller
         $memory->images()->whereKey($images->modelKeys())->delete();
     }
 
-    private function ownLetter(Letter $letter): void
+    private function uploadedFiles(Request $request): array
     {
-        abort_unless($letter->user_id === auth()->id(), 403);
-    }
-
-    private function ownMemory(LetterMemory $memory): void
-    {
-        abort_unless($memory->letter->user_id === auth()->id(), 403);
+        return [
+            $request->file('memory_image'),
+            ...$request->file('memory_images', []),
+        ];
     }
 }

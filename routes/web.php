@@ -5,21 +5,91 @@ use App\Http\Controllers\Admin\ApiTokenController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\InboxController;
 use App\Http\Controllers\Admin\LetterController;
+use App\Http\Controllers\Admin\LetterModerationController;
 use App\Http\Controllers\Admin\MemoryController;
+use App\Http\Controllers\Admin\ModerationAuditController;
+use App\Http\Controllers\Admin\PlatformDashboardController;
+use App\Http\Controllers\Admin\PlatformSettingsController;
+use App\Http\Controllers\Admin\PlatformUserController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\EmailVerificationController;
+use App\Http\Controllers\NewPasswordController;
+use App\Http\Controllers\PasswordResetLinkController;
 use App\Http\Controllers\PublicLetterController;
+use App\Http\Controllers\RegistrationController;
 use Illuminate\Support\Facades\Route;
 
-Route::redirect('/', '/admin/login');
+Route::view('/', 'welcome')->name('home');
 Route::middleware('guest')->group(function () {
-    Route::get('/admin/login', [AuthController::class, 'create'])->name('login');
-    Route::post('/admin/login', [AuthController::class, 'store'])->middleware('throttle:5,1')->name('login.store');
+    Route::get('/login', [AuthController::class, 'create'])->name('login');
+    Route::post('/login', [AuthController::class, 'store'])->middleware('throttle:login')->name('login.store');
+    Route::get('/admin/login', [AuthController::class, 'create'])->name('login.legacy');
+    Route::post('/admin/login', [AuthController::class, 'store'])->middleware('throttle:login')->name('login.legacy.store');
+    Route::get('/register', [RegistrationController::class, 'create'])->name('register');
+    Route::post('/register', [RegistrationController::class, 'store'])->middleware('throttle:registration')->name('register.store');
+    Route::get('/forgot-password', [PasswordResetLinkController::class, 'create'])->name('password.request');
+    Route::post('/forgot-password', [PasswordResetLinkController::class, 'store'])->middleware('throttle:password-reset')->name('password.email');
+    Route::get('/reset-password/{token}', [NewPasswordController::class, 'create'])->name('password.reset');
+    Route::post('/reset-password', [NewPasswordController::class, 'store'])->name('password.update');
 });
-Route::post('/admin/logout', [AuthController::class, 'destroy'])->middleware('auth')->name('logout');
+Route::middleware(['auth', 'active'])->group(function () {
+    Route::get('/verify-email', [EmailVerificationController::class, 'notice'])->name('verification.notice');
+    Route::get('/verify-email/{id}/{hash}', [EmailVerificationController::class, 'verify'])->middleware(['signed', 'throttle:verification'])->name('verification.verify');
+    Route::post('/email/verification-notification', [EmailVerificationController::class, 'send'])->middleware('throttle:verification')->name('verification.send');
+});
+Route::post('/logout', [AuthController::class, 'destroy'])->middleware('auth')->name('logout');
+Route::post('/admin/logout', [AuthController::class, 'destroy'])->middleware('auth')->name('logout.legacy');
 Route::get('/l/{token}', [PublicLetterController::class, 'show'])->name('letters.public');
-Route::post('/l/{token}/response', [PublicLetterController::class, 'respond'])->middleware('throttle:10,1')->name('letters.respond');
+Route::post('/l/{token}/response', [PublicLetterController::class, 'respond'])->middleware('throttle:recipient-responses')->name('letters.respond');
 
-Route::prefix('admin')->name('admin.')->middleware('auth')->group(function () {
+Route::get('/dashboard', function () {
+    return redirect()->route(auth()->user()->isAdmin() ? 'admin.platform' : 'letters.index');
+})->middleware(['auth', 'active', 'verified'])->name('dashboard');
+
+Route::middleware(['auth', 'active', 'verified', 'role:user'])->group(function () {
+    Route::get('/account', [AccountController::class, 'edit'])->name('account.edit');
+    Route::put('/account/profile', [AccountController::class, 'updateProfile'])->name('account.profile');
+    Route::put('/account/password', [AccountController::class, 'updatePassword'])->name('account.password');
+    Route::post('/account/tokens', [ApiTokenController::class, 'store'])->name('account.tokens.store');
+    Route::delete('/account/tokens/{token}', [ApiTokenController::class, 'destroy'])->name('account.tokens.destroy');
+    Route::resource('letters', LetterController::class);
+    Route::get('/letters/{letter}/preview', [LetterController::class, 'preview'])->name('letters.preview');
+    Route::post('/letters/{letter}/publish', [LetterController::class, 'publish'])->middleware('throttle:publishing')->name('letters.publish');
+    Route::post('/letters/{letter}/unpublish', [LetterController::class, 'unpublish'])->name('letters.unpublish');
+    Route::post('/letters/{letter}/regenerate-link', [LetterController::class, 'regenerate'])->name('letters.regenerate');
+    Route::post('/letters/{letter}/disable-link', [LetterController::class, 'disable'])->name('letters.disable');
+    Route::post('/letters/{letter}/memories', [MemoryController::class, 'store'])->name('memories.store');
+    Route::put('/memories/{memory}', [MemoryController::class, 'update'])->name('memories.update');
+    Route::patch('/memories/{memory}/move/{direction}', [MemoryController::class, 'move'])->name('memories.move');
+    Route::patch('/letters/{letter}/memories/reorder', [MemoryController::class, 'reorderMemories'])->name('memories.reorder');
+    Route::patch('/memories/{memory}/images/reorder', [MemoryController::class, 'reorderImages'])->name('memory-images.reorder');
+    Route::delete('/memories/{memory}', [MemoryController::class, 'destroy'])->name('memories.destroy');
+    Route::get('/inbox', [InboxController::class, 'index'])->name('inbox');
+    Route::post('/inbox/bulk', [InboxController::class, 'bulk'])->name('inbox.bulk');
+    Route::get('/responses/{response}', [InboxController::class, 'show'])->name('responses.show');
+    Route::patch('/responses/{response}/unread', [InboxController::class, 'markUnread'])->name('responses.unread');
+    Route::delete('/responses/{response}', [InboxController::class, 'destroy'])->name('responses.destroy');
+});
+
+Route::prefix('admin')->name('admin.')->middleware(['auth', 'active', 'verified', 'role:admin'])->group(function () {
+    Route::get('/platform', PlatformDashboardController::class)->name('platform');
+    Route::get('/users', [PlatformUserController::class, 'index'])->name('users.index');
+    Route::get('/users/{user}', [PlatformUserController::class, 'show'])->name('users.show');
+    Route::patch('/users/{user}/role', [PlatformUserController::class, 'updateRole'])->name('users.role');
+    Route::patch('/users/{user}/status', [PlatformUserController::class, 'updateStatus'])->name('users.status');
+    Route::delete('/users/{user}', [PlatformUserController::class, 'destroy'])->name('users.destroy');
+    Route::patch('/users/{user}/restore', [PlatformUserController::class, 'restore'])->name('users.restore');
+    Route::get('/settings', [PlatformSettingsController::class, 'edit'])->name('settings.edit');
+    Route::put('/settings', [PlatformSettingsController::class, 'update'])->name('settings.update');
+    Route::get('/moderation/letters', [LetterModerationController::class, 'index'])->name('moderation.index');
+    Route::get('/moderation/letters/{letter}', [LetterModerationController::class, 'show'])->name('moderation.show');
+    Route::post('/moderation/letters/{letter}/reveal', [LetterModerationController::class, 'reveal'])->name('moderation.reveal');
+    Route::patch('/moderation/letters/{letter}/disable', [LetterModerationController::class, 'disable'])->name('moderation.disable');
+    Route::patch('/moderation/letters/{letter}/enable', [LetterModerationController::class, 'enable'])->name('moderation.enable');
+    Route::delete('/moderation/letters/{letter}', [LetterModerationController::class, 'destroy'])->name('moderation.destroy');
+    Route::patch('/moderation/letters/{letter}/restore', [LetterModerationController::class, 'restore'])->name('moderation.restore');
+    Route::patch('/moderation/letters/{letter}/expiry', [LetterModerationController::class, 'overrideExpiry'])->name('moderation.expiry');
+    Route::get('/audit', ModerationAuditController::class)->name('audit');
     Route::get('/dashboard', DashboardController::class)->name('dashboard');
     Route::get('/account', [AccountController::class, 'edit'])->name('account.edit');
     Route::put('/account/profile', [AccountController::class, 'updateProfile'])->name('account.profile');
@@ -28,7 +98,7 @@ Route::prefix('admin')->name('admin.')->middleware('auth')->group(function () {
     Route::delete('/account/tokens/{token}', [ApiTokenController::class, 'destroy'])->name('account.tokens.destroy');
     Route::resource('letters', LetterController::class);
     Route::get('/letters/{letter}/preview', [LetterController::class, 'preview'])->name('letters.preview');
-    Route::post('/letters/{letter}/publish', [LetterController::class, 'publish'])->name('letters.publish');
+    Route::post('/letters/{letter}/publish', [LetterController::class, 'publish'])->middleware('throttle:publishing')->name('letters.publish');
     Route::post('/letters/{letter}/unpublish', [LetterController::class, 'unpublish'])->name('letters.unpublish');
     Route::post('/letters/{letter}/regenerate-link', [LetterController::class, 'regenerate'])->name('letters.regenerate');
     Route::post('/letters/{letter}/disable-link', [LetterController::class, 'disable'])->name('letters.disable');

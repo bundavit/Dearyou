@@ -40,6 +40,9 @@ const openLetter = () => {
     letter.classList.add("revealed");
     letter.setAttribute("tabindex", "-1");
     letter.focus?.();
+    document.querySelectorAll("[data-letter-video]").forEach(video => {
+      if (video.getBoundingClientRect().top < window.innerHeight) video.play().catch(() => {});
+    });
   }, matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 950);
 };
 document.querySelector("#open-letter")?.addEventListener("click", openLetter);
@@ -52,6 +55,7 @@ document.querySelector("#close-letter")?.addEventListener("click", () => {
   letter.hidden = true;
   letter.classList.remove("revealed");
   audio?.pause();
+  document.querySelectorAll("[data-letter-video]").forEach(video => video.pause());
   stage.hidden = false;
   stage.classList.remove("opening");
   document.querySelector("#open-letter")?.setAttribute("aria-expanded", "false");
@@ -70,6 +74,31 @@ document.querySelectorAll("[data-auto-dismiss-alert]").forEach(alert => {
     setTimeout(() => alert.remove(), 500);
   }, 5000);
 });
+
+const platformSettingsForm = document.querySelector("[data-platform-settings-form]");
+if (platformSettingsForm) {
+  const expiryChoices = Array.from(platformSettingsForm.querySelectorAll("[data-expiry-choice]"));
+  const defaultExpiry = platformSettingsForm.querySelector("[data-default-expiry]");
+
+  const syncDefaultExpiry = () => {
+    if (!defaultExpiry) return;
+
+    const enabledValues = expiryChoices
+      .filter(choice => choice.checked)
+      .map(choice => choice.value);
+
+    Array.from(defaultExpiry.options).forEach(option => {
+      option.disabled = !enabledValues.includes(option.value);
+    });
+
+    if (enabledValues.length && !enabledValues.includes(defaultExpiry.value)) {
+      defaultExpiry.value = enabledValues[0];
+    }
+  };
+
+  expiryChoices.forEach(choice => choice.addEventListener("change", syncDefaultExpiry));
+  syncDefaultExpiry();
+}
 
 document.querySelectorAll("[data-remove-image-button]").forEach(button => {
   button.addEventListener("click", () => {
@@ -94,34 +123,62 @@ document.querySelectorAll("[data-remove-image-button]").forEach(button => {
 
 document.querySelectorAll("[data-image-upload]").forEach(input => input.addEventListener("change", () => {
   const files = Array.from(input.files || []);
+  const maxSizeMb = Number(input.dataset.maxSizeMb || 10);
+  const maxFiles = Number(input.dataset.maxFiles || 0);
   const oldError = input.parentElement.querySelector("[data-upload-error]");
   oldError?.remove();
   input.classList.remove("is-invalid");
-  const oversized = files.find(file => file.size > 10 * 1024 * 1024);
-  if (!oversized) return;
+  const oversized = files.find(file => file.size > maxSizeMb * 1024 * 1024);
+  const tooManyFiles = maxFiles > 0 && files.length > maxFiles;
+  if (!oversized && !tooManyFiles) return;
 
   input.value = "";
   input.classList.add("is-invalid");
   const error = document.createElement("div");
   error.className = "invalid-feedback d-block";
   error.dataset.uploadError = "";
-  error.textContent = `${oversized.name} is larger than 10 MB. Please choose a smaller media file.`;
+  error.textContent = tooManyFiles
+    ? `Choose no more than ${maxFiles} files at once.`
+    : `${oversized.name} is larger than ${maxSizeMb} MB. Please choose a smaller media file.`;
   input.insertAdjacentElement("afterend", error);
 }));
 document.querySelector("[data-audio-upload]")?.addEventListener("change", event => {
   const input = event.currentTarget;
   const file = input.files?.[0];
+  const maxSizeMb = Number(input.dataset.maxSizeMb || 12);
   input.parentElement.querySelector("[data-upload-error]")?.remove();
   input.classList.remove("is-invalid");
-  if (!file || file.size <= 12 * 1024 * 1024) return;
+  if (!file || file.size <= maxSizeMb * 1024 * 1024) return;
   input.value = "";
   input.classList.add("is-invalid");
   const error = document.createElement("div");
   error.className = "invalid-feedback d-block";
   error.dataset.uploadError = "";
-  error.textContent = `${file.name} is larger than 12 MB. Please choose a smaller audio file.`;
+  error.textContent = `${file.name} is larger than ${maxSizeMb} MB. Please choose a smaller audio file.`;
   input.insertAdjacentElement("afterend", error);
 });
+
+const managedVideos = Array.from(document.querySelectorAll("[data-autoplay-when-visible]"));
+if (managedVideos.length && "IntersectionObserver" in window) {
+  const videoObserver = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      const video = entry.target;
+      const letter = video.closest("#letter-content");
+      const letterIsClosed = letter?.hidden;
+
+      if (entry.isIntersecting && !document.hidden && !letterIsClosed) {
+        video.play().catch(() => {});
+      } else {
+        video.pause();
+      }
+    });
+  }, { rootMargin: "120px 0px", threshold: 0.08 });
+
+  managedVideos.forEach(video => videoObserver.observe(video));
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) managedVideos.forEach(video => video.pause());
+  });
+}
 
 const chapterPreview = document.querySelector("[data-chapter-preview]");
 const updateChapterPreview = () => {
@@ -447,3 +504,26 @@ document.querySelectorAll("form").forEach(form => form.addEventListener("submit"
     submitter.textContent = "Working...";
   }
 }));
+
+const formatCountdown = milliseconds => {
+  if (milliseconds <= 0) return "Expired";
+
+  const totalSeconds = Math.floor(milliseconds / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  if (hours > 0) return `${hours}h ${minutes}m ${seconds}s`;
+  return `${minutes}m ${seconds}s`;
+};
+
+const countdowns = document.querySelectorAll("[data-link-countdown]");
+const updateLinkCountdowns = () => countdowns.forEach(countdown => {
+  const expiresAt = Date.parse(countdown.dataset.linkCountdown);
+  if (!Number.isNaN(expiresAt)) countdown.textContent = formatCountdown(expiresAt - Date.now());
+});
+
+if (countdowns.length) {
+  updateLinkCountdowns();
+  setInterval(updateLinkCountdowns, 1000);
+}

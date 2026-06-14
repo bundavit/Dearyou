@@ -22,10 +22,12 @@ class DatabaseSeederTest extends TestCase
         $this->assertDatabaseHas('users', [
             'name' => 'DearYou Admin',
             'email' => 'admin@dearyou.test',
+            'role' => User::ROLE_ADMIN,
         ]);
 
         $this->assertTrue(
             Hash::check('ChangeMe123!', (string) User::query()->sole()->password),
         );
+        $this->assertNotNull(User::query()->sole()->email_verified_at);
     }
 }

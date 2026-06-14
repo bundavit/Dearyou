@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Response;
+use App\Support\CreatorRoute;
 use Illuminate\Http\Request;
 
 class InboxController extends Controller
@@ -31,7 +32,7 @@ class InboxController extends Controller
 
     public function show(Response $response)
     {
-        $this->own($response);
+        $this->authorize('view', $response);
         $response->update(['read_at' => $response->read_at ?? now()]);
 
         return view('admin.response', ['response' => $response->load('letter')]);
@@ -39,10 +40,10 @@ class InboxController extends Controller
 
     public function markUnread(Response $response)
     {
-        $this->own($response);
+        $this->authorize('update', $response);
         $response->update(['read_at' => null]);
 
-        return redirect()->route('admin.inbox')->with('success', 'Response marked unread.');
+        return redirect()->route(CreatorRoute::name('inbox'))->with('success', 'Response marked unread.');
     }
 
     public function bulk(Request $request)
@@ -67,19 +68,14 @@ class InboxController extends Controller
 
     public function destroy(Response $response)
     {
-        $this->own($response);
+        $this->authorize('delete', $response);
         $response->delete();
 
-        return redirect()->route('admin.inbox')->with('success', 'Response deleted.');
+        return redirect()->route(CreatorRoute::name('inbox'))->with('success', 'Response deleted.');
     }
 
     private function ownedResponses()
     {
         return Response::whereHas('letter', fn ($query) => $query->where('user_id', auth()->id()));
-    }
-
-    private function own(Response $response): void
-    {
-        abort_unless($response->letter->user_id === auth()->id(), 403);
     }
 }

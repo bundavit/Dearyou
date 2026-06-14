@@ -3,11 +3,22 @@
 namespace Tests\Feature;
 
 use App\Models\Letter;
+use App\Models\ModerationAudit;
+use App\Models\Response;
 use App\Models\User;
+use App\Notifications\StorageCleanupCompleted;
+use App\Notifications\StorageLimitWarning;
+use App\Support\CreatorStorage;
+use App\Support\PlatformSettings;
+use Illuminate\Auth\Notifications\ResetPassword;
+use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
 use Tests\TestCase;
 
 class DearYouFlowTest extends TestCase
@@ -24,26 +35,327 @@ class DearYouFlowTest extends TestCase
         ], $overrides));
     }
 
-    public function test_admin_can_login_create_and_publish_a_letter(): void
+    private function letterPayload(array $overrides = []): array
+    {
+        return array_merge([
+            'category' => 'custom',
+            'title' => 'A letter',
+            'recipient_name' => 'Alex',
+            'sender_name' => 'Sam',
+            'body' => 'Hello',
+            'theme' => 'warm',
+            'font_style' => 'classic',
+            'primary_color' => '#d85b78',
+            'secondary_color' => '#fff1e8',
+            'decoration_type' => 'hearts',
+            'allow_response' => 1,
+            'response_mode' => 'message',
+            'expiry_minutes' => 60,
+        ], $overrides);
+    }
+
+    public function test_creator_can_login_create_and_publish_a_letter(): void
     {
         $user = User::factory()->create(['password' => 'password']);
-        $this->post('/admin/login', ['email' => $user->email, 'password' => 'password'])->assertRedirect('/admin/dashboard');
-        $this->actingAs($user)->post('/admin/letters', [
+        $this->post('/login', ['email' => $user->email, 'password' => 'password'])->assertRedirect('/letters');
+        $this->actingAs($user)->post('/letters', [
             'category' => 'confession', 'title' => 'Hi', 'recipient_name' => 'Alex', 'sender_name' => 'Sam', 'body' => 'Hello',
             'theme' => 'warm', 'primary_color' => '#d85b78', 'secondary_color' => '#fff1e8', 'decoration_type' => 'hearts',
             'font_style' => 'handwritten',
             'allow_response' => 1, 'response_mode' => 'buttons_with_message',
         ])->assertRedirect();
         $letter = Letter::first();
-        $this->actingAs($user)->post("/admin/letters/{$letter->id}/publish")->assertRedirect();
+        $this->actingAs($user)->post("/letters/{$letter->id}/publish")->assertRedirect();
         $this->assertNotNull($letter->fresh()->link);
+    }
+
+    public function test_new_user_can_register_and_reach_my_dearyou_letters(): void
+    {
+        Notification::fake();
+
+        $this->get('/register')
+            ->assertOk()
+            ->assertSee('Create account');
+
+        $this->post('/register', [
+            'name' => 'New Writer',
+            'email' => 'writer@example.com',
+            'password' => 'StrongPass1',
+            'password_confirmation' => 'StrongPass1',
+        ])->assertRedirect('/verify-email');
+
+        $this->assertAuthenticated();
+        $this->assertDatabaseHas('users', [
+            'email' => 'writer@example.com',
+            'role' => User::ROLE_USER,
+        ]);
+
+        $user = User::query()->where('email', 'writer@example.com')->firstOrFail();
+        $this->assertFalse($user->hasVerifiedEmail());
+        Notification::assertSentTo($user, VerifyEmail::class);
+
+        $this->get('/letters')->assertRedirect('/verify-email');
+
+        $verificationUrl = URL::temporarySignedRoute(
+            'verification.verify',
+            now()->addHour(),
+            ['id' => $user->id, 'hash' => sha1($user->email)],
+        );
+
+        $this->get($verificationUrl)->assertRedirect('/letters');
+        $this->assertTrue($user->fresh()->hasVerifiedEmail());
+        $this->get('/letters')->assertOk();
+    }
+
+    public function test_user_can_resend_the_email_verification_link(): void
+    {
+        Notification::fake();
+        $user = User::factory()->unverified()->create();
+
+        $this->actingAs($user)
+            ->post('/email/verification-notification')
+            ->assertRedirect()
+            ->assertSessionHas('status', 'verification-link-sent');
+
+        Notification::assertSentTo($user, VerifyEmail::class);
+    }
+
+    public function test_active_user_can_request_and_complete_a_password_reset(): void
+    {
+        Notification::fake();
+        $user = User::factory()->create([
+            'email' => 'writer@example.com',
+            'password' => 'OldPassword1',
+        ]);
+        $user->createToken('old-device');
+
+        $this->post('/forgot-password', ['email' => $user->email])
+            ->assertRedirect()
+            ->assertSessionHas('status');
+        Notification::assertSentTo($user, ResetPassword::class);
+
+        $token = Password::createToken($user);
+        $this->post('/reset-password', [
+            'token' => $token,
+            'email' => $user->email,
+            'password' => 'NewPassword2',
+            'password_confirmation' => 'NewPassword2',
+        ])->assertRedirect('/login');
+
+        $user->refresh();
+        $this->assertTrue(Hash::check('NewPassword2', $user->password));
+        $this->assertCount(0, $user->tokens);
+    }
+
+    public function test_password_reset_does_not_reveal_or_restore_disabled_accounts(): void
+    {
+        Notification::fake();
+        $disabled = User::factory()->create([
+            'email' => 'disabled@example.com',
+            'disabled_at' => now(),
+        ]);
+
+        $this->post('/forgot-password', ['email' => 'missing@example.com'])
+            ->assertRedirect()
+            ->assertSessionHas('status');
+        $this->post('/forgot-password', ['email' => $disabled->email])
+            ->assertRedirect()
+            ->assertSessionHas('status');
+
+        Notification::assertNothingSent();
+
+        $token = Password::createToken($disabled);
+        $this->post('/reset-password', [
+            'token' => $token,
+            'email' => $disabled->email,
+            'password' => 'NewPassword2',
+            'password_confirmation' => 'NewPassword2',
+        ])->assertSessionHasErrors('email');
+    }
+
+    public function test_admin_and_user_accounts_receive_the_correct_area(): void
+    {
+        $admin = User::factory()->create([
+            'email' => 'owner@example.com',
+            'password' => 'password',
+            'role' => User::ROLE_ADMIN,
+        ]);
+        $user = User::factory()->create([
+            'email' => 'writer@example.com',
+            'password' => 'password',
+        ]);
+
+        $this->post('/admin/login', ['email' => $admin->email, 'password' => 'password'])
+            ->assertRedirect('/admin/platform');
+        $this->get('/admin/platform')->assertOk()->assertSee('DearYou at a glance');
+
+        $this->post('/admin/logout');
+        $this->post('/admin/login', ['email' => $user->email, 'password' => 'password'])
+            ->assertRedirect('/letters');
+        $this->assertAuthenticatedAs($user);
+    }
+
+    public function test_creator_and_admin_workspaces_are_separated(): void
+    {
+        $user = User::factory()->create();
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+
+        $this->actingAs($user)
+            ->get('/dashboard')
+            ->assertRedirect('/letters');
+
+        $this->actingAs($user)
+            ->get('/letters')
+            ->assertOk()
+            ->assertSee('My DearYou')
+            ->assertSee('My Letters')
+            ->assertDontSee('Platform');
+
+        $this->actingAs($user)
+            ->get('/admin/letters')
+            ->assertForbidden();
+
+        $this->actingAs($admin)
+            ->get('/dashboard')
+            ->assertRedirect('/admin/platform');
+
+        $this->actingAs($admin)
+            ->get('/admin/letters')
+            ->assertOk()
+            ->assertSee('Dashboard')
+            ->assertSee('Platform')
+            ->assertDontSee('My DearYou');
+
+        $this->actingAs($admin)
+            ->get('/letters')
+            ->assertForbidden();
+    }
+
+    public function test_home_navigation_adapts_for_users_and_platform_admins(): void
+    {
+        $this->get('/')
+            ->assertOk()
+            ->assertSee('Private digital letters, made personal')
+            ->assertSee('Create a free account')
+            ->assertSee('How DearYou works')
+            ->assertSee('No recipient account')
+            ->assertSee('What happens when the link expires?')
+            ->assertSee(route('register'), false)
+            ->assertDontSee('Open dashboard');
+
+        $user = User::factory()->create();
+        $letter = $this->letter($user);
+        $link = $letter->link()->create(['token' => str_repeat('u', 64)]);
+        $letter->responses()->create([
+            'letter_link_id' => $link->id,
+            'response_value' => 'positive',
+            'submitted_at' => now(),
+        ]);
+
+        $this->actingAs($user)
+            ->get('/')
+            ->assertOk()
+            ->assertSee('My Letters')
+            ->assertSee('Inbox')
+            ->assertSee('1 unread responses')
+            ->assertSee('Write a letter')
+            ->assertSee('View my letters')
+            ->assertSeeText('Profile & settings')
+            ->assertDontSee('Admin dashboard');
+
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+
+        $this->actingAs($admin)
+            ->get('/')
+            ->assertOk()
+            ->assertSee('Admin dashboard');
+    }
+
+    public function test_platform_admin_can_search_view_and_manage_user_accounts(): void
+    {
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+        $user = User::factory()->create([
+            'name' => 'Letter Writer',
+            'email' => 'writer@example.com',
+        ]);
+        $this->letter($user, ['title' => 'Private title', 'open_count' => 4]);
+
+        $this->actingAs($admin)
+            ->get('/admin/users?search=writer@example.com')
+            ->assertOk()
+            ->assertSee('Letter Writer')
+            ->assertSee('1')
+            ->assertSee('4');
+
+        $this->actingAs($admin)
+            ->get("/admin/users/{$user->id}")
+            ->assertOk()
+            ->assertSee('Private title')
+            ->assertDontSee('Hello');
+
+        $this->actingAs($admin)
+            ->patch("/admin/users/{$user->id}/role", ['role' => User::ROLE_ADMIN])
+            ->assertRedirect()
+            ->assertSessionHas('success');
+        $this->assertSame(User::ROLE_ADMIN, $user->fresh()->role);
+
+        $this->actingAs($admin)
+            ->patch("/admin/users/{$user->id}/status", ['status' => 'disabled'])
+            ->assertRedirect()
+            ->assertSessionHas('success');
+        $this->assertNotNull($user->fresh()->disabled_at);
+
+        $this->actingAs($admin)
+            ->patch("/admin/users/{$user->id}/status", ['status' => 'active'])
+            ->assertRedirect();
+        $this->assertNull($user->fresh()->disabled_at);
+    }
+
+    public function test_platform_admin_cannot_change_or_disable_their_own_account(): void
+    {
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+
+        $this->actingAs($admin)
+            ->patch("/admin/users/{$admin->id}/role", ['role' => User::ROLE_USER])
+            ->assertStatus(422);
+        $this->assertSame(User::ROLE_ADMIN, $admin->fresh()->role);
+
+        $this->actingAs($admin)
+            ->patch("/admin/users/{$admin->id}/status", ['status' => 'disabled'])
+            ->assertStatus(422);
+        $this->assertNull($admin->fresh()->disabled_at);
+    }
+
+    public function test_disabled_accounts_cannot_login_or_use_existing_sessions_and_tokens(): void
+    {
+        $user = User::factory()->create([
+            'email' => 'disabled@example.com',
+            'password' => 'StrongPass1',
+            'disabled_at' => now(),
+        ]);
+        $token = $user->createToken('existing')->plainTextToken;
+
+        $this->post('/login', [
+            'email' => $user->email,
+            'password' => 'StrongPass1',
+        ])->assertSessionHasErrors('email');
+        $this->assertGuest();
+
+        $this->actingAs($user)
+            ->get('/letters')
+            ->assertRedirect('/login')
+            ->assertSessionHasErrors('email');
+
+        $this->withToken($token)
+            ->getJson('/api/letters')
+            ->assertForbidden();
     }
 
     public function test_recipient_and_sender_names_are_optional(): void
     {
         $user = User::factory()->create();
 
-        $this->actingAs($user)->post('/admin/letters', [
+        $this->actingAs($user)->post('/letters', [
             'category' => 'custom',
             'title' => 'A nameless letter',
             'recipient_name' => '',
@@ -90,13 +402,24 @@ class DearYouFlowTest extends TestCase
             ->assertTooManyRequests();
     }
 
-    public function test_authenticated_admin_visiting_login_is_sent_to_dashboard(): void
+    public function test_authenticated_creator_visiting_admin_login_returns_home(): void
     {
         $user = User::factory()->create();
 
         $this->actingAs($user)
             ->get('/admin/login')
-            ->assertRedirect('/admin/dashboard');
+            ->assertRedirect('/');
+
+        $this->assertAuthenticatedAs($user);
+    }
+
+    public function test_authenticated_admin_visiting_admin_login_returns_to_platform(): void
+    {
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+
+        $this->actingAs($admin)
+            ->get('/admin/login')
+            ->assertRedirect('/admin/platform');
     }
 
     public function test_only_valid_published_links_open_and_accept_responses(): void
@@ -147,7 +470,7 @@ class DearYouFlowTest extends TestCase
         $this->assertTrue($letter->opened_at->equalTo($firstOpenedAt));
 
         $this->actingAs($user)
-            ->get("/admin/letters/{$letter->id}/preview")
+            ->get("/letters/{$letter->id}/preview")
             ->assertOk();
 
         $this->assertSame(2, $letter->fresh()->open_count);
@@ -166,18 +489,12 @@ class DearYouFlowTest extends TestCase
         ]);
 
         $this->actingAs($user)
-            ->get('/admin/dashboard')
-            ->assertOk()
-            ->assertSee('Link opens')
-            ->assertSee('12');
-
-        $this->actingAs($user)
-            ->get('/admin/letters')
+            ->get('/letters')
             ->assertOk()
             ->assertSee('12');
 
         $this->actingAs($user)
-            ->get("/admin/letters/{$letter->id}")
+            ->get("/letters/{$letter->id}")
             ->assertOk()
             ->assertSee('Link opens')
             ->assertSee('First opened')
@@ -191,8 +508,266 @@ class DearYouFlowTest extends TestCase
         $link = $letter->link()->create(['token' => str_repeat('b', 64), 'is_active' => true]);
         $this->get("/l/{$link->token}")->assertNotFound();
         $letter->update(['expires_at' => null]);
-        $this->actingAs($user)->post("/admin/letters/{$letter->id}/regenerate-link")->assertRedirect();
+        $this->actingAs($user)->post("/letters/{$letter->id}/regenerate-link")->assertRedirect();
         $this->assertNotEquals(str_repeat('b', 64), $link->fresh()->token);
+        $this->assertTrue($letter->fresh()->expires_at->isFuture());
+        $this->assertTrue($link->fresh()->expires_at->equalTo($letter->fresh()->expires_at));
+    }
+
+    public function test_creator_can_choose_link_duration_and_republishing_resets_the_link(): void
+    {
+        $user = User::factory()->create();
+        $letter = $this->letter($user, ['expiry_minutes' => 15]);
+
+        $this->actingAs($user)
+            ->get("/letters/{$letter->id}/edit")
+            ->assertOk()
+            ->assertSee('15 minutes')
+            ->assertSee('30 minutes')
+            ->assertSee('1 hour')
+            ->assertSee('2 hours');
+
+        $beforePublish = now();
+        $this->actingAs($user)->post("/letters/{$letter->id}/publish")->assertRedirect();
+
+        $letter->refresh();
+        $firstToken = $letter->link->token;
+        $this->assertSame('published', $letter->status);
+        $this->assertTrue($letter->expires_at->between($beforePublish->addMinutes(14), now()->addMinutes(16)));
+        $this->assertTrue($letter->link->expires_at->equalTo($letter->expires_at));
+
+        $letter->update(['expiry_minutes' => 120]);
+        $this->actingAs($user)->post("/letters/{$letter->id}/publish")->assertRedirect();
+
+        $letter->refresh();
+        $this->assertNotSame($firstToken, $letter->link->token);
+        $this->assertTrue($letter->expires_at->between(now()->addMinutes(119), now()->addMinutes(121)));
+    }
+
+    public function test_unpublishing_immediately_disables_the_private_link(): void
+    {
+        $user = User::factory()->create();
+        $letter = $this->letter($user, ['expiry_minutes' => 60]);
+
+        $this->actingAs($user)->post("/letters/{$letter->id}/publish")->assertRedirect();
+        $token = $letter->fresh()->link->token;
+        $this->get("/l/{$token}")->assertOk();
+
+        $this->actingAs($user)->post("/letters/{$letter->id}/unpublish")->assertRedirect();
+
+        $letter->refresh();
+        $this->assertSame('unpublished', $letter->status);
+        $this->assertFalse($letter->link->is_active);
+        $this->get("/l/{$token}")->assertNotFound();
+    }
+
+    public function test_storage_usage_counts_all_creator_media_sources(): void
+    {
+        Storage::fake('public');
+        $user = User::factory()->create();
+        $letter = $this->letter($user);
+
+        Storage::disk('public')->put('letters/letter.jpg', str_repeat('a', 100));
+        Storage::disk('public')->put('letters/audio/song.mp3', str_repeat('b', 200));
+        Storage::disk('public')->put('letters/profiles/sender.jpg', str_repeat('c', 300));
+        Storage::disk('public')->put('letters/profiles/recipient.jpg', str_repeat('d', 400));
+        $letter->update([
+            'image_path' => 'letters/letter.jpg',
+            'audio_path' => 'letters/audio/song.mp3',
+            'sender_profile_path' => 'letters/profiles/sender.jpg',
+            'recipient_profile_path' => 'letters/profiles/recipient.jpg',
+        ]);
+
+        $memory = $letter->memories()->create([
+            'title' => 'Memory',
+            'sort_order' => 0,
+            'image_path' => 'letters/memories/legacy.jpg',
+        ]);
+        Storage::disk('public')->put('letters/memories/legacy.jpg', str_repeat('e', 500));
+        Storage::disk('public')->put('letters/memories/gallery.jpg', str_repeat('f', 600));
+        $memory->images()->create(['image_path' => 'letters/memories/gallery.jpg', 'sort_order' => 0]);
+
+        $usage = app(CreatorStorage::class)->usage($user);
+
+        $this->assertSame(2100, $usage['used_bytes']);
+        $this->actingAs($user)
+            ->get('/letters')
+            ->assertOk()
+            ->assertSee('Media storage')
+            ->assertSee('2.1 KB');
+    }
+
+    public function test_letter_uploads_cannot_exceed_storage_allowance_but_replacements_free_space(): void
+    {
+        Storage::fake('public');
+        config(['dearyou.storage_limit_mb' => 1]);
+        $user = User::factory()->create();
+        $letter = $this->letter($user);
+        $existingPath = 'letters/existing.jpg';
+        Storage::disk('public')->put($existingPath, str_repeat('x', 800 * 1024));
+        $letter->update(['image_path' => $existingPath]);
+
+        $this->actingAs($user)
+            ->put("/letters/{$letter->id}", $this->letterPayload([
+                'audio' => UploadedFile::fake()->create('too-large.mp3', 300, 'audio/mpeg'),
+            ]))
+            ->assertSessionHasErrors('media');
+
+        $this->assertNull($letter->fresh()->audio_path);
+
+        $this->actingAs($user)
+            ->put("/letters/{$letter->id}", $this->letterPayload([
+                'image' => UploadedFile::fake()->create('replacement.jpg', 700, 'image/jpeg'),
+            ]))
+            ->assertSessionDoesntHaveErrors();
+
+        $letter->refresh();
+        $this->assertNotSame($existingPath, $letter->image_path);
+        Storage::disk('public')->assertMissing($existingPath);
+        Storage::disk('public')->assertExists($letter->image_path);
+    }
+
+    public function test_memory_uploads_cannot_exceed_storage_allowance(): void
+    {
+        Storage::fake('public');
+        config(['dearyou.storage_limit_mb' => 1]);
+        $user = User::factory()->create();
+        $letter = $this->letter($user);
+        Storage::disk('public')->put('letters/existing.jpg', str_repeat('x', 900 * 1024));
+        $letter->update(['image_path' => 'letters/existing.jpg']);
+
+        $this->actingAs($user)
+            ->post("/letters/{$letter->id}/memories", [
+                'title' => 'Too large',
+                'memory_images' => [
+                    UploadedFile::fake()->create('memory.jpg', 200, 'image/jpeg'),
+                ],
+            ])
+            ->assertSessionHasErrors('media');
+
+        $this->assertDatabaseMissing('letter_memories', ['letter_id' => $letter->id, 'title' => 'Too large']);
+    }
+
+    public function test_over_limit_creator_is_warned_once_and_given_a_grace_period(): void
+    {
+        Storage::fake('public');
+        Notification::fake();
+        config([
+            'dearyou.storage_limit_mb' => 1,
+            'dearyou.storage_cleanup_grace_days' => 7,
+        ]);
+        $user = User::factory()->create();
+        $letter = $this->letter($user);
+        Storage::disk('public')->put('letters/over-limit.jpg', str_repeat('x', 1100 * 1024));
+        $letter->update(['image_path' => 'letters/over-limit.jpg']);
+
+        $this->artisan('dearyou:process-storage')->assertSuccessful();
+
+        $user->refresh();
+        $this->assertNotNull($user->storage_warning_at);
+        $this->assertTrue($user->storage_cleanup_due_at->between(now()->addDays(6), now()->addDays(8)));
+        Notification::assertSentToTimes($user, StorageLimitWarning::class, 1);
+
+        $this->artisan('dearyou:process-storage')->assertSuccessful();
+        Notification::assertSentToTimes($user, StorageLimitWarning::class, 1);
+        Storage::disk('public')->assertExists('letters/over-limit.jpg');
+
+        $this->actingAs($user)
+            ->get('/letters')
+            ->assertOk()
+            ->assertSee('Media storage needs attention')
+            ->assertSee($user->storage_cleanup_due_at->format('F j, Y g:i A'));
+    }
+
+    public function test_cleanup_removes_only_oldest_expired_media_and_preserves_content(): void
+    {
+        Storage::fake('public');
+        Notification::fake();
+        config(['dearyou.storage_limit_mb' => 1]);
+        $user = User::factory()->create([
+            'storage_warning_at' => now()->subDays(8),
+            'storage_cleanup_due_at' => now()->subDay(),
+        ]);
+
+        $active = $this->letter($user, [
+            'title' => 'Active letter',
+            'status' => 'published',
+            'expires_at' => now()->addHour(),
+            'image_path' => 'letters/active.jpg',
+        ]);
+        Storage::disk('public')->put('letters/active.jpg', str_repeat('a', 300 * 1024));
+
+        $oldestExpired = $this->letter($user, [
+            'title' => 'Oldest expired',
+            'body' => 'Keep this private message.',
+            'status' => 'published',
+            'expires_at' => now()->subDays(5),
+            'image_path' => 'letters/oldest.jpg',
+            'audio_path' => 'letters/audio/oldest.mp3',
+        ]);
+        Storage::disk('public')->put('letters/oldest.jpg', str_repeat('b', 300 * 1024));
+        Storage::disk('public')->put('letters/audio/oldest.mp3', str_repeat('c', 100 * 1024));
+        $memory = $oldestExpired->memories()->create(['title' => 'Keep this memory caption', 'sort_order' => 0]);
+        Storage::disk('public')->put('letters/memories/oldest.jpg', str_repeat('d', 100 * 1024));
+        $memoryImage = $memory->images()->create(['image_path' => 'letters/memories/oldest.jpg', 'sort_order' => 0]);
+        $link = $oldestExpired->link()->create(['token' => str_repeat('q', 64), 'is_active' => true]);
+        $response = $oldestExpired->responses()->create([
+            'letter_link_id' => $link->id,
+            'response_value' => 'positive',
+            'message' => 'Keep this response.',
+            'submitted_at' => now(),
+        ]);
+
+        $newerExpired = $this->letter($user, [
+            'title' => 'Newer expired',
+            'status' => 'published',
+            'expires_at' => now()->subDay(),
+            'image_path' => 'letters/newer.jpg',
+        ]);
+        Storage::disk('public')->put('letters/newer.jpg', str_repeat('e', 500 * 1024));
+
+        $this->artisan('dearyou:process-storage')->assertSuccessful();
+
+        Storage::disk('public')->assertExists($active->image_path);
+        Storage::disk('public')->assertExists($newerExpired->image_path);
+        Storage::disk('public')->assertMissing('letters/oldest.jpg');
+        Storage::disk('public')->assertMissing('letters/audio/oldest.mp3');
+        Storage::disk('public')->assertMissing('letters/memories/oldest.jpg');
+
+        $oldestExpired->refresh();
+        $this->assertNull($oldestExpired->image_path);
+        $this->assertNull($oldestExpired->audio_path);
+        $this->assertNotNull($oldestExpired->media_cleaned_at);
+        $this->assertSame('Keep this private message.', $oldestExpired->body);
+        $this->assertDatabaseHas('letter_memories', ['id' => $memory->id, 'title' => 'Keep this memory caption']);
+        $this->assertDatabaseMissing('letter_memory_images', ['id' => $memoryImage->id]);
+        $this->assertDatabaseHas('responses', ['id' => $response->id, 'message' => 'Keep this response.']);
+        $this->assertDatabaseHas('storage_cleanup_logs', [
+            'user_id' => $user->id,
+            'letter_id' => $oldestExpired->id,
+            'files_removed' => 3,
+        ]);
+        $this->assertDatabaseMissing('storage_cleanup_logs', ['letter_id' => $newerExpired->id]);
+        $this->assertNull($user->fresh()->storage_cleanup_due_at);
+        Notification::assertSentTo($user, StorageCleanupCompleted::class);
+    }
+
+    public function test_storage_warning_clears_when_usage_returns_under_limit(): void
+    {
+        Storage::fake('public');
+        Notification::fake();
+        config(['dearyou.storage_limit_mb' => 1]);
+        $user = User::factory()->create([
+            'storage_warning_at' => now()->subDay(),
+            'storage_cleanup_due_at' => now()->addDays(6),
+        ]);
+
+        $this->artisan('dearyou:process-storage')->assertSuccessful();
+
+        $user->refresh();
+        $this->assertNull($user->storage_warning_at);
+        $this->assertNull($user->storage_cleanup_due_at);
+        Notification::assertNothingSent();
     }
 
     public function test_admin_can_view_inbox(): void
@@ -201,7 +776,7 @@ class DearYouFlowTest extends TestCase
         $letter = $this->letter($user);
         $link = $letter->link()->create(['token' => str_repeat('c', 64)]);
         $letter->responses()->create(['letter_link_id' => $link->id, 'response_value' => 'positive', 'message' => 'Lovely', 'submitted_at' => now()]);
-        $this->actingAs($user)->get('/admin/inbox')->assertOk()->assertSee('Lovely');
+        $this->actingAs($user)->get('/inbox')->assertOk()->assertSee('Lovely');
     }
 
     public function test_opening_response_marks_it_read_and_it_can_be_marked_unread(): void
@@ -216,14 +791,14 @@ class DearYouFlowTest extends TestCase
             'submitted_at' => now(),
         ]);
 
-        $this->actingAs($user)->get("/admin/responses/{$response->id}")
+        $this->actingAs($user)->get("/responses/{$response->id}")
             ->assertOk()
             ->assertSee('A private answer');
         $this->assertNotNull($response->fresh()->read_at);
 
         $this->actingAs($user)
-            ->patch("/admin/responses/{$response->id}/unread")
-            ->assertRedirect('/admin/inbox');
+            ->patch("/responses/{$response->id}/unread")
+            ->assertRedirect('/inbox');
         $this->assertNull($response->fresh()->read_at);
     }
 
@@ -232,7 +807,7 @@ class DearYouFlowTest extends TestCase
         $user = User::factory()->create();
 
         $this->actingAs($user)
-            ->get('/admin/letters/create')
+            ->get('/letters/create')
             ->assertOk()
             ->assertSee('Positive response preview')
             ->assertSee('A beautiful new chapter begins.')
@@ -264,7 +839,7 @@ class DearYouFlowTest extends TestCase
             'audio' => UploadedFile::fake()->create('song.mp3', 13 * 1024, 'application/octet-stream'),
         ];
 
-        $this->actingAs($user)->put("/admin/letters/{$letter->id}", $payload)->assertRedirect();
+        $this->actingAs($user)->put("/letters/{$letter->id}", $payload)->assertRedirect();
         $letter->refresh();
         Storage::disk('public')->assertExists($letter->audio_path);
 
@@ -282,7 +857,7 @@ class DearYouFlowTest extends TestCase
         $audioPath = $letter->audio_path;
         unset($payload['audio']);
         $payload['remove_audio'] = 1;
-        $this->actingAs($user)->put("/admin/letters/{$letter->id}", $payload)->assertRedirect();
+        $this->actingAs($user)->put("/letters/{$letter->id}", $payload)->assertRedirect();
         Storage::disk('public')->assertMissing($audioPath);
     }
 
@@ -299,9 +874,9 @@ class DearYouFlowTest extends TestCase
         ]);
 
         $this->actingAs($user)
-            ->from("/admin/responses/{$response->id}")
-            ->delete("/admin/responses/{$response->id}")
-            ->assertRedirect('/admin/inbox')
+            ->from("/responses/{$response->id}")
+            ->delete("/responses/{$response->id}")
+            ->assertRedirect('/inbox')
             ->assertSessionHas('success', 'Response deleted.');
 
         $this->assertDatabaseMissing('responses', ['id' => $response->id]);
@@ -328,12 +903,12 @@ class DearYouFlowTest extends TestCase
             'submitted_at' => now(),
         ]);
 
-        $this->actingAs($user)->get('/admin/inbox?status=unread')
+        $this->actingAs($user)->get('/inbox?status=unread')
             ->assertOk()
             ->assertSee('Owned response')
             ->assertDontSee('Foreign response');
 
-        $this->actingAs($user)->post('/admin/inbox/bulk', [
+        $this->actingAs($user)->post('/inbox/bulk', [
             'response_ids' => [$owned->id, $foreign->id],
             'action' => 'read',
         ])->assertRedirect();
@@ -363,14 +938,14 @@ class DearYouFlowTest extends TestCase
             'image_alt' => 'Our favorite day',
         ];
 
-        $this->actingAs($user)->put("/admin/letters/{$letter->id}", $payload + [
+        $this->actingAs($user)->put("/letters/{$letter->id}", $payload + [
             'image' => UploadedFile::fake()->image('memory.jpg'),
         ])->assertRedirect();
 
         $path = $letter->fresh()->image_path;
         Storage::disk('public')->assertExists($path);
 
-        $this->actingAs($user)->put("/admin/letters/{$letter->id}", $payload + [
+        $this->actingAs($user)->put("/letters/{$letter->id}", $payload + [
             'remove_image' => 1,
         ])->assertRedirect();
 
@@ -399,10 +974,10 @@ class DearYouFlowTest extends TestCase
             'image' => UploadedFile::fake()->createWithContent('playful.gif', $gif),
         ];
 
-        $this->actingAs($user)->put("/admin/letters/{$letter->id}", $payload)->assertRedirect();
+        $this->actingAs($user)->put("/letters/{$letter->id}", $payload)->assertRedirect();
         Storage::disk('public')->assertExists($letter->fresh()->image_path);
 
-        $this->actingAs($user)->post("/admin/letters/{$letter->id}/memories", [
+        $this->actingAs($user)->post("/letters/{$letter->id}/memories", [
             'title' => 'A funny moment',
             'memory_images' => [
                 UploadedFile::fake()->createWithContent('memory.gif', $gif),
@@ -415,12 +990,12 @@ class DearYouFlowTest extends TestCase
 
         $payload['category'] = 'anniversary';
         $payload['image'] = UploadedFile::fake()->create('playful.mp4', 100, 'video/mp4');
-        $this->actingAs($user)->put("/admin/letters/{$letter->id}", $payload)->assertRedirect();
+        $this->actingAs($user)->put("/letters/{$letter->id}", $payload)->assertRedirect();
         $letter->refresh();
         Storage::disk('public')->assertExists($letter->image_path);
         $this->assertStringEndsWith('.mp4', $letter->image_path);
 
-        $this->actingAs($user)->post("/admin/letters/{$letter->id}/memories", [
+        $this->actingAs($user)->post("/letters/{$letter->id}/memories", [
             'title' => 'A video memory',
             'memory_images' => [
                 UploadedFile::fake()->create('memory.mp4', 100, 'video/mp4'),
@@ -432,12 +1007,12 @@ class DearYouFlowTest extends TestCase
         $this->assertStringEndsWith('.mp4', $videoMemory->images->first()->image_path);
 
         $payload['image'] = UploadedFile::fake()->create('telegram-animation.webm', 100, 'video/webm');
-        $this->actingAs($user)->put("/admin/letters/{$letter->id}", $payload)->assertRedirect();
+        $this->actingAs($user)->put("/letters/{$letter->id}", $payload)->assertRedirect();
         $letter->refresh();
         Storage::disk('public')->assertExists($letter->image_path);
         $this->assertStringEndsWith('.webm', $letter->image_path);
 
-        $this->actingAs($user)->post("/admin/letters/{$letter->id}/memories", [
+        $this->actingAs($user)->post("/letters/{$letter->id}/memories", [
             'title' => 'A Telegram animation',
             'memory_images' => [
                 UploadedFile::fake()->create('telegram-memory.webm', 100, 'video/webm'),
@@ -452,7 +1027,7 @@ class DearYouFlowTest extends TestCase
         $link = $letter->link()->create(['token' => str_repeat('v', 64), 'is_active' => true]);
         $this->get("/l/{$link->token}")
             ->assertOk()
-            ->assertSee('<video src="'.Storage::url($letter->image_path).'" autoplay muted loop playsinline', false)
+            ->assertSee('<video src="'.Storage::url($letter->image_path).'" preload="metadata" muted loop playsinline data-letter-video data-autoplay-when-visible', false)
             ->assertSee('data-lightbox-type="video"', false);
     }
 
@@ -520,14 +1095,14 @@ class DearYouFlowTest extends TestCase
             'recipient_profile' => UploadedFile::fake()->image('recipient.jpg'),
         ];
 
-        $this->actingAs($user)->put("/admin/letters/{$letter->id}", $payload)->assertRedirect();
+        $this->actingAs($user)->put("/letters/{$letter->id}", $payload)->assertRedirect();
         $letter->refresh();
         Storage::disk('public')->assertExists($letter->sender_profile_path);
         Storage::disk('public')->assertExists($letter->recipient_profile_path);
 
         $senderPath = $letter->sender_profile_path;
         $recipientPath = $letter->recipient_profile_path;
-        $this->actingAs($user)->delete("/admin/letters/{$letter->id}")->assertRedirect('/admin/letters');
+        $this->actingAs($user)->delete("/letters/{$letter->id}")->assertRedirect('/letters');
 
         Storage::disk('public')->assertMissing($senderPath);
         Storage::disk('public')->assertMissing($recipientPath);
@@ -540,7 +1115,7 @@ class DearYouFlowTest extends TestCase
         $letter = $this->letter($user, ['category' => 'anniversary', 'status' => 'published']);
         $link = $letter->link()->create(['token' => str_repeat('i', 64), 'is_active' => true]);
 
-        $this->actingAs($user)->post("/admin/letters/{$letter->id}/memories", [
+        $this->actingAs($user)->post("/letters/{$letter->id}/memories", [
             'title' => 'Our first trip',
             'memory_date' => '2025-12-20',
             'caption' => 'A day we still talk about.',
@@ -564,7 +1139,7 @@ class DearYouFlowTest extends TestCase
             ->assertSee('data-lightbox-image', false);
 
         $removedImage = $memory->images->first();
-        $this->actingAs($user)->put("/admin/memories/{$memory->id}", [
+        $this->actingAs($user)->put("/memories/{$memory->id}", [
             'title' => 'Our first trip',
             'memory_date' => '2025-12-20',
             'caption' => 'A day we still talk about.',
@@ -577,20 +1152,20 @@ class DearYouFlowTest extends TestCase
         $this->assertCount(2, $memory->images);
 
         $secondMemory = $letter->memories()->create(['title' => 'Another day', 'sort_order' => 1]);
-        $this->actingAs($user)->patchJson("/admin/letters/{$letter->id}/memories/reorder", [
+        $this->actingAs($user)->patchJson("/letters/{$letter->id}/memories/reorder", [
             'order' => [$secondMemory->id, $memory->id],
         ])->assertNoContent();
         $this->assertSame(0, $secondMemory->fresh()->sort_order);
         $this->assertSame(1, $memory->fresh()->sort_order);
 
         $images = $memory->images()->get();
-        $this->actingAs($user)->patchJson("/admin/memories/{$memory->id}/images/reorder", [
+        $this->actingAs($user)->patchJson("/memories/{$memory->id}/images/reorder", [
             'order' => $images->pluck('id')->reverse()->values()->all(),
         ])->assertNoContent();
         $this->assertSame($images->last()->id, $memory->images()->first()->id);
 
         $remainingPaths = $memory->images->pluck('image_path');
-        $this->actingAs($user)->delete("/admin/memories/{$memory->id}")->assertRedirect();
+        $this->actingAs($user)->delete("/memories/{$memory->id}")->assertRedirect();
         $remainingPaths->each(fn ($path) => Storage::disk('public')->assertMissing($path));
     }
 
@@ -600,7 +1175,7 @@ class DearYouFlowTest extends TestCase
         $this->letter($user, ['title' => 'Birthday for Taylor', 'category' => 'birthday', 'status' => 'published']);
         $this->letter($user, ['title' => 'Private apology', 'category' => 'apology', 'status' => 'draft']);
 
-        $this->actingAs($user)->get('/admin/letters?search=Taylor&status=published&category=birthday')
+        $this->actingAs($user)->get('/letters?search=Taylor&status=published&category=birthday')
             ->assertOk()
             ->assertSee('Birthday for Taylor')
             ->assertDontSee('Private apology');
@@ -615,7 +1190,7 @@ class DearYouFlowTest extends TestCase
         ]);
         $link = $letter->link()->create(['token' => str_repeat('j', 64), 'is_active' => true]);
 
-        $this->actingAs($user)->get("/admin/letters/{$letter->id}/edit")
+        $this->actingAs($user)->get("/letters/{$letter->id}/edit")
             ->assertOk()
             ->assertSee('Handwritten')
             ->assertSee('data-font-select', false)
@@ -650,7 +1225,7 @@ class DearYouFlowTest extends TestCase
         ];
 
         $this->actingAs($user)
-            ->put("/admin/letters/{$letter->id}", $payload)
+            ->put("/letters/{$letter->id}", $payload)
             ->assertRedirect();
 
         $this->assertSame('gift', $letter->fresh()->envelope_style);
@@ -662,11 +1237,11 @@ class DearYouFlowTest extends TestCase
             ->assertSee('bi-gem', false);
 
         $this->actingAs($user)
-            ->put("/admin/letters/{$letter->id}", array_merge($payload, ['envelope_style' => 'unknown']))
+            ->put("/letters/{$letter->id}", array_merge($payload, ['envelope_style' => 'unknown']))
             ->assertSessionHasErrors('envelope_style');
 
         $this->actingAs($user)
-            ->put("/admin/letters/{$letter->id}", array_merge($payload, ['seal_style' => 'unknown']))
+            ->put("/letters/{$letter->id}", array_merge($payload, ['seal_style' => 'unknown']))
             ->assertSessionHasErrors('seal_style');
     }
 
@@ -677,12 +1252,12 @@ class DearYouFlowTest extends TestCase
         $letter = $this->letter($user, ['title' => 'A private detail page']);
         $foreignLetter = $this->letter($other, ['title' => 'Not yours']);
 
-        $this->actingAs($user)->get("/admin/letters/{$letter->id}")
+        $this->actingAs($user)->get("/letters/{$letter->id}")
             ->assertOk()
             ->assertSee('A private detail page')
             ->assertSee('Edit letter');
 
-        $this->actingAs($user)->get("/admin/letters/{$foreignLetter->id}")
+        $this->actingAs($user)->get("/letters/{$foreignLetter->id}")
             ->assertForbidden();
     }
 
@@ -695,20 +1270,20 @@ class DearYouFlowTest extends TestCase
         Storage::disk('public')->put('letters/delete-me.jpg', 'image');
 
         $this->actingAs($user)
-            ->get('/admin/letters')
+            ->get('/letters')
             ->assertOk()
-            ->assertSee(route('admin.letters.destroy', $letter), false)
+            ->assertSee(route('letters.destroy', $letter), false)
             ->assertSee('Delete');
 
         $this->actingAs($user)
-            ->get("/admin/letters/{$letter->id}")
+            ->get("/letters/{$letter->id}")
             ->assertOk()
-            ->assertSee(route('admin.letters.destroy', $letter), false)
+            ->assertSee(route('letters.destroy', $letter), false)
             ->assertSee('Delete letter');
 
         $this->actingAs($user)
-            ->delete("/admin/letters/{$letter->id}")
-            ->assertRedirect('/admin/letters')
+            ->delete("/letters/{$letter->id}")
+            ->assertRedirect('/letters')
             ->assertSessionHas('success', 'Letter deleted.');
 
         $this->assertSoftDeleted($letter);
@@ -717,15 +1292,89 @@ class DearYouFlowTest extends TestCase
 
     public function test_admin_can_update_profile_with_current_password(): void
     {
+        Notification::fake();
         $user = User::factory()->create(['password' => 'OldPassword1']);
 
-        $this->actingAs($user)->put('/admin/account/profile', [
+        $this->actingAs($user)->put('/account/profile', [
             'name' => 'New Admin',
             'email' => 'new@example.com',
             'current_password' => 'OldPassword1',
-        ])->assertRedirect();
+        ])->assertRedirect('/verify-email');
 
         $this->assertDatabaseHas('users', ['id' => $user->id, 'name' => 'New Admin', 'email' => 'new@example.com']);
+        $this->assertFalse($user->fresh()->hasVerifiedEmail());
+        Notification::assertSentTo($user, VerifyEmail::class);
+    }
+
+    public function test_creator_can_upload_replace_and_remove_a_profile_picture(): void
+    {
+        Storage::fake('public');
+        $user = User::factory()->create(['password' => 'OldPassword1']);
+
+        $this->actingAs($user)->put('/account/profile', [
+            'name' => $user->name,
+            'email' => $user->email,
+            'current_password' => 'OldPassword1',
+            'avatar' => UploadedFile::fake()->image('profile.jpg', 400, 400),
+        ])->assertRedirect();
+
+        $firstAvatar = $user->fresh()->avatar_path;
+        $this->assertNotNull($firstAvatar);
+        Storage::disk('public')->assertExists($firstAvatar);
+
+        $this->actingAs($user)->get('/')
+            ->assertOk()
+            ->assertSee(Storage::url($firstAvatar), false);
+
+        $this->actingAs($user)->put('/account/profile', [
+            'name' => $user->name,
+            'email' => $user->email,
+            'current_password' => 'OldPassword1',
+            'avatar' => UploadedFile::fake()->image('replacement.png', 300, 300),
+        ])->assertRedirect();
+
+        $secondAvatar = $user->fresh()->avatar_path;
+        $this->assertNotSame($firstAvatar, $secondAvatar);
+        Storage::disk('public')->assertMissing($firstAvatar);
+        Storage::disk('public')->assertExists($secondAvatar);
+
+        $this->actingAs($user)->put('/account/profile', [
+            'name' => $user->name,
+            'email' => $user->email,
+            'current_password' => 'OldPassword1',
+            'remove_avatar' => 1,
+        ])->assertRedirect();
+
+        $this->assertNull($user->fresh()->avatar_path);
+        Storage::disk('public')->assertMissing($secondAvatar);
+    }
+
+    public function test_creator_navigation_is_shared_and_advanced_api_controls_are_hidden(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->get('/')
+            ->assertOk()
+            ->assertSee('data-user-navbar', false)
+            ->assertSee('My DearYou');
+
+        $this->actingAs($user)->get('/account')
+            ->assertOk()
+            ->assertSee('data-user-navbar', false)
+            ->assertSee('Profile picture')
+            ->assertDontSee('Advanced: API access');
+    }
+
+    public function test_logout_returns_the_user_to_the_public_homepage(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)
+            ->post('/logout')
+            ->assertRedirect('/')
+            ->assertSessionHas('success', 'You have been logged out.');
+
+        $this->assertGuest();
     }
 
     public function test_admin_can_change_password_and_api_tokens_are_revoked(): void
@@ -733,7 +1382,7 @@ class DearYouFlowTest extends TestCase
         $user = User::factory()->create(['password' => 'OldPassword1']);
         $user->createToken('test');
 
-        $this->actingAs($user)->put('/admin/account/password', [
+        $this->actingAs($user)->put('/account/password', [
             'current_password' => 'OldPassword1',
             'password' => 'NewPassword2',
             'password_confirmation' => 'NewPassword2',
@@ -747,12 +1396,330 @@ class DearYouFlowTest extends TestCase
     {
         $user = User::factory()->create(['password' => 'OldPassword1']);
 
-        $this->actingAs($user)->put('/admin/account/password', [
+        $this->actingAs($user)->put('/account/password', [
             'current_password' => 'wrong-password',
             'password' => 'NewPassword2',
             'password_confirmation' => 'NewPassword2',
         ])->assertSessionHasErrors('current_password');
 
         $this->assertTrue(Hash::check('OldPassword1', $user->fresh()->password));
+    }
+
+    public function test_only_platform_admins_can_manage_platform_settings(): void
+    {
+        $creator = User::factory()->create();
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+
+        $this->actingAs($creator)->get('/admin/settings')->assertForbidden();
+
+        $this->actingAs($admin)->put('/admin/settings', [
+            'allowed_expiry_minutes' => [15, 30],
+            'default_expiry_minutes' => 30,
+            'storage_limit_mb' => 400,
+            'cleanup_grace_days' => 10,
+            'cleanup_enabled' => 1,
+            'cleanup_policy' => 'oldest_expired',
+            'enabled_categories' => ['custom', 'birthday'],
+            'letter_media_limit_mb' => 8,
+            'audio_limit_mb' => 20,
+            'profile_image_limit_mb' => 4,
+            'memory_files_per_upload' => 6,
+        ])->assertRedirect()->assertSessionHas('success');
+
+        $this->actingAs($creator)->get('/letters/create')
+            ->assertOk()
+            ->assertSee('15 minutes')
+            ->assertSee('30 minutes')
+            ->assertDontSee('2 hours')
+            ->assertSee('Custom')
+            ->assertSee('Birthday')
+            ->assertDontSee('Confession')
+            ->assertSee('up to 8 MB')
+            ->assertSee('up to 20 MB');
+
+        $this->actingAs($admin)->get('/admin/settings')
+            ->assertOk()
+            ->assertSee('Creation upload limits')
+            ->assertSee('value="6"', false);
+
+        $this->assertSame(400 * 1024 * 1024, app(CreatorStorage::class)->limitBytes());
+        $this->assertSame(['custom', 'birthday'], app(PlatformSettings::class)->enabledCategories());
+        $this->assertSame(6, app(PlatformSettings::class)->memoryFilesPerUpload());
+        $this->assertDatabaseHas('moderation_audits', [
+            'admin_user_id' => $admin->id,
+            'action' => 'platform_settings_updated',
+        ]);
+    }
+
+    public function test_platform_settings_accept_browser_string_values_and_show_validation_feedback(): void
+    {
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+
+        $this->actingAs($admin)->put('/admin/settings', [
+            'allowed_expiry_minutes' => ['15', '60'],
+            'default_expiry_minutes' => '60',
+            'storage_limit_mb' => '250',
+            'cleanup_grace_days' => '7',
+            'cleanup_enabled' => '1',
+            'cleanup_policy' => 'oldest_expired',
+            'enabled_categories' => ['confession', 'birthday'],
+            'letter_media_limit_mb' => '10',
+            'audio_limit_mb' => '20',
+            'profile_image_limit_mb' => '5',
+            'memory_files_per_upload' => '5',
+        ])->assertRedirect()->assertSessionHas('success');
+
+        $this->actingAs($admin)->from('/admin/settings')->put('/admin/settings', [
+            'allowed_expiry_minutes' => ['15'],
+            'default_expiry_minutes' => '15',
+            'storage_limit_mb' => '0',
+            'cleanup_grace_days' => '7',
+            'cleanup_policy' => 'oldest_expired',
+            'enabled_categories' => ['confession'],
+            'letter_media_limit_mb' => '10',
+            'audio_limit_mb' => '20',
+            'profile_image_limit_mb' => '5',
+            'memory_files_per_upload' => '5',
+        ])->assertRedirect('/admin/settings')
+            ->assertSessionHasErrors('storage_limit_mb');
+    }
+
+    public function test_creation_settings_control_categories_and_upload_limits(): void
+    {
+        Storage::fake('public');
+        app(PlatformSettings::class)->update([
+            'enabled_categories' => ['custom'],
+            'letter_media_limit_mb' => 2,
+            'audio_limit_mb' => 3,
+            'profile_image_limit_mb' => 1,
+            'memory_files_per_upload' => 2,
+        ]);
+
+        $creator = User::factory()->create();
+
+        $this->actingAs($creator)->get('/account')
+            ->assertOk()
+            ->assertSee('up to 1 MB');
+
+        $this->actingAs($creator)->put('/account/profile', [
+            'name' => $creator->name,
+            'email' => $creator->email,
+            'current_password' => 'password',
+            'avatar' => UploadedFile::fake()->image('large-profile.jpg')->size(2 * 1024),
+        ])->assertSessionHasErrors('avatar');
+
+        $this->actingAs($creator)->post('/letters', $this->letterPayload([
+            'category' => 'birthday',
+        ]))->assertSessionHasErrors('category');
+
+        $this->actingAs($creator)->post('/letters', $this->letterPayload([
+            'image' => UploadedFile::fake()->create('large.mp4', 3 * 1024, 'video/mp4'),
+        ]))->assertSessionHasErrors('image');
+
+        $this->actingAs($creator)->post('/letters', $this->letterPayload([
+            'audio' => UploadedFile::fake()->create('large.mp3', 4 * 1024, 'audio/mpeg'),
+        ]))->assertSessionHasErrors('audio');
+
+        $existing = $this->letter($creator, ['category' => 'confession']);
+        $this->actingAs($creator)->put("/letters/{$existing->id}", $this->letterPayload([
+            'category' => 'confession',
+            'title' => 'Still editable',
+        ]))->assertSessionDoesntHaveErrors();
+
+        $memoryLetter = $this->letter($creator, ['category' => 'custom']);
+        $this->actingAs($creator)->post("/letters/{$memoryLetter->id}/memories", [
+            'title' => 'Too many at once',
+            'memory_images' => [
+                UploadedFile::fake()->image('one.jpg'),
+                UploadedFile::fake()->image('two.jpg'),
+                UploadedFile::fake()->image('three.jpg'),
+            ],
+        ])->assertSessionHasErrors('memory_images');
+    }
+
+    public function test_admin_can_disable_public_letter_access_and_action_is_audited(): void
+    {
+        $creator = User::factory()->create();
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+        $letter = $this->letter($creator, [
+            'status' => 'published',
+            'expires_at' => now()->addHour(),
+        ]);
+        $link = $letter->link()->create([
+            'token' => str_repeat('m', 64),
+            'is_active' => true,
+            'expires_at' => now()->addHour(),
+        ]);
+
+        $this->get("/l/{$link->token}")->assertOk();
+
+        $this->actingAs($admin)->patch("/admin/moderation/letters/{$letter->id}/disable", [
+            'reason' => 'Reported public safety concern.',
+        ])->assertRedirect()->assertSessionHas('success');
+
+        $this->get("/l/{$link->token}")->assertNotFound();
+        $this->assertNotNull($letter->fresh()->moderation_disabled_at);
+        $this->assertDatabaseHas('moderation_audits', [
+            'letter_id' => $letter->id,
+            'action' => 'letter_disabled',
+        ]);
+    }
+
+    public function test_admin_must_log_a_reason_to_reveal_letter_content_and_never_sees_response_text(): void
+    {
+        $creator = User::factory()->create();
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+        $letter = $this->letter($creator, [
+            'title' => 'Moderation metadata title',
+            'body' => 'Private letter body for review.',
+        ]);
+        $link = $letter->link()->create(['token' => str_repeat('n', 64), 'is_active' => true]);
+        Response::create([
+            'letter_id' => $letter->id,
+            'letter_link_id' => $link->id,
+            'response_value' => 'positive',
+            'message' => 'A recipient reply that admins must never see.',
+            'submitted_at' => now(),
+        ]);
+
+        $this->actingAs($admin)->get("/admin/moderation/letters/{$letter->id}")
+            ->assertOk()
+            ->assertSee('Moderation metadata title')
+            ->assertDontSee('Private letter body for review.')
+            ->assertDontSee('A recipient reply that admins must never see.');
+
+        $this->actingAs($admin)
+            ->followingRedirects()
+            ->post("/admin/moderation/letters/{$letter->id}/reveal", [
+                'reason' => 'Investigating a reported safety concern.',
+            ])
+            ->assertOk()
+            ->assertSee('Private letter body for review.')
+            ->assertDontSee('A recipient reply that admins must never see.');
+
+        $this->assertDatabaseHas('moderation_audits', [
+            'letter_id' => $letter->id,
+            'action' => 'letter_content_revealed',
+        ]);
+    }
+
+    public function test_admin_can_soft_delete_and_restore_a_letter_without_removing_media(): void
+    {
+        Storage::fake('public');
+        Storage::disk('public')->put('letters/kept.jpg', 'image');
+
+        $creator = User::factory()->create();
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+        $letter = $this->letter($creator, ['image_path' => 'letters/kept.jpg']);
+
+        $this->actingAs($admin)->delete("/admin/moderation/letters/{$letter->id}", [
+            'reason' => 'Temporarily removed for moderation review.',
+        ])->assertRedirect('/admin/moderation/letters');
+
+        $this->assertSoftDeleted($letter);
+        Storage::disk('public')->assertExists('letters/kept.jpg');
+
+        $this->actingAs($admin)->patch("/admin/moderation/letters/{$letter->id}/restore", [
+            'reason' => 'Review completed and restriction cleared.',
+        ])->assertRedirect();
+
+        $this->assertNotSoftDeleted($letter);
+        $this->assertSame(2, ModerationAudit::where('letter_id', $letter->id)->count());
+    }
+
+    public function test_platform_admin_can_soft_delete_and_restore_a_user_without_losing_data(): void
+    {
+        Storage::fake('public');
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+        $creator = User::factory()->create();
+        $letter = $this->letter($creator, ['image_path' => 'letters/account-kept.jpg']);
+        Storage::disk('public')->put('letters/account-kept.jpg', 'image');
+
+        $this->actingAs($admin)->delete("/admin/users/{$creator->id}", [
+            'reason' => 'Requested account moderation review.',
+        ])->assertRedirect('/admin/users');
+
+        $this->assertSoftDeleted($creator);
+        $this->assertDatabaseHas('letters', ['id' => $letter->id, 'user_id' => $creator->id]);
+        Storage::disk('public')->assertExists('letters/account-kept.jpg');
+
+        $this->actingAs($admin)->patch("/admin/users/{$creator->id}/restore", [
+            'reason' => 'Account review completed successfully.',
+        ])->assertRedirect();
+
+        $this->assertNotSoftDeleted($creator);
+        $this->assertDatabaseHas('moderation_audits', [
+            'target_user_id' => $creator->id,
+            'action' => 'user_soft_deleted',
+        ]);
+        $this->assertDatabaseHas('moderation_audits', [
+            'target_user_id' => $creator->id,
+            'action' => 'user_restored',
+        ]);
+    }
+
+    public function test_suspended_and_deleted_creators_have_no_public_letters(): void
+    {
+        $creator = User::factory()->create();
+        $letter = $this->letter($creator, [
+            'status' => 'published',
+            'expires_at' => now()->addHour(),
+        ]);
+        $link = $letter->link()->create([
+            'token' => str_repeat('q', 64),
+            'is_active' => true,
+            'expires_at' => now()->addHour(),
+        ]);
+
+        $this->get("/l/{$link->token}")->assertOk();
+
+        $creator->update(['disabled_at' => now()]);
+        $this->get("/l/{$link->token}")->assertNotFound();
+
+        $creator->update(['disabled_at' => null]);
+        $creator->delete();
+        $this->get("/l/{$link->token}")->assertNotFound();
+
+        $creator->restore();
+        $this->get("/l/{$link->token}")->assertOk();
+    }
+
+    public function test_admin_cannot_delete_self_or_the_last_administrator(): void
+    {
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+
+        $this->actingAs($admin)->delete("/admin/users/{$admin->id}", [
+            'reason' => 'This should never be allowed.',
+        ])->assertStatus(422);
+
+        $this->assertNotSoftDeleted($admin);
+    }
+
+    public function test_publishing_is_rate_limited_per_creator(): void
+    {
+        $creator = User::factory()->create();
+        $letter = $this->letter($creator);
+
+        foreach (range(1, 10) as $attempt) {
+            $this->actingAs($creator)->post("/letters/{$letter->id}/publish")->assertRedirect();
+        }
+
+        $this->actingAs($creator)->post("/letters/{$letter->id}/publish")->assertTooManyRequests();
+    }
+
+    public function test_production_readiness_command_accepts_a_complete_configuration(): void
+    {
+        config([
+            'app.key' => 'base64:'.base64_encode(random_bytes(32)),
+            'app.debug' => false,
+            'app.url' => 'https://dearyou.test',
+            'mail.default' => 'smtp',
+            'mail.from.address' => 'hello@dearyou.test',
+            'queue.default' => 'database',
+        ]);
+
+        $this->artisan('dearyou:check-production', ['--strict' => true])
+            ->expectsOutputToContain('DearYou is ready')
+            ->assertSuccessful();
     }
 }

@@ -14,6 +14,13 @@
     <aside class="sidebar">
         <a class="brand d-flex align-items-center gap-2 mb-4" href="{{ route('admin.dashboard') }}"><img class="sidebar-brand-logo" src="{{ asset('assets/dearyou/dearyou-floral-envelope-logo-web.webp') }}" alt=""><span>DearYou</span></a>
         <nav class="nav flex-column gap-2">
+            @if(auth()->user()->isAdmin())
+                <a class="nav-link {{ request()->routeIs('admin.platform') ? 'active' : '' }}" href="{{ route('admin.platform') }}"><i class="bi bi-bar-chart"></i> Platform</a>
+                <a class="nav-link {{ request()->routeIs('admin.users.*') ? 'active' : '' }}" href="{{ route('admin.users.index') }}"><i class="bi bi-people"></i> Users</a>
+                <a class="nav-link {{ request()->routeIs('admin.moderation.*') ? 'active' : '' }}" href="{{ route('admin.moderation.index') }}"><i class="bi bi-shield-exclamation"></i> Moderation</a>
+                <a class="nav-link {{ request()->routeIs('admin.settings.*') ? 'active' : '' }}" href="{{ route('admin.settings.edit') }}"><i class="bi bi-sliders"></i> Settings</a>
+                <a class="nav-link {{ request()->routeIs('admin.audit') ? 'active' : '' }}" href="{{ route('admin.audit') }}"><i class="bi bi-journal-check"></i> Audit log</a>
+            @endif
             <a class="nav-link {{ request()->routeIs('admin.dashboard') ? 'active' : '' }}" href="{{ route('admin.dashboard') }}"><i class="bi bi-grid"></i> Dashboard</a>
             <a class="nav-link {{ request()->routeIs('admin.letters.*') ? 'active' : '' }}" href="{{ route('admin.letters.index') }}"><i class="bi bi-envelope-paper-heart"></i> Letters</a>
             @php($navUnread = \App\Models\Response::whereNull('read_at')->whereHas('letter', fn($query) => $query->where('user_id', auth()->id()))->count())

@@ -6,8 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\LetterRequest;
 use App\Models\Letter;
 use App\Models\Response;
+use App\Support\LetterPublisher;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 
 class LetterController extends Controller
 {
@@ -27,7 +27,7 @@ class LetterController extends Controller
 
     public function show(Letter $letter)
     {
-        $this->own($letter);
+        $this->authorize('view', $letter);
         $this->requireAbility('letters:read');
 
         return $letter->load('link', 'responses', 'memories.images');
@@ -35,7 +35,7 @@ class LetterController extends Controller
 
     public function update(LetterRequest $request, Letter $letter)
     {
-        $this->own($letter);
+        $this->authorize('update', $letter);
         $this->requireAbility('letters:write');
         $letter->update($request->validated());
 
@@ -44,7 +44,7 @@ class LetterController extends Controller
 
     public function destroy(Letter $letter)
     {
-        $this->own($letter);
+        $this->authorize('delete', $letter);
         $this->requireAbility('letters:write');
         $memoryImages = $letter->memories()->with('images')->get()
             ->flatMap(fn ($memory) => $memory->images->pluck('image_path'))
@@ -70,28 +70,20 @@ class LetterController extends Controller
         return Response::with('letter')->whereHas('letter', fn ($q) => $q->where('user_id', auth()->id()))->latest()->paginate();
     }
 
-    public function publish(Letter $letter)
+    public function publish(Letter $letter, LetterPublisher $publisher)
     {
-        $this->own($letter);
+        $this->authorize('update', $letter);
         $this->requireAbility('letters:write');
-        $letter->update(['status' => 'published', 'published_at' => now()]);
-        $letter->link()->updateOrCreate([], ['token' => Str::random(64), 'is_active' => true]);
 
-        return $letter->load('link');
+        return $publisher->publish($letter);
     }
 
-    public function unpublish(Letter $letter)
+    public function unpublish(Letter $letter, LetterPublisher $publisher)
     {
-        $this->own($letter);
+        $this->authorize('update', $letter);
         $this->requireAbility('letters:write');
-        $letter->update(['status' => 'unpublished']);
 
-        return $letter;
-    }
-
-    private function own(Letter $letter): void
-    {
-        abort_unless($letter->user_id === auth()->id(), 403);
+        return $publisher->unpublish($letter);
     }
 
     private function requireAbility(string $ability): void

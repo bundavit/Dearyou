@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@extends(auth()->user()->isAdmin() ? 'layouts.app' : 'layouts.creator')
 @section('title','Inbox | DearYou')
 @section('content')
 <div class="admin-page-header">
@@ -18,7 +18,7 @@
 </div>
 
 @if($responses->isNotEmpty())
-<form method="post" action="{{ route('admin.inbox.bulk') }}">
+<form method="post" action="{{ route(\App\Support\CreatorRoute::name('inbox.bulk')) }}">
     @csrf
     <div class="bulk-bar mb-3">
         <label class="form-check mb-0"><input class="form-check-input" type="checkbox" data-select-all> Select all</label>
@@ -35,13 +35,13 @@
                     @unless($response->read_at)<span class="unread-dot" aria-label="Unread"></span>@endunless
                     <strong>{{ $response->letter->recipientLabel() }}</strong>
                     <span>replied to</span>
-                    <a href="{{ route('admin.letters.edit',$response->letter) }}">{{ $response->letter->title }}</a>
+                    <a href="{{ route(\App\Support\CreatorRoute::name('letters.edit'),$response->letter) }}">{{ $response->letter->title }}</a>
                 </div>
                 <p class="response-value">{{ ucfirst($response->response_value) }}</p>
                 @if($response->message)<p class="response-preview">{{ Str::limit($response->message, 140) }}</p>@endif
                 <small>{{ $response->submitted_at->diffForHumans() }}</small>
             </div>
-            <a class="btn btn-sm {{ $response->read_at ? 'btn-outline-secondary' : 'btn-dearyou' }}" href="{{ route('admin.responses.show',$response) }}"><i class="bi bi-eye"></i> View</a>
+            <a class="btn btn-sm {{ $response->read_at ? 'btn-outline-secondary' : 'btn-dearyou' }}" href="{{ route(\App\Support\CreatorRoute::name('responses.show'),$response) }}"><i class="bi bi-eye"></i> View</a>
         </article>
     @endforeach
 </form>

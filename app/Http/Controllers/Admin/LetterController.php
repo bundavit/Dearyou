@@ -5,9 +5,12 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\LetterRequest;
 use App\Models\Letter;
+use App\Support\CreatorRoute;
+use App\Support\CreatorStorage;
+use App\Support\LetterPublisher;
+use App\Support\PlatformSettings;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 
 class LetterController extends Controller
 {
@@ -34,38 +37,54 @@ class LetterController extends Controller
         ]);
     }
 
-    public function create()
+    public function create(PlatformSettings $settings)
     {
-        return view('admin.letters.form', ['letter' => new Letter]);
+        return view('admin.letters.form', [
+            'letter' => new Letter(['expiry_minutes' => $settings->defaultExpiryMinutes()]),
+            'expiryOptions' => $settings->expiryOptions(),
+            'creationSettings' => $settings->all(),
+            'categories' => $settings->categoryOptions(),
+        ]);
     }
 
-    public function store(LetterRequest $request)
+    public function store(LetterRequest $request, CreatorStorage $storage)
     {
+        $storage->ensureWithinQuota($request->user(), $this->uploadedFiles($request));
         $data = $this->letterData($request);
         $letter = auth()->user()->letters()->create($data);
 
-        return redirect()->route('admin.letters.edit', $letter)->with('success', 'Letter created.');
+        return redirect()->route(CreatorRoute::name('letters.edit'), $letter)->with('success', 'Letter created.');
     }
 
     public function show(Letter $letter)
     {
-        $this->own($letter);
+        $this->authorize('view', $letter);
 
         return view('admin.letters.show', [
             'letter' => $letter->load(['link', 'memories.images'])->loadCount('responses'),
         ]);
     }
 
-    public function edit(Letter $letter)
+    public function edit(Letter $letter, PlatformSettings $settings)
     {
-        $this->own($letter);
+        $this->authorize('update', $letter);
 
-        return view('admin.letters.form', ['letter' => $letter->load('memories.images')]);
+        return view('admin.letters.form', [
+            'letter' => $letter->load('memories.images'),
+            'expiryOptions' => $settings->expiryOptions(),
+            'creationSettings' => $settings->all(),
+            'categories' => $settings->categoryOptions($letter->category),
+        ]);
     }
 
-    public function update(LetterRequest $request, Letter $letter)
+    public function update(LetterRequest $request, Letter $letter, CreatorStorage $storage)
     {
-        $this->own($letter);
+        $this->authorize('update', $letter);
+        $storage->ensureWithinQuota(
+            $request->user(),
+            $this->uploadedFiles($request),
+            $this->replacedPaths($request, $letter),
+        );
         $letter->update($this->letterData($request, $letter));
 
         return back()->with('success', 'Letter saved.');
@@ -73,49 +92,48 @@ class LetterController extends Controller
 
     public function preview(Letter $letter)
     {
-        $this->own($letter);
+        $this->authorize('view', $letter);
 
         $letter->load('memories.images');
 
         return view('public.letter', compact('letter'))->with('preview', true);
     }
 
-    public function publish(Letter $letter)
+    public function publish(Letter $letter, LetterPublisher $publisher)
     {
-        $this->own($letter);
-        $letter->update(['status' => 'published', 'published_at' => now()]);
-        $letter->link()->updateOrCreate([], ['token' => Str::random(64), 'is_active' => true, 'expires_at' => $letter->expires_at]);
+        $this->authorize('update', $letter);
+        $publisher->publish($letter);
 
-        return back()->with('success', 'Letter published.');
+        return back()->with('success', "Letter published for {$letter->expiryDurationLabel()}.");
     }
 
-    public function unpublish(Letter $letter)
+    public function unpublish(Letter $letter, LetterPublisher $publisher)
     {
-        $this->own($letter);
-        $letter->update(['status' => 'unpublished']);
+        $this->authorize('update', $letter);
+        $publisher->unpublish($letter);
 
         return back()->with('success', 'Letter unpublished.');
     }
 
-    public function regenerate(Letter $letter)
+    public function regenerate(Letter $letter, LetterPublisher $publisher)
     {
-        $this->own($letter);
-        $letter->link()->updateOrCreate([], ['token' => Str::random(64), 'is_active' => true, 'last_regenerated_at' => now()]);
+        $this->authorize('update', $letter);
+        $publisher->regenerate($letter);
 
-        return back()->with('success', 'Private link regenerated.');
+        return back()->with('success', "Private link regenerated for {$letter->expiryDurationLabel()}.");
     }
 
-    public function disable(Letter $letter)
+    public function disable(Letter $letter, LetterPublisher $publisher)
     {
-        $this->own($letter);
-        $letter->link?->update(['is_active' => false]);
+        $this->authorize('update', $letter);
+        $publisher->disable($letter);
 
         return back()->with('success', 'Private link disabled.');
     }
 
     public function destroy(Letter $letter)
     {
-        $this->own($letter);
+        $this->authorize('delete', $letter);
         $memoryImages = $letter->memories()->with('images')->get()
             ->flatMap(fn ($memory) => $memory->images->pluck('image_path'))
             ->all();
@@ -130,12 +148,7 @@ class LetterController extends Controller
         ]));
         $letter->delete();
 
-        return redirect()->route('admin.letters.index')->with('success', 'Letter deleted.');
-    }
-
-    private function own(Letter $letter): void
-    {
-        abort_unless($letter->user_id === auth()->id(), 403);
+        return redirect()->route(CreatorRoute::name('letters.index'))->with('success', 'Letter deleted.');
     }
 
     private function letterData(LetterRequest $request, ?Letter $letter = null): array
@@ -179,5 +192,28 @@ class LetterController extends Controller
         if ($request->hasFile($input)) {
             $data[$column] = $request->file($input)->store($directory, 'public');
         }
+    }
+
+    private function uploadedFiles(LetterRequest $request): array
+    {
+        return [
+            $request->file('image'),
+            $request->file('audio'),
+            $request->file('sender_profile'),
+            $request->file('recipient_profile'),
+        ];
+    }
+
+    private function replacedPaths(LetterRequest $request, Letter $letter): array
+    {
+        return collect([
+            ['image', 'remove_image', 'image_path'],
+            ['audio', 'remove_audio', 'audio_path'],
+            ['sender_profile', 'remove_sender_profile', 'sender_profile_path'],
+            ['recipient_profile', 'remove_recipient_profile', 'recipient_profile_path'],
+        ])->filter(fn (array $upload) => $request->hasFile($upload[0]) || $request->boolean($upload[1]))
+            ->map(fn (array $upload) => $letter->{$upload[2]})
+            ->filter()
+            ->all();
     }
 }

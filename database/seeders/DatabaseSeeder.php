@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Support\PlatformSettings;
 use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
@@ -15,13 +16,35 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        app(PlatformSettings::class)->update([
+            'allowed_expiry_minutes' => PlatformSettings::DEFAULT_EXPIRY_OPTIONS,
+            'default_expiry_minutes' => 60,
+            'storage_limit_mb' => (int) config('dearyou.storage_limit_mb', 250),
+            'cleanup_grace_days' => (int) config('dearyou.storage_cleanup_grace_days', 7),
+            'cleanup_enabled' => true,
+            'cleanup_policy' => 'oldest_expired',
+            'enabled_categories' => array_keys(PlatformSettings::CATEGORY_OPTIONS),
+            'letter_media_limit_mb' => 10,
+            'audio_limit_mb' => 25,
+            'profile_image_limit_mb' => 10,
+            'memory_files_per_upload' => 10,
+        ]);
+
         $admin = User::firstOrCreate(
             ['email' => env('ADMIN_EMAIL', 'admin@dearyou.test')],
             [
                 'name' => 'DearYou Admin',
                 'password' => env('ADMIN_PASSWORD', 'ChangeMe123!'),
+                'role' => User::ROLE_ADMIN,
+                'email_verified_at' => now(),
             ],
         );
+        if (! $admin->isAdmin()) {
+            $admin->update(['role' => User::ROLE_ADMIN]);
+        }
+        if (! $admin->hasVerifiedEmail()) {
+            $admin->markEmailAsVerified();
+        }
 
         $samples = [
             ['confession', 'Something I Need to Tell You', 'Do you want to give us a chance?', 'Yes, I do', 'Not right now'],

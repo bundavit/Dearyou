@@ -14,6 +14,14 @@ class ExampleTest extends TestCase
     {
         $response = $this->get('/');
 
-        $response->assertRedirect('/admin/login');
+        $response->assertOk()
+            ->assertSee('Some feelings deserve more than a text.')
+            ->assertSee('HOW DEARYOU WORKS')
+            ->assertSee('Made for meaningful moments.')
+            ->assertSee('Start Creating')
+            ->assertSee('Log in')
+            ->assertSee('Create account')
+            ->assertDontSee('My Letters')
+            ->assertDontSee('Admin dashboard');
     }
 }

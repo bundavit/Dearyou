@@ -1,0 +1,10 @@
+[Unit]
+Description=Run the DearYou Laravel scheduler every minute
+
+[Timer]
+OnCalendar=*-*-* *:*:00
+Persistent=true
+Unit=dearyou-scheduler.service
+
+[Install]
+WantedBy=timers.target
