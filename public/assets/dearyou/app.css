@@ -631,3 +631,316 @@ linear-gradient(145deg,color-mix(in srgb,var(--paper),white 24%),color-mix(in sr
         transform: none;
     }
 }
+
+/* Creator pages: consistent phone and small-tablet layout. */
+@media (max-width: 767.98px) {
+    .creator-main {
+        overflow-x: clip;
+    }
+
+    .creator-content {
+        max-width: 100%;
+    }
+
+    .creator-main .admin-page-header {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: .9rem;
+    }
+
+    .creator-main .admin-page-header > div,
+    .creator-main .admin-page-header form,
+    .creator-main .admin-page-header h1 {
+        min-width: 0;
+        width: 100%;
+    }
+
+    .creator-main .admin-page-header h1 {
+        overflow-wrap: anywhere;
+        line-height: 1.08;
+    }
+
+    .creator-main .admin-page-header > .d-flex,
+    .creator-main .admin-page-header > form {
+        width: 100%;
+    }
+
+    .creator-main .admin-page-header > .d-flex .btn,
+    .creator-main .admin-page-header > .d-flex form {
+        flex: 1 1 10rem;
+    }
+
+    .creator-main .admin-page-header > .d-flex form .btn {
+        width: 100%;
+    }
+
+    .filter-card,
+    .inbox-filter {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .filter-card > *,
+    .inbox-filter > * {
+        width: 100%;
+        min-width: 0;
+    }
+
+    .bulk-bar {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: .7rem;
+    }
+
+    .bulk-bar .form-check {
+        align-self: center;
+    }
+
+    .bulk-bar .form-select {
+        grid-column: 1 / -1;
+        grid-row: 2;
+        width: 100%;
+    }
+
+    .bulk-bar .btn {
+        grid-column: 2;
+        grid-row: 1;
+    }
+
+    .letter-card {
+        padding: 1.1rem;
+    }
+
+    .letter-card h2 {
+        margin-top: .8rem;
+        font-size: 1.35rem;
+        overflow-wrap: anywhere;
+    }
+
+    .letter-card-footer {
+        display: grid;
+        align-items: stretch;
+        gap: .9rem;
+    }
+
+    .letter-meta {
+        gap: .55rem 1rem;
+    }
+
+    .letter-card-actions {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        width: 100%;
+        gap: .45rem;
+    }
+
+    .letter-card-actions .btn,
+    .letter-card-actions form,
+    .letter-card-actions form .btn {
+        width: 100%;
+        min-width: 0;
+    }
+
+    .letter-card-actions .btn {
+        padding-inline: .45rem;
+    }
+
+    .response-card {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        gap: .65rem .75rem;
+        padding: 1.1rem;
+    }
+
+    .response-card > .btn {
+        grid-column: 2;
+        justify-self: start;
+    }
+
+    .response-preview,
+    .response-card a {
+        overflow-wrap: anywhere;
+    }
+
+    .response-detail {
+        max-width: 100%;
+    }
+
+    .response-detail h1 {
+        font-size: clamp(1.7rem, 9vw, 2.25rem);
+        overflow-wrap: anywhere;
+    }
+
+    .response-detail > .d-flex:last-child {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .response-detail > .d-flex:last-child form,
+    .response-detail > .d-flex:last-child .btn {
+        width: 100%;
+    }
+
+    .creator-main .form-card {
+        padding: 1.1rem;
+    }
+
+    .creator-main .input-group {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: .55rem;
+    }
+
+    .creator-main .input-group > .form-control,
+    .creator-main .input-group > .form-select,
+    .creator-main .input-group > .btn {
+        width: 100%;
+        min-width: 0;
+        border-radius: 12px !important;
+    }
+
+    .image-preview-row,
+    .profile-preview {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .image-preview-row img,
+    .image-preview-row video {
+        width: 100%;
+        height: auto;
+        max-height: 230px;
+        object-fit: cover;
+    }
+
+    .image-preview-actions {
+        display: grid;
+        gap: .55rem;
+    }
+
+    .image-preview-actions .btn {
+        width: 100%;
+    }
+
+    .creator-main audio {
+        width: 100%;
+        max-width: 100%;
+    }
+
+    .editor-section summary {
+        align-items: flex-start;
+        gap: .6rem;
+    }
+
+    .editor-section summary span {
+        min-width: 0;
+    }
+
+    .envelope-style-picker,
+    .seal-style-picker {
+        gap: .65rem;
+    }
+
+    .chapter-preview {
+        padding-inline: .8rem;
+    }
+
+    .chapter-preview h3 {
+        overflow-wrap: anywhere;
+    }
+
+    .memory-editor {
+        width: 100%;
+    }
+
+    .memory-editor > form {
+        width: 100%;
+        margin: 0;
+    }
+
+    .memory-actions {
+        width: 100%;
+        justify-content: flex-end;
+    }
+
+    .publishing-card > .d-flex:last-child {
+        display: grid !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .publishing-card > .d-flex:last-child form,
+    .publishing-card > .d-flex:last-child .btn {
+        width: 100%;
+    }
+
+    .letter-detail-grid,
+    .letter-detail-sidebar {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .letter-detail-list div {
+        align-items: flex-start;
+    }
+
+    .letter-detail-list dt,
+    .letter-detail-list dd {
+        min-width: 0;
+        overflow-wrap: anywhere;
+    }
+
+    .letter-detail-list dd {
+        max-width: 62%;
+    }
+}
+
+@media (max-width: 430px) {
+    .creator-main {
+        padding-inline: .55rem;
+    }
+
+    .creator-main .admin-page-header,
+    .creator-main .form-card,
+    .creator-main .filter-card,
+    .creator-main .bulk-bar,
+    .creator-main .letter-card,
+    .creator-main .response-card,
+    .creator-main .empty-card {
+        padding: .95rem;
+        border-radius: 16px;
+    }
+
+    .creator-storage {
+        padding: .75rem;
+    }
+
+    .letter-card-actions {
+        grid-template-columns: 1fr;
+    }
+
+    .response-detail > .d-flex:last-child,
+    .publishing-card > .d-flex:last-child {
+        grid-template-columns: 1fr;
+    }
+
+    .creator-main .admin-page-header > .d-flex {
+        display: grid !important;
+        grid-template-columns: 1fr;
+    }
+
+    .letter-detail-heading {
+        display: grid;
+    }
+
+    .letter-detail-list div {
+        display: grid;
+        gap: .2rem;
+    }
+
+    .letter-detail-list dd {
+        max-width: 100%;
+        text-align: left;
+    }
+
+    .chapter-preview-profiles {
+        align-items: center;
+    }
+}
