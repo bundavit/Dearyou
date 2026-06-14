@@ -18,7 +18,6 @@
     @if(session('status') === 'verification-link-sent')<div class="alert alert-success auto-dismiss-alert mt-3" role="status" data-auto-dismiss-alert>A new verification link was sent.</div>@endif
     <form method="post" action="{{ route('verification.send') }}" class="mt-4">@csrf<button class="btn btn-dearyou w-100"><i class="bi bi-send"></i> Resend verification email</button></form>
     <form method="post" action="{{ route('logout') }}" class="mt-2">@csrf<button class="btn btn-link">Sign out</button></form>
-    <p class="auth-help">Local development uses the log mailer. Open <code>storage/logs/laravel.log</code> to find the verification URL.</p>
 </main>
 <script src="{{ asset('assets/dearyou/app.js') }}?v={{ filemtime(public_path('assets/dearyou/app.js')) }}" defer></script>
 </body>

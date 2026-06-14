@@ -11,7 +11,7 @@ use App\Notifications\StorageLimitWarning;
 use App\Support\CreatorStorage;
 use App\Support\PlatformSettings;
 use Illuminate\Auth\Notifications\ResetPassword;
-use Illuminate\Auth\Notifications\VerifyEmail;
+use App\Notifications\VerifyEmail;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Hash;
