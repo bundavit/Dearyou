@@ -1713,9 +1713,10 @@ class DearYouFlowTest extends TestCase
             'app.key' => 'base64:'.base64_encode(random_bytes(32)),
             'app.debug' => false,
             'app.url' => 'https://dearyou.test',
-            'mail.default' => 'smtp',
+            'mail.default' => 'resend',
             'mail.from.address' => 'hello@dearyou.test',
             'queue.default' => 'database',
+            'services.resend.key' => 're_test_only',
         ]);
 
         $this->artisan('dearyou:check-production', ['--strict' => true])

@@ -7,7 +7,7 @@
 
 <div class="row g-4">
     <div class="col-lg-6">
-        <form method="post" action="{{ route(\App\Support\CreatorRoute::name('account.profile')) }}" class="form-card h-100" enctype="multipart/form-data">
+        <form method="post" action="{{ route(\App\Support\CreatorRoute::name('account.profile')) }}" class="form-card profile-form-card h-100" enctype="multipart/form-data">
             @csrf @method('PUT')
             <h2 class="h4">Profile</h2>
             <p class="text-secondary">Update the details used for your private DearYou account.</p>

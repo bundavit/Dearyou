@@ -129,13 +129,8 @@ DB_PASSWORD="YOUR_LONG_DB_PASSWORD"
 ADMIN_EMAIL=YOUR_ADMIN_EMAIL
 ADMIN_PASSWORD="YOUR_ADMIN_PASSWORD"
 
-MAIL_MAILER=smtp
-MAIL_SCHEME=smtp
-MAIL_HOST=YOUR_SMTP_HOST
-MAIL_PORT=587
-MAIL_USERNAME=YOUR_SMTP_USERNAME
-MAIL_PASSWORD="YOUR_SMTP_PASSWORD"
-MAIL_TIMEOUT=15
+MAIL_MAILER=resend
+RESEND_API_KEY="YOUR_RESEND_API_KEY"
 MAIL_FROM_ADDRESS=hello@dearyous.app
 MAIL_FROM_NAME="${APP_NAME}"
 ```
@@ -144,10 +139,10 @@ Passwords containing `#`, spaces, or other punctuation must stay inside quotes.
 Never commit the production `.env`.
 
 Public registration requires real email delivery because new creators must
-verify their email address. Use the SMTP values supplied by a transactional
-email provider and add that provider's SPF and DKIM records to the
-`dearyous.app` DNS configuration. A Gmail or Google Workspace mailbox is not
-required.
+verify their email address. DearYou uses Resend's HTTPS API so deployment does
+not depend on outbound SMTP ports. Verify `dearyous.app` in Resend, add its SPF
+and DKIM records, and create an API key. A Gmail or Google Workspace mailbox is
+not required.
 
 Initialize Laravel and the first admin:
 
