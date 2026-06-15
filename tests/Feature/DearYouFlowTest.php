@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Feedback;
 use App\Models\Letter;
 use App\Models\ModerationAudit;
 use App\Models\Response;
@@ -1623,6 +1624,63 @@ class DearYouFlowTest extends TestCase
         ]);
     }
 
+    public function test_listing_filters_auto_submit_and_filter_moderation_users_and_audits(): void
+    {
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN, 'name' => 'Platform Admin']);
+        $creator = User::factory()->create(['name' => 'Visible Creator', 'role' => User::ROLE_USER]);
+        $otherCreator = User::factory()->create(['name' => 'Hidden Creator', 'role' => User::ROLE_USER]);
+        $apology = $this->letter($creator, [
+            'category' => 'apology',
+            'title' => 'Visible apology',
+            'status' => 'published',
+        ]);
+        $this->letter($otherCreator, [
+            'category' => 'confession',
+            'title' => 'Hidden confession',
+            'status' => 'published',
+        ]);
+
+        ModerationAudit::create([
+            'admin_user_id' => $admin->id,
+            'target_user_id' => $creator->id,
+            'letter_id' => $apology->id,
+            'action' => 'letter_disabled',
+            'reason' => 'Visible moderation reason.',
+        ]);
+        ModerationAudit::create([
+            'admin_user_id' => $admin->id,
+            'target_user_id' => $otherCreator->id,
+            'action' => 'user_restored',
+            'reason' => 'Hidden audit reason.',
+        ]);
+
+        $this->actingAs($admin)->get('/admin/moderation/letters?category=apology')
+            ->assertOk()
+            ->assertSee('data-auto-filter', false)
+            ->assertSee('Visible apology')
+            ->assertDontSee('Hidden confession');
+
+        $this->actingAs($admin)->get('/admin/users?search=Visible+Creator&role=user')
+            ->assertOk()
+            ->assertSee('data-auto-filter', false)
+            ->assertSee('Visible Creator')
+            ->assertDontSee('Hidden Creator');
+
+        $this->actingAs($admin)->get('/admin/audit?action=letter_disabled')
+            ->assertOk()
+            ->assertSee('data-auto-filter', false)
+            ->assertSee('Visible moderation reason.')
+            ->assertDontSee('Hidden audit reason.');
+
+        $this->actingAs($creator)->get('/letters')
+            ->assertOk()
+            ->assertSee('data-auto-filter', false);
+
+        $this->actingAs($creator)->get('/inbox')
+            ->assertOk()
+            ->assertSee('data-auto-filter', false);
+    }
+
     public function test_admin_must_log_a_reason_to_reveal_letter_content_and_never_sees_response_text(): void
     {
         $creator = User::factory()->create();
@@ -1856,6 +1914,84 @@ class DearYouFlowTest extends TestCase
         }
 
         $this->actingAs($creator)->post("/letters/{$letter->id}/publish")->assertTooManyRequests();
+    }
+
+    public function test_guest_can_send_private_feedback(): void
+    {
+        $this->from('/#feedback')->post('/feedback', [
+            'category' => 'suggestion',
+            'rating' => 5,
+            'email' => 'visitor@example.com',
+            'message' => 'It would be helpful to have another gentle envelope style.',
+            'source_page' => 'https://dearyou.test/',
+            'website' => '',
+        ])->assertRedirect('/#feedback')
+            ->assertSessionHas('success');
+
+        $this->assertDatabaseHas('feedback', [
+            'category' => 'suggestion',
+            'rating' => 5,
+            'email' => 'visitor@example.com',
+            'status' => 'new',
+        ]);
+    }
+
+    public function test_feedback_is_private_to_platform_admins(): void
+    {
+        $creator = User::factory()->create();
+        $feedback = Feedback::create([
+            'category' => 'bug',
+            'message' => 'The mobile menu needs a little attention.',
+            'status' => 'new',
+        ]);
+
+        $this->get('/admin/feedback')->assertRedirect('/login');
+        $this->actingAs($creator)->get('/admin/feedback')->assertForbidden();
+        $this->actingAs(User::factory()->create(['role' => User::ROLE_ADMIN]))
+            ->get('/admin/feedback')
+            ->assertOk()
+            ->assertSee($feedback->message);
+    }
+
+    public function test_admin_can_review_resolve_and_delete_feedback(): void
+    {
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+        $feedback = Feedback::create([
+            'category' => 'design',
+            'message' => 'Please improve the spacing on a small screen.',
+            'status' => 'new',
+        ]);
+
+        $this->actingAs($admin)->get("/admin/feedback/{$feedback->id}")->assertOk();
+        $this->assertSame('reviewed', $feedback->fresh()->status);
+
+        $this->actingAs($admin)->patch("/admin/feedback/{$feedback->id}", [
+            'status' => 'resolved',
+        ])->assertRedirect();
+        $this->assertSame('resolved', $feedback->fresh()->status);
+
+        $this->actingAs($admin)->delete("/admin/feedback/{$feedback->id}")
+            ->assertRedirect('/admin/feedback');
+        $this->assertDatabaseMissing('feedback', ['id' => $feedback->id]);
+    }
+
+    public function test_public_navigation_feedback_and_password_controls_are_rendered(): void
+    {
+        $this->get('/')
+            ->assertOk()
+            ->assertSee('#feedback')
+            ->assertSee('data-navbar-panel', false)
+            ->assertSee('home-feedback', false)
+            ->assertSee('feedback-stars', false);
+
+        $this->get('/login')
+            ->assertOk()
+            ->assertSee('data-password-input', false)
+            ->assertSee('data-password-toggle', false);
+
+        $this->get('/register')
+            ->assertOk()
+            ->assertSee('data-password-toggle', false);
     }
 
     public function test_production_readiness_command_accepts_a_complete_configuration(): void

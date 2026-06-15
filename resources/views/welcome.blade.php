@@ -135,6 +135,17 @@
         <div><p class="home-kicker">READY WHEN YOU ARE</p><h2>Make someone feel remembered.</h2><p>Start with a few honest words. You can shape the rest as you go.</p></div>
         <a class="home-button home-button-primary" href="{{ auth()->check() ? (auth()->user()->isAdmin() ? route('admin.letters.create') : route('letters.create')) : route('register') }}">{{ auth()->check() ? 'Start writing' : 'Create a free account' }} <i class="bi bi-arrow-right"></i></a>
     </section>
+
+    <section class="home-section home-feedback home-lazy-section" id="feedback">
+        <div class="home-section-heading">
+            <p class="home-kicker"><i class="bi bi-chat-heart"></i> HELP DEARYOU GROW</p>
+            <h2>Have an idea or found something confusing?</h2>
+            <p>Send a private note to the DearYou team. Only platform administrators can review it.</p>
+        </div>
+        <div class="feedback-card">
+            @include('feedback._form', ['feedbackId' => 'home-feedback'])
+        </div>
+    </section>
 </main>
 
 <footer class="home-footer">
@@ -143,7 +154,7 @@
             <a class="home-brand" href="{{ route('home') }}"><img src="{{ asset('assets/dearyou/dearyou-floral-envelope-logo-web.webp') }}" alt=""><span>DearYou</span></a>
             <p>A gentle place for the words that matter.</p>
         </div>
-        <div><h2>Explore</h2><a href="#occasions">Occasions</a><a href="#features">Features</a><a href="#how-it-works">How it works</a></div>
+        <div><h2>Explore</h2><a href="#occasions">Occasions</a><a href="#features">Features</a><a href="#how-it-works">How it works</a><a href="#feedback">Feedback</a></div>
         <div><h2>Account</h2>@auth @if(auth()->user()->isAdmin())<a href="{{ route('admin.platform') }}">Admin dashboard</a>@endif<a href="{{ auth()->user()->isAdmin() ? route('admin.letters.index') : route('letters.index') }}">My letters</a>@else<a href="{{ route('login') }}">Sign in</a><a href="{{ route('register') }}">Create account</a>@endauth</div>
     </div>
     <div class="home-footer-bottom">

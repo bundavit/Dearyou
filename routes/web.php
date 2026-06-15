@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\AccountController;
 use App\Http\Controllers\Admin\ApiTokenController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\FeedbackController as AdminFeedbackController;
 use App\Http\Controllers\Admin\InboxController;
 use App\Http\Controllers\Admin\LetterController;
 use App\Http\Controllers\Admin\LetterModerationController;
@@ -13,6 +14,7 @@ use App\Http\Controllers\Admin\PlatformSettingsController;
 use App\Http\Controllers\Admin\PlatformUserController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\EmailVerificationController;
+use App\Http\Controllers\FeedbackController;
 use App\Http\Controllers\NewPasswordController;
 use App\Http\Controllers\PasswordResetCodeController;
 use App\Http\Controllers\PasswordResetLinkController;
@@ -21,6 +23,7 @@ use App\Http\Controllers\RegistrationController;
 use Illuminate\Support\Facades\Route;
 
 Route::view('/', 'welcome')->name('home');
+Route::post('/feedback', [FeedbackController::class, 'store'])->middleware('throttle:feedback')->name('feedback.store');
 Route::middleware('guest')->group(function () {
     Route::get('/login', [AuthController::class, 'create'])->name('login');
     Route::post('/login', [AuthController::class, 'store'])->middleware('throttle:login')->name('login.store');
@@ -95,6 +98,10 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'active', 'verified'
     Route::patch('/moderation/letters/{letter}/restore', [LetterModerationController::class, 'restore'])->name('moderation.restore');
     Route::patch('/moderation/letters/{letter}/expiry', [LetterModerationController::class, 'overrideExpiry'])->name('moderation.expiry');
     Route::get('/audit', ModerationAuditController::class)->name('audit');
+    Route::get('/feedback', [AdminFeedbackController::class, 'index'])->name('feedback.index');
+    Route::get('/feedback/{feedback}', [AdminFeedbackController::class, 'show'])->name('feedback.show');
+    Route::patch('/feedback/{feedback}', [AdminFeedbackController::class, 'update'])->name('feedback.update');
+    Route::delete('/feedback/{feedback}', [AdminFeedbackController::class, 'destroy'])->name('feedback.destroy');
     Route::get('/dashboard', DashboardController::class)->name('dashboard');
     Route::get('/account', [AccountController::class, 'edit'])->name('account.edit');
     Route::put('/account/profile', [AccountController::class, 'updateProfile'])->name('account.profile');

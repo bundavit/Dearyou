@@ -27,16 +27,17 @@
         @error('email')<div class="text-danger small mb-3">{{ $message }}</div>@enderror
 
         <label class="form-label" for="password">Password</label>
-        <input class="form-control mb-2" id="password" type="password" name="password" required>
+        <div class="password-field mb-2"><input class="form-control" id="password" type="password" name="password" required autocomplete="new-password" data-password-input><button type="button" aria-label="Show password" aria-pressed="false" data-password-toggle><i class="bi bi-eye"></i></button></div>
         <p class="small text-secondary mb-3">Use at least 10 characters with uppercase, lowercase, and a number.</p>
         @error('password')<div class="text-danger small mb-3">{{ $message }}</div>@enderror
 
         <label class="form-label" for="password_confirmation">Confirm password</label>
-        <input class="form-control mb-4" id="password_confirmation" type="password" name="password_confirmation" required>
+        <div class="password-field mb-4"><input class="form-control" id="password_confirmation" type="password" name="password_confirmation" required autocomplete="new-password" data-password-input><button type="button" aria-label="Show password" aria-pressed="false" data-password-toggle><i class="bi bi-eye"></i></button></div>
 
         <button class="btn btn-dearyou w-100"><i class="bi bi-envelope-plus"></i> Create account</button>
     </form>
     <p class="auth-switch">Already have an account? <a href="{{ route('login') }}">Sign in</a></p>
 </main>
+<script src="{{ asset('assets/dearyou/app.js') }}?v={{ filemtime(public_path('assets/dearyou/app.js')) }}" defer></script>
 </body>
 </html>

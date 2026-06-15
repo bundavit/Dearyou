@@ -48,6 +48,9 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('recipient-responses', fn (Request $request) => Limit::perMinute(10)->by(
             (string) $request->route('token').'|'.$request->ip(),
         ));
+        RateLimiter::for('feedback', fn (Request $request) => Limit::perHour(5)->by(
+            (string) ($request->user()?->id ?? $request->ip()),
+        ));
 
         View::composer('layouts.creator', function ($view) {
             $view->with('creatorStorage', app(CreatorStorage::class)->usage(auth()->user()));

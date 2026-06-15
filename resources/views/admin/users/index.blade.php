@@ -10,20 +10,20 @@
     </div>
 </div>
 
-<form method="get" class="platform-user-filter mb-4">
-    <input class="form-control" type="search" name="search" value="{{ $filters['search'] ?? '' }}" placeholder="Search name or email">
-    <select class="form-select" name="role">
+<form method="get" class="platform-user-filter mb-4" data-auto-filter>
+    <input class="form-control" type="search" name="search" value="{{ $filters['search'] ?? '' }}" placeholder="Search name or email" data-auto-filter-search>
+    <select class="form-select" name="role" data-auto-filter-change>
         <option value="">All roles</option>
         <option value="user" @selected(($filters['role'] ?? '') === 'user')>Users</option>
         <option value="admin" @selected(($filters['role'] ?? '') === 'admin')>Admins</option>
     </select>
-    <select class="form-select" name="status">
+    <select class="form-select" name="status" data-auto-filter-change>
         <option value="">All statuses</option>
         <option value="active" @selected(($filters['status'] ?? '') === 'active')>Active</option>
         <option value="disabled" @selected(($filters['status'] ?? '') === 'disabled')>Disabled</option>
         <option value="deleted" @selected(($filters['status'] ?? '') === 'deleted')>Deleted</option>
     </select>
-    <button class="btn btn-outline-secondary"><i class="bi bi-funnel"></i> Filter</button>
+    <button class="btn btn-outline-secondary auto-filter-submit"><i class="bi bi-funnel"></i> Filter</button>
     @if(array_filter($filters))<a class="btn btn-link" href="{{ route('admin.users.index') }}">Clear</a>@endif
 </form>
 

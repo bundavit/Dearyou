@@ -32,7 +32,7 @@
             <label class="form-label">Email</label>
             <input class="form-control mb-3" type="email" name="email" value="{{ old('email', auth()->user()->email) }}" required>
             <label class="form-label">Current password</label>
-            <input class="form-control" type="password" name="current_password" required autocomplete="current-password">
+            <div class="password-field"><input class="form-control" type="password" name="current_password" required autocomplete="current-password" data-password-input><button type="button" aria-label="Show password" aria-pressed="false" data-password-toggle><i class="bi bi-eye"></i></button></div>
             @if($errors->hasAny(['name','email','current_password','avatar','media']))<div class="alert alert-danger mt-3">{{ $errors->first() }}</div>@endif
             <button class="btn btn-dearyou mt-4"><i class="bi bi-person-check"></i> Update profile</button>
         </form>
@@ -43,11 +43,11 @@
             <h2 class="h4">Change password</h2>
             <p class="text-secondary">Use at least 10 characters with uppercase, lowercase, and a number.</p>
             <label class="form-label">Current password</label>
-            <input class="form-control mb-3" type="password" name="current_password" required autocomplete="current-password">
+            <div class="password-field mb-3"><input class="form-control" type="password" name="current_password" required autocomplete="current-password" data-password-input><button type="button" aria-label="Show password" aria-pressed="false" data-password-toggle><i class="bi bi-eye"></i></button></div>
             <label class="form-label">New password</label>
-            <input class="form-control mb-3" type="password" name="password" required autocomplete="new-password">
+            <div class="password-field mb-3"><input class="form-control" type="password" name="password" required autocomplete="new-password" data-password-input><button type="button" aria-label="Show password" aria-pressed="false" data-password-toggle><i class="bi bi-eye"></i></button></div>
             <label class="form-label">Confirm new password</label>
-            <input class="form-control" type="password" name="password_confirmation" required autocomplete="new-password">
+            <div class="password-field"><input class="form-control" type="password" name="password_confirmation" required autocomplete="new-password" data-password-input><button type="button" aria-label="Show password" aria-pressed="false" data-password-toggle><i class="bi bi-eye"></i></button></div>
             @if($errors->hasAny(['password','password_confirmation']))<div class="alert alert-danger mt-3">{{ $errors->first() }}</div>@endif
             <button class="btn btn-dearyou mt-4"><i class="bi bi-shield-lock"></i> Change password</button>
         </form>
@@ -62,7 +62,7 @@
         <div class="row g-3">
             <div class="col-md-6">
                 <label class="form-label" for="delete-current-password">Current password</label>
-                <input class="form-control" id="delete-current-password" type="password" name="current_password" required autocomplete="current-password">
+                <div class="password-field"><input class="form-control" id="delete-current-password" type="password" name="current_password" required autocomplete="current-password" data-password-input><button type="button" aria-label="Show password" aria-pressed="false" data-password-toggle><i class="bi bi-eye"></i></button></div>
             </div>
             <div class="col-md-6">
                 <label class="form-label" for="delete-confirmation">Type DELETE to confirm</label>

@@ -20,12 +20,13 @@
         <label class="form-label" for="email">Email</label>
         <input class="form-control mb-3" id="email" type="email" value="{{ $email }}" readonly>
         <label class="form-label" for="password">New password</label>
-        <input class="form-control mb-3" id="password" type="password" name="password" required autofocus>
+        <div class="password-field mb-3"><input class="form-control" id="password" type="password" name="password" required autocomplete="new-password" autofocus data-password-input><button type="button" aria-label="Show password" aria-pressed="false" data-password-toggle><i class="bi bi-eye"></i></button></div>
         <label class="form-label" for="password_confirmation">Confirm new password</label>
-        <input class="form-control mb-3" id="password_confirmation" type="password" name="password_confirmation" required>
+        <div class="password-field mb-3"><input class="form-control" id="password_confirmation" type="password" name="password_confirmation" required autocomplete="new-password" data-password-input><button type="button" aria-label="Show password" aria-pressed="false" data-password-toggle><i class="bi bi-eye"></i></button></div>
         @if($errors->any())<div class="alert alert-danger">{{ $errors->first() }}</div>@endif
         <button class="btn btn-dearyou w-100"><i class="bi bi-shield-check"></i> Reset password</button>
     </form>
 </main>
+<script src="{{ asset('assets/dearyou/app.js') }}?v={{ filemtime(public_path('assets/dearyou/app.js')) }}" defer></script>
 </body>
 </html>

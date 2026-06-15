@@ -35,6 +35,7 @@
             </a>
         @endauth
         <a href="{{ route('home') }}#about"><i class="bi bi-info-circle" aria-hidden="true"></i> About</a>
+        <a href="{{ route('home') }}#feedback"><i class="bi bi-chat-heart" aria-hidden="true"></i> Feedback</a>
     </nav>
 
     <div class="creator-actions">
@@ -42,7 +43,7 @@
             <i class="bi bi-plus-lg" aria-hidden="true"></i>
             <span>{{ auth()->check() ? 'Create Letter' : 'Start Creating' }}</span>
         </a>
-        <details class="home-profile-menu">
+        <details class="home-profile-menu" data-navbar-panel>
             <summary aria-label="Open account menu">
                 @if($navUser?->avatar_path)
                     <img class="user-nav-avatar" src="{{ Storage::url($navUser->avatar_path) }}" alt="">
@@ -72,7 +73,7 @@
                 @endauth
             </div>
         </details>
-        <details class="creator-mobile-menu">
+        <details class="creator-mobile-menu" data-navbar-panel>
             <summary aria-label="Open navigation menu"><i class="bi bi-list"></i></summary>
             <div class="home-mobile-dropdown">
                 <a href="{{ route('home') }}"><i class="bi bi-house"></i> Home</a>
@@ -81,6 +82,7 @@
                     <a href="{{ route($inboxRoute) }}"><i class="bi bi-inbox"></i> Inbox @if($navUnread)<span>{{ $navUnread }}</span>@endif</a>
                 @endauth
                 <a href="{{ route('home') }}#about"><i class="bi bi-info-circle"></i> About</a>
+                <a href="{{ route('home') }}#feedback"><i class="bi bi-chat-heart"></i> Feedback</a>
             </div>
         </details>
     </div>

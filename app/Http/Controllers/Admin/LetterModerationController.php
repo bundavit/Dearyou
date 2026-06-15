@@ -28,11 +28,15 @@ class LetterModerationController extends Controller
 
         if ($request->filled('state')) {
             match ($request->string('state')->toString()) {
-                'published' => $letters->where('status', 'published')->whereNull('deleted_at'),
+                'published' => $letters->where('status', 'published')->whereNull('moderation_disabled_at')->whereNull('deleted_at'),
                 'moderated' => $letters->whereNotNull('moderation_disabled_at')->whereNull('deleted_at'),
                 'deleted' => $letters->onlyTrashed(),
                 default => null,
             };
+        }
+
+        if ($request->filled('category')) {
+            $letters->where('category', $request->string('category')->toString());
         }
 
         return view('admin.moderation.index', [

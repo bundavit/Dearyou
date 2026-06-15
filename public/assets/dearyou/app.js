@@ -75,6 +75,43 @@ document.querySelectorAll("[data-auto-dismiss-alert]").forEach(alert => {
   }, 5000);
 });
 
+document.querySelectorAll("[data-password-toggle]").forEach(button => {
+  button.addEventListener("click", () => {
+    const field = button.closest(".password-field");
+    const input = field?.querySelector("[data-password-input]");
+    if (!input) return;
+
+    const reveal = input.type === "password";
+    input.type = reveal ? "text" : "password";
+    button.setAttribute("aria-pressed", String(reveal));
+    button.setAttribute("aria-label", reveal ? "Hide password" : "Show password");
+    button.innerHTML = reveal ? '<i class="bi bi-eye-slash"></i>' : '<i class="bi bi-eye"></i>';
+    input.focus();
+  });
+});
+
+document.querySelectorAll("[data-user-navbar]").forEach(navbar => {
+  const panels = Array.from(navbar.querySelectorAll("[data-navbar-panel]"));
+
+  panels.forEach(panel => {
+    panel.addEventListener("toggle", () => {
+      if (!panel.open) return;
+      panels.forEach(other => {
+        if (other !== panel) other.open = false;
+      });
+    });
+  });
+
+  document.addEventListener("click", event => {
+    if (!navbar.contains(event.target)) panels.forEach(panel => panel.open = false);
+  });
+
+  document.addEventListener("keydown", event => {
+    if (event.key !== "Escape") return;
+    panels.forEach(panel => panel.open = false);
+  });
+});
+
 const platformSettingsForm = document.querySelector("[data-platform-settings-form]");
 if (platformSettingsForm) {
   const expiryChoices = Array.from(platformSettingsForm.querySelectorAll("[data-expiry-choice]"));

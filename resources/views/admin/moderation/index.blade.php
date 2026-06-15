@@ -9,39 +9,52 @@
     </div>
 </div>
 
-<form method="get" class="filter-card mb-4">
-    <div class="row g-2">
-        <div class="col-lg"><input class="form-control" name="search" value="{{ request('search') }}" placeholder="Search title, creator, or email"></div>
-        <div class="col-lg-3">
-            <select class="form-select" name="state">
-                <option value="">All states</option>
-                <option value="published" @selected(request('state') === 'published')>Published</option>
-                <option value="moderated" @selected(request('state') === 'moderated')>Moderated</option>
-                <option value="deleted" @selected(request('state') === 'deleted')>Deleted</option>
-            </select>
-        </div>
-        <div class="col-auto"><button class="btn btn-outline-secondary"><i class="bi bi-funnel"></i> Filter</button></div>
-    </div>
+<form method="get" class="filter-card moderation-filter mb-4" data-auto-filter>
+    <input class="form-control" type="search" name="search" value="{{ request('search') }}" placeholder="Search title, creator, or email" data-auto-filter-search>
+    <select class="form-select" name="state" data-auto-filter-change>
+        <option value="">All states</option>
+        <option value="published" @selected(request('state') === 'published')>Published</option>
+        <option value="moderated" @selected(request('state') === 'moderated')>Moderated</option>
+        <option value="deleted" @selected(request('state') === 'deleted')>Deleted</option>
+    </select>
+    <select class="form-select" name="category" data-auto-filter-change>
+        <option value="">All occasions</option>
+        @foreach(\App\Support\PlatformSettings::CATEGORY_OPTIONS as $category => $label)
+            <option value="{{ $category }}" @selected(request('category') === $category)>{{ $label }}</option>
+        @endforeach
+    </select>
+    <button class="btn btn-outline-secondary auto-filter-submit"><i class="bi bi-funnel"></i> Filter</button>
+    @if(request()->hasAny(['search', 'state', 'category']))<a class="btn btn-link" href="{{ route('admin.moderation.index') }}"><i class="bi bi-x-lg"></i> Clear</a>@endif
 </form>
 
 <section class="dashboard-panel">
-    <div class="dashboard-list">
+    <div class="admin-record-list">
         @forelse($letters as $letter)
-            <a class="dashboard-list-item" href="{{ route('admin.moderation.show', $letter->id) }}">
-                <span class="dashboard-item-icon"><i class="bi bi-envelope-exclamation"></i></span>
-                <span class="dashboard-item-copy">
-                    <strong>{{ $letter->title }}</strong>
-                    <small>{{ $letter->user->name }} &middot; {{ $letter->user->email }} &middot; {{ ucfirst($letter->category) }}</small>
-                </span>
-                <span class="dashboard-item-side">
-                    @if($letter->trashed())
-                        <span class="badge text-bg-danger">deleted</span>
-                    @elseif($letter->moderation_disabled_at)
-                        <span class="badge text-bg-warning">moderated</span>
-                    @else
-                        <span class="badge text-bg-{{ $letter->status === 'published' ? 'success' : 'secondary' }}">{{ $letter->status }}</span>
+            @php
+                $moderationState = $letter->trashed() ? 'deleted' : ($letter->moderation_disabled_at ? 'moderated' : $letter->status);
+            @endphp
+            <a class="admin-record-card moderation-record-card" href="{{ route('admin.moderation.show', $letter->id) }}">
+                <span class="admin-record-icon moderation-record-icon"><i class="bi bi-envelope-exclamation"></i></span>
+                <span class="admin-record-content">
+                    <span class="admin-record-heading">
+                        <strong>{{ $letter->title }}</strong>
+                        <span class="moderation-category">{{ \App\Support\PlatformSettings::CATEGORY_OPTIONS[$letter->category] ?? ucfirst($letter->category) }}</span>
+                    </span>
+                    <span class="admin-record-meta">
+                        <span><i class="bi bi-person"></i> {{ $letter->user->name }}</span>
+                        <span><i class="bi bi-envelope"></i> {{ $letter->user->email }}</span>
+                    </span>
+                    @if($letter->moderation_disabled_at)
+                        <span class="moderation-note"><i class="bi bi-shield-exclamation"></i> Public access disabled by moderation</span>
                     @endif
-                    <small>{{ $letter->open_count }} opens &middot; {{ $letter->responses_count }} replies</small>
+                </span>
+                <span class="admin-record-side">
+                    <span class="admin-record-status status-{{ $moderationState }}">{{ ucfirst($moderationState) }}</span>
+                    <span class="moderation-metrics">
+                        <small><i class="bi bi-eye"></i> {{ $letter->open_count }} opens</small>
+                        <small><i class="bi bi-chat-heart"></i> {{ $letter->responses_count }} replies</small>
+                    </span>
+                    <span class="admin-record-open">Review <i class="bi bi-arrow-right"></i></span>
                 </span>
             </a>
         @empty
