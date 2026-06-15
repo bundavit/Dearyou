@@ -24,11 +24,11 @@ use Illuminate\Support\Facades\Route;
 
 Route::view('/', 'welcome')->name('home');
 Route::post('/feedback', [FeedbackController::class, 'store'])->middleware('throttle:feedback')->name('feedback.store');
+Route::get('/admin/login', [AuthController::class, 'create'])->middleware(['admin.network', 'guest'])->name('login.legacy');
+Route::post('/admin/login', [AuthController::class, 'store'])->middleware(['admin.network', 'guest', 'throttle:login'])->name('login.legacy.store');
 Route::middleware('guest')->group(function () {
     Route::get('/login', [AuthController::class, 'create'])->name('login');
     Route::post('/login', [AuthController::class, 'store'])->middleware('throttle:login')->name('login.store');
-    Route::get('/admin/login', [AuthController::class, 'create'])->name('login.legacy');
-    Route::post('/admin/login', [AuthController::class, 'store'])->middleware('throttle:login')->name('login.legacy.store');
     Route::get('/register', [RegistrationController::class, 'create'])->name('register');
     Route::post('/register', [RegistrationController::class, 'store'])->middleware('throttle:registration')->name('register.store');
     Route::get('/forgot-password', [PasswordResetLinkController::class, 'create'])->name('password.request');
@@ -78,7 +78,7 @@ Route::middleware(['auth', 'active', 'verified', 'role:user'])->group(function (
     Route::delete('/responses/{response}', [InboxController::class, 'destroy'])->name('responses.destroy');
 });
 
-Route::prefix('admin')->name('admin.')->middleware(['auth', 'active', 'verified', 'role:admin'])->group(function () {
+Route::prefix('admin')->name('admin.')->middleware(['admin.network', 'auth', 'active', 'verified', 'role:admin'])->group(function () {
     Route::get('/platform', PlatformDashboardController::class)->name('platform');
     Route::get('/users', [PlatformUserController::class, 'index'])->name('users.index');
     Route::get('/users/{user}', [PlatformUserController::class, 'show'])->name('users.show');

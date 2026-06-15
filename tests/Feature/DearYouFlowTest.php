@@ -287,6 +287,32 @@ class DearYouFlowTest extends TestCase
         ]);
     }
 
+    public function test_admin_routes_can_be_hidden_behind_an_ip_allowlist(): void
+    {
+        config(['dearyou.admin_allowed_ips' => ['203.0.113.10', '198.51.100.0/24']]);
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+
+        $this->withServerVariables(['REMOTE_ADDR' => '192.0.2.20'])
+            ->get('/admin/login')
+            ->assertNotFound();
+
+        $this->withServerVariables(['REMOTE_ADDR' => '192.0.2.20'])
+            ->actingAs($admin)
+            ->get('/admin/platform')
+            ->assertNotFound();
+
+        auth()->logout();
+
+        $this->withServerVariables(['REMOTE_ADDR' => '203.0.113.10'])
+            ->get('/admin/login')
+            ->assertOk();
+
+        $this->withServerVariables(['REMOTE_ADDR' => '198.51.100.25'])
+            ->actingAs($admin)
+            ->get('/admin/platform')
+            ->assertOk();
+    }
+
     public function test_creator_and_admin_workspaces_are_separated(): void
     {
         $user = User::factory()->create();

@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\EnsureAccountIsActive;
 use App\Http\Middleware\EnsureUserHasRole;
+use App\Http\Middleware\RestrictAdminNetwork;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -17,6 +18,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->redirectUsersTo(fn ($request) => $request->user()?->isAdmin() ? '/admin/platform' : '/');
         $middleware->alias([
             'active' => EnsureAccountIsActive::class,
+            'admin.network' => RestrictAdminNetwork::class,
             'role' => EnsureUserHasRole::class,
         ]);
     })
