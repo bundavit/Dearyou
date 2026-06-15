@@ -250,8 +250,41 @@ class DearYouFlowTest extends TestCase
 
         $this->post('/admin/logout');
         $this->post('/admin/login', ['email' => $user->email, 'password' => 'password'])
+            ->assertSessionHasErrors('email');
+        $this->assertGuest();
+
+        $this->post('/login', ['email' => $user->email, 'password' => 'password'])
             ->assertRedirect('/letters');
         $this->assertAuthenticatedAs($user);
+    }
+
+    public function test_admin_login_is_admin_only_and_public_registration_cannot_create_admins(): void
+    {
+        Notification::fake();
+
+        $this->get('/admin/login')
+            ->assertOk()
+            ->assertSee('Admin sign in')
+            ->assertSee('Authorized DearYou administrators only.')
+            ->assertDontSee('Create an account')
+            ->assertDontSee(route('register'), false);
+
+        $this->post('/register', [
+            'name' => 'Public Registrant',
+            'email' => 'public@example.com',
+            'password' => 'StrongPass1',
+            'password_confirmation' => 'StrongPass1',
+            'role' => User::ROLE_ADMIN,
+        ])->assertRedirect('/verify-email');
+
+        $this->assertDatabaseHas('users', [
+            'email' => 'public@example.com',
+            'role' => User::ROLE_USER,
+        ]);
+        $this->assertDatabaseMissing('users', [
+            'email' => 'public@example.com',
+            'role' => User::ROLE_ADMIN,
+        ]);
     }
 
     public function test_creator_and_admin_workspaces_are_separated(): void
