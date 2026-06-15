@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\ModerationAudit;
 use App\Models\Response;
 use App\Models\User;
+use App\Support\AccountDeletion;
 use App\Support\CreatorStorage;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -138,6 +139,28 @@ class PlatformUserController extends Controller
         $this->audit($request, $user, 'user_restored', [], $validated['reason']);
 
         return back()->with('success', "{$user->name}'s account was restored.");
+    }
+
+    public function forceDestroy(Request $request, int $user, AccountDeletion $deletion)
+    {
+        $user = $this->user($user);
+        abort_if($request->user()->is($user), 422, 'You cannot permanently delete your own account.');
+        abort_unless($user->trashed(), 422, 'Soft-delete this account before permanently deleting it.');
+        abort_if($user->isAdmin() && User::where('role', User::ROLE_ADMIN)->count() <= 1, 422, 'The platform must always have at least one administrator.');
+
+        $validated = $request->validate([
+            'confirmation' => ['required', 'string', Rule::in([$user->email])],
+            'reason' => ['required', 'string', 'min:5', 'max:500'],
+        ]);
+        $name = $user->name;
+
+        $this->audit($request, $user, 'user_permanently_deleted', [
+            'deleted_user_id' => $user->id,
+            'deleted_user_email' => $user->email,
+        ], $validated['reason']);
+        $deletion->permanentlyDelete($user);
+
+        return redirect()->route('admin.users.index')->with('success', "{$name}'s account and stored data were permanently deleted.");
     }
 
     private function user(int $id): User

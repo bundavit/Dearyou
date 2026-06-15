@@ -53,6 +53,27 @@
         </form>
     </div>
 </div>
+@unless(auth()->user()->isAdmin())
+<div class="form-card mt-4 border border-danger-subtle">
+    <h2 class="h4 text-danger">Delete account</h2>
+    <p class="text-secondary">This immediately signs you out and disables your public letter links. An administrator can restore the account unless it is later permanently deleted.</p>
+    <form method="post" action="{{ route('account.destroy') }}" onsubmit="return confirm('Delete your DearYou account?')">
+        @csrf @method('DELETE')
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label" for="delete-current-password">Current password</label>
+                <input class="form-control" id="delete-current-password" type="password" name="current_password" required autocomplete="current-password">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label" for="delete-confirmation">Type DELETE to confirm</label>
+                <input class="form-control" id="delete-confirmation" name="confirmation" required autocomplete="off">
+            </div>
+        </div>
+        @if($errors->hasAny(['confirmation','current_password']))<div class="alert alert-danger mt-3">{{ $errors->first() }}</div>@endif
+        <button class="btn btn-outline-danger mt-3"><i class="bi bi-person-x"></i> Delete my account</button>
+    </form>
+</div>
+@endunless
 @if(auth()->user()->isAdmin())
 <details class="form-card advanced-card mt-4" @if(session('new_api_token')) open @endif>
     <summary>

@@ -6,17 +6,16 @@ use App\Models\Letter;
 use App\Models\ModerationAudit;
 use App\Models\Response;
 use App\Models\User;
+use App\Notifications\PasswordResetCode;
 use App\Notifications\StorageCleanupCompleted;
 use App\Notifications\StorageLimitWarning;
+use App\Notifications\VerifyEmail;
 use App\Support\CreatorStorage;
 use App\Support\PlatformSettings;
-use Illuminate\Auth\Notifications\ResetPassword;
-use App\Notifications\VerifyEmail;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
-use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
 use Tests\TestCase;
@@ -130,14 +129,23 @@ class DearYouFlowTest extends TestCase
         $user->createToken('old-device');
 
         $this->post('/forgot-password', ['email' => $user->email])
-            ->assertRedirect()
+            ->assertRedirect('/forgot-password/code')
             ->assertSessionHas('status');
-        Notification::assertSentTo($user, ResetPassword::class);
+        $code = null;
+        Notification::assertSentTo($user, PasswordResetCode::class, function (PasswordResetCode $notification) use (&$code) {
+            $code = $notification->code;
 
-        $token = Password::createToken($user);
+            return true;
+        });
+
+        $this->post('/forgot-password/code', ['code' => $code])
+            ->assertRedirect('/reset-password');
+
+        $this->get('/reset-password')
+            ->assertOk()
+            ->assertSee($user->email);
+
         $this->post('/reset-password', [
-            'token' => $token,
-            'email' => $user->email,
             'password' => 'NewPassword2',
             'password_confirmation' => 'NewPassword2',
         ])->assertRedirect('/login');
@@ -156,21 +164,48 @@ class DearYouFlowTest extends TestCase
         ]);
 
         $this->post('/forgot-password', ['email' => 'missing@example.com'])
-            ->assertRedirect()
+            ->assertRedirect('/forgot-password/code')
             ->assertSessionHas('status');
         $this->post('/forgot-password', ['email' => $disabled->email])
-            ->assertRedirect()
+            ->assertRedirect('/forgot-password/code')
             ->assertSessionHas('status');
 
         Notification::assertNothingSent();
 
-        $token = Password::createToken($disabled);
+        $this->withSession([
+            'password_reset_authorized' => [
+                'email' => $disabled->email,
+                'expires_at' => now()->addMinutes(10)->timestamp,
+            ],
+        ]);
         $this->post('/reset-password', [
-            'token' => $token,
-            'email' => $disabled->email,
             'password' => 'NewPassword2',
             'password_confirmation' => 'NewPassword2',
-        ])->assertSessionHasErrors('email');
+        ])->assertRedirect('/forgot-password')
+            ->assertSessionHasErrors('email');
+    }
+
+    public function test_password_reset_code_expires_and_limits_incorrect_attempts(): void
+    {
+        Notification::fake();
+        $user = User::factory()->create(['email' => 'writer@example.com']);
+
+        $this->post('/forgot-password', ['email' => $user->email])
+            ->assertRedirect('/forgot-password/code');
+
+        foreach (range(1, 5) as $attempt) {
+            $this->post('/forgot-password/code', ['code' => '000000'])
+                ->assertSessionHasErrors('code');
+        }
+
+        $this->assertDatabaseHas('password_reset_codes', [
+            'email' => $user->email,
+            'attempts' => 5,
+        ]);
+
+        $this->post('/forgot-password/code', ['code' => '000000'])
+            ->assertSessionHasErrors('code');
+        $this->assertDatabaseMissing('password_reset_codes', ['email' => $user->email]);
     }
 
     public function test_admin_and_user_accounts_receive_the_correct_area(): void
@@ -1655,6 +1690,99 @@ class DearYouFlowTest extends TestCase
         $this->assertDatabaseHas('moderation_audits', [
             'target_user_id' => $creator->id,
             'action' => 'user_restored',
+        ]);
+    }
+
+    public function test_creator_can_delete_their_account_with_password_and_delete_confirmation(): void
+    {
+        $creator = User::factory()->create(['password' => 'StrongPass1']);
+        $letter = $this->letter($creator, [
+            'status' => 'published',
+            'expires_at' => now()->addHour(),
+        ]);
+        $link = $letter->link()->create([
+            'token' => str_repeat('d', 64),
+            'is_active' => true,
+            'expires_at' => now()->addHour(),
+        ]);
+        $creator->createToken('phone');
+
+        $this->actingAs($creator)->delete('/account', [
+            'current_password' => 'StrongPass1',
+            'confirmation' => 'DELETE',
+        ])->assertRedirect('/')
+            ->assertSessionHas('success', 'Your account was deleted.');
+
+        $this->assertGuest();
+        $this->assertSoftDeleted($creator);
+        $this->assertCount(0, $creator->fresh()->tokens);
+        $this->get("/l/{$link->token}")->assertNotFound();
+    }
+
+    public function test_creator_account_deletion_requires_password_and_exact_confirmation(): void
+    {
+        $creator = User::factory()->create(['password' => 'StrongPass1']);
+
+        $this->actingAs($creator)->delete('/account', [
+            'current_password' => 'wrong-password',
+            'confirmation' => 'delete',
+        ])->assertSessionHasErrors(['current_password', 'confirmation']);
+
+        $this->assertNotSoftDeleted($creator);
+        $this->assertAuthenticatedAs($creator);
+    }
+
+    public function test_admin_can_permanently_delete_a_soft_deleted_account_and_its_media(): void
+    {
+        Storage::fake('public');
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+        $creator = User::factory()->create([
+            'email' => 'remove@example.com',
+            'avatar_path' => 'avatars/remove.jpg',
+        ]);
+        $letter = $this->letter($creator, [
+            'image_path' => 'letters/remove.jpg',
+            'audio_path' => 'letters/remove.mp3',
+            'sender_profile_path' => 'letters/sender.jpg',
+            'recipient_profile_path' => 'letters/recipient.jpg',
+        ]);
+        $memory = $letter->memories()->create(['title' => 'Memory']);
+        $memory->images()->create(['image_path' => 'memories/remove.jpg']);
+        foreach ([
+            'avatars/remove.jpg',
+            'letters/remove.jpg',
+            'letters/remove.mp3',
+            'letters/sender.jpg',
+            'letters/recipient.jpg',
+            'memories/remove.jpg',
+        ] as $path) {
+            Storage::disk('public')->put($path, 'data');
+        }
+        $creatorId = $creator->id;
+        $letterId = $letter->id;
+        $creator->delete();
+
+        $this->actingAs($admin)->delete("/admin/users/{$creatorId}/permanent", [
+            'reason' => 'User requested permanent erasure.',
+            'confirmation' => 'remove@example.com',
+        ])->assertRedirect('/admin/users')
+            ->assertSessionHas('success');
+
+        $this->assertDatabaseMissing('users', ['id' => $creatorId]);
+        $this->assertDatabaseMissing('letters', ['id' => $letterId]);
+        foreach ([
+            'avatars/remove.jpg',
+            'letters/remove.jpg',
+            'letters/remove.mp3',
+            'letters/sender.jpg',
+            'letters/recipient.jpg',
+            'memories/remove.jpg',
+        ] as $path) {
+            Storage::disk('public')->assertMissing($path);
+        }
+        $this->assertDatabaseHas('moderation_audits', [
+            'target_user_id' => null,
+            'action' => 'user_permanently_deleted',
         ]);
     }
 

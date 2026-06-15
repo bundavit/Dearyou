@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Notifications\PasswordResetCode;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 
 class PasswordResetLinkController extends Controller
 {
@@ -15,16 +17,33 @@ class PasswordResetLinkController extends Controller
 
     public function store(Request $request)
     {
-        $request->validate(['email' => ['required', 'email']]);
+        $validated = $request->validate(['email' => ['required', 'email']]);
+        $email = strtolower($validated['email']);
 
-        $user = User::where('email', $request->string('email'))
+        $user = User::where('email', $email)
             ->whereNull('disabled_at')
             ->first();
 
         if ($user) {
-            Password::sendResetLink(['email' => $user->email]);
+            $code = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+
+            DB::table('password_reset_codes')->updateOrInsert(
+                ['email' => $user->email],
+                [
+                    'code' => Hash::make($code),
+                    'attempts' => 0,
+                    'expires_at' => now()->addMinutes(10),
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ],
+            );
+
+            $user->notify(new PasswordResetCode($code));
         }
 
-        return back()->with('status', 'If an active account uses that email, a password reset link has been sent.');
+        $request->session()->put('password_reset_email', $email);
+
+        return redirect()->route('password.code')
+            ->with('status', 'If an active account uses that email, a six-digit code has been sent.');
     }
 }

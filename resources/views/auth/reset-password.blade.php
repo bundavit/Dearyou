@@ -17,9 +17,8 @@
     <p class="text-secondary">Use at least 10 characters with uppercase, lowercase, and a number.</p>
     <form method="post" action="{{ route('password.update') }}" class="text-start mt-4">
         @csrf
-        <input type="hidden" name="token" value="{{ $token }}">
         <label class="form-label" for="email">Email</label>
-        <input class="form-control mb-3" id="email" type="email" name="email" value="{{ old('email', $email) }}" required>
+        <input class="form-control mb-3" id="email" type="email" value="{{ $email }}" readonly>
         <label class="form-label" for="password">New password</label>
         <input class="form-control mb-3" id="password" type="password" name="password" required autofocus>
         <label class="form-label" for="password_confirmation">Confirm new password</label>

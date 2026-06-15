@@ -2,8 +2,8 @@
 
 namespace App\Providers;
 
-use App\Support\CreatorStorage;
 use App\Models\Response;
+use App\Support\CreatorStorage;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\Paginator;
@@ -35,6 +35,9 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('registration', fn (Request $request) => Limit::perMinute(5)->by($request->ip()));
         RateLimiter::for('password-reset', fn (Request $request) => Limit::perMinute(5)->by(
             Str::lower((string) $request->input('email')).'|'.$request->ip(),
+        ));
+        RateLimiter::for('password-code', fn (Request $request) => Limit::perMinute(10)->by(
+            Str::lower((string) $request->session()->get('password_reset_email')).'|'.$request->ip(),
         ));
         RateLimiter::for('verification', fn (Request $request) => Limit::perMinute(6)->by(
             (string) ($request->user()?->id ?? $request->ip()),

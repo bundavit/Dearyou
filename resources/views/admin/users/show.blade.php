@@ -123,6 +123,16 @@
                     <textarea class="form-control mb-2" name="reason" required minlength="5" maxlength="500" placeholder="Reason for restoration"></textarea>
                     <button class="btn btn-outline-success w-100"><i class="bi bi-arrow-counterclockwise"></i> Restore account</button>
                 </form>
+                <hr>
+                <p class="text-danger"><strong>Permanent deletion cannot be undone.</strong> It removes the account, letters, responses, and uploaded media.</p>
+                <form method="post" action="{{ route('admin.users.force-destroy', $managedUser->id) }}" onsubmit="return confirm('Permanently delete this account and all stored data?')">
+                    @csrf @method('delete')
+                    <label class="form-label">Reason</label>
+                    <textarea class="form-control mb-3" name="reason" rows="3" required></textarea>
+                    <label class="form-label">Type {{ $managedUser->email }} to confirm</label>
+                    <input class="form-control mb-3" name="confirmation" required autocomplete="off">
+                    <button class="btn btn-danger w-100"><i class="bi bi-trash3"></i> Permanently delete</button>
+                </form>
             @else
                 <p>Soft deletion blocks login and public links while preserving all account data for restoration.</p>
                 <form method="post" action="{{ route('admin.users.destroy', $managedUser->id) }}" onsubmit="return confirm('Delete this account? Its data will be preserved for restoration.')">

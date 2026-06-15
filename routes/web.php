@@ -14,6 +14,7 @@ use App\Http\Controllers\Admin\PlatformUserController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\EmailVerificationController;
 use App\Http\Controllers\NewPasswordController;
+use App\Http\Controllers\PasswordResetCodeController;
 use App\Http\Controllers\PasswordResetLinkController;
 use App\Http\Controllers\PublicLetterController;
 use App\Http\Controllers\RegistrationController;
@@ -29,7 +30,9 @@ Route::middleware('guest')->group(function () {
     Route::post('/register', [RegistrationController::class, 'store'])->middleware('throttle:registration')->name('register.store');
     Route::get('/forgot-password', [PasswordResetLinkController::class, 'create'])->name('password.request');
     Route::post('/forgot-password', [PasswordResetLinkController::class, 'store'])->middleware('throttle:password-reset')->name('password.email');
-    Route::get('/reset-password/{token}', [NewPasswordController::class, 'create'])->name('password.reset');
+    Route::get('/forgot-password/code', [PasswordResetCodeController::class, 'create'])->name('password.code');
+    Route::post('/forgot-password/code', [PasswordResetCodeController::class, 'store'])->middleware('throttle:password-code')->name('password.code.verify');
+    Route::get('/reset-password', [NewPasswordController::class, 'create'])->name('password.reset');
     Route::post('/reset-password', [NewPasswordController::class, 'store'])->name('password.update');
 });
 Route::middleware(['auth', 'active'])->group(function () {
@@ -50,6 +53,7 @@ Route::middleware(['auth', 'active', 'verified', 'role:user'])->group(function (
     Route::get('/account', [AccountController::class, 'edit'])->name('account.edit');
     Route::put('/account/profile', [AccountController::class, 'updateProfile'])->name('account.profile');
     Route::put('/account/password', [AccountController::class, 'updatePassword'])->name('account.password');
+    Route::delete('/account', [AccountController::class, 'destroy'])->name('account.destroy');
     Route::post('/account/tokens', [ApiTokenController::class, 'store'])->name('account.tokens.store');
     Route::delete('/account/tokens/{token}', [ApiTokenController::class, 'destroy'])->name('account.tokens.destroy');
     Route::resource('letters', LetterController::class);
@@ -78,6 +82,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'active', 'verified'
     Route::patch('/users/{user}/role', [PlatformUserController::class, 'updateRole'])->name('users.role');
     Route::patch('/users/{user}/status', [PlatformUserController::class, 'updateStatus'])->name('users.status');
     Route::delete('/users/{user}', [PlatformUserController::class, 'destroy'])->name('users.destroy');
+    Route::delete('/users/{user}/permanent', [PlatformUserController::class, 'forceDestroy'])->name('users.force-destroy');
     Route::patch('/users/{user}/restore', [PlatformUserController::class, 'restore'])->name('users.restore');
     Route::get('/settings', [PlatformSettingsController::class, 'edit'])->name('settings.edit');
     Route::put('/settings', [PlatformSettingsController::class, 'update'])->name('settings.update');

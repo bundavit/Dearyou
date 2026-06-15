@@ -14,14 +14,14 @@
     <img class="login-logo" src="{{ asset('assets/dearyou/dearyou-floral-envelope-logo-web.webp') }}" alt="DearYou floral envelope">
     <p class="login-eyebrow">ACCOUNT RECOVERY</p>
     <h1>Reset your password</h1>
-    <p class="text-secondary">Enter your account email and we will send a secure reset link.</p>
+    <p class="text-secondary">Enter your account email and we will send a six-digit reset code.</p>
     @if(session('status'))<div class="alert alert-success auto-dismiss-alert mt-3" role="status" data-auto-dismiss-alert>{{ session('status') }}</div>@endif
     <form method="post" action="{{ route('password.email') }}" class="text-start mt-4">
         @csrf
         <label class="form-label" for="email">Email</label>
         <input class="form-control mb-3" id="email" type="email" name="email" value="{{ old('email') }}" required autofocus>
         @error('email')<div class="text-danger small mb-3">{{ $message }}</div>@enderror
-        <button class="btn btn-dearyou w-100"><i class="bi bi-envelope-arrow-up"></i> Email reset link</button>
+        <button class="btn btn-dearyou w-100"><i class="bi bi-envelope-arrow-up"></i> Send reset code</button>
     </form>
     <p class="auth-switch"><a href="{{ route('login') }}"><i class="bi bi-arrow-left"></i> Back to sign in</a></p>
 </main>
