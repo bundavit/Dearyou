@@ -11,6 +11,8 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Laravel\Sanctum\HasApiTokens;
 
 #[Fillable(['name', 'email', 'avatar_path', 'password', 'role', 'disabled_at', 'storage_warning_at', 'storage_cleanup_due_at', 'email_verified_at'])]
@@ -31,7 +33,20 @@ class User extends Authenticatable implements MustVerifyEmail
 
     public function sendEmailVerificationNotification(): void
     {
-        $this->notify(new VerifyEmail);
+        $code = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+
+        DB::table('email_verification_codes')->updateOrInsert(
+            ['user_id' => $this->id],
+            [
+                'code' => Hash::make($code),
+                'attempts' => 0,
+                'expires_at' => now()->addMinutes(10),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+        );
+
+        $this->notify(new VerifyEmail($code));
     }
 
     public function letters()

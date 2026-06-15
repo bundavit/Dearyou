@@ -17,7 +17,6 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\URL;
 use Tests\TestCase;
 
 class DearYouFlowTest extends TestCase
@@ -91,17 +90,16 @@ class DearYouFlowTest extends TestCase
 
         $user = User::query()->where('email', 'writer@example.com')->firstOrFail();
         $this->assertFalse($user->hasVerifiedEmail());
-        Notification::assertSentTo($user, VerifyEmail::class);
+        $code = null;
+        Notification::assertSentTo($user, VerifyEmail::class, function (VerifyEmail $notification) use (&$code) {
+            $code = $notification->code;
+
+            return true;
+        });
 
         $this->get('/letters')->assertRedirect('/verify-email');
 
-        $verificationUrl = URL::temporarySignedRoute(
-            'verification.verify',
-            now()->addHour(),
-            ['id' => $user->id, 'hash' => sha1($user->email)],
-        );
-
-        $this->get($verificationUrl)->assertRedirect('/letters');
+        $this->post('/verify-email', ['code' => $code])->assertRedirect('/letters');
         $this->assertTrue($user->fresh()->hasVerifiedEmail());
         $this->get('/letters')->assertOk();
     }
@@ -114,9 +112,34 @@ class DearYouFlowTest extends TestCase
         $this->actingAs($user)
             ->post('/email/verification-notification')
             ->assertRedirect()
-            ->assertSessionHas('status', 'verification-link-sent');
+            ->assertSessionHas('status', 'verification-code-sent');
 
         Notification::assertSentTo($user, VerifyEmail::class);
+    }
+
+    public function test_email_verification_code_expires_and_limits_incorrect_attempts(): void
+    {
+        Notification::fake();
+        $user = User::factory()->unverified()->create();
+        $user->sendEmailVerificationNotification();
+
+        foreach (range(1, 5) as $attempt) {
+            $this->actingAs($user)
+                ->post('/verify-email', ['code' => '000000'])
+                ->assertSessionHasErrors('code');
+        }
+
+        $this->assertDatabaseHas('email_verification_codes', [
+            'user_id' => $user->id,
+            'attempts' => 5,
+        ]);
+
+        $this->actingAs($user)
+            ->post('/verify-email', ['code' => '000000'])
+            ->assertSessionHasErrors('code');
+
+        $this->assertDatabaseMissing('email_verification_codes', ['user_id' => $user->id]);
+        $this->assertFalse($user->fresh()->hasVerifiedEmail());
     }
 
     public function test_active_user_can_request_and_complete_a_password_reset(): void
