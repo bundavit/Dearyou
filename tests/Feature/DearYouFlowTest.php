@@ -6,6 +6,7 @@ use App\Models\Feedback;
 use App\Models\Letter;
 use App\Models\ModerationAudit;
 use App\Models\Response;
+use App\Models\SiteMetric;
 use App\Models\User;
 use App\Notifications\PasswordResetCode;
 use App\Notifications\StorageCleanupCompleted;
@@ -15,6 +16,7 @@ use App\Support\CreatorStorage;
 use App\Support\PlatformSettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
@@ -387,6 +389,25 @@ class DearYouFlowTest extends TestCase
             ->get('/')
             ->assertOk()
             ->assertSee('Admin dashboard');
+    }
+
+    public function test_homepage_visits_are_counted_and_visible_to_platform_admins(): void
+    {
+        $this->get('/')->assertOk();
+        $this->get('/')->assertOk();
+
+        $this->assertDatabaseHas('site_metrics', [
+            'key' => SiteMetric::HOMEPAGE_VIEWS,
+            'value' => 2,
+        ]);
+
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+
+        $this->actingAs($admin)
+            ->get('/admin/platform')
+            ->assertOk()
+            ->assertSee('Homepage visits')
+            ->assertSee('2');
     }
 
     public function test_platform_admin_can_search_view_and_manage_user_accounts(): void
@@ -1602,6 +1623,59 @@ class DearYouFlowTest extends TestCase
             ->assertSessionHasErrors('storage_limit_mb');
     }
 
+    public function test_platform_admin_can_add_custom_publishing_windows(): void
+    {
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+        $creator = User::factory()->create();
+
+        $this->actingAs($admin)->put('/admin/settings', [
+            'allowed_expiry_minutes' => ['15'],
+            'custom_expiry_minutes' => '45, 180, 1440',
+            'default_expiry_minutes' => '180',
+            'storage_limit_mb' => '250',
+            'cleanup_grace_days' => '7',
+            'cleanup_enabled' => '1',
+            'cleanup_policy' => 'oldest_expired',
+            'enabled_categories' => ['confession'],
+            'letter_media_limit_mb' => '10',
+            'audio_limit_mb' => '20',
+            'profile_image_limit_mb' => '5',
+            'memory_files_per_upload' => '5',
+        ])->assertRedirect()->assertSessionHas('success');
+
+        $this->assertSame(
+            [15 => '15 minutes', 45 => '45 minutes', 180 => '3 hours', 1440 => '1 day'],
+            app(PlatformSettings::class)->expiryOptions(),
+        );
+        $this->assertSame(180, app(PlatformSettings::class)->defaultExpiryMinutes());
+
+        $this->actingAs($creator)->get('/letters/create')
+            ->assertOk()
+            ->assertSee('45 minutes')
+            ->assertSee('3 hours')
+            ->assertSee('1 day')
+            ->assertDontSee('2 hours');
+    }
+
+    public function test_custom_publishing_windows_must_be_within_thirty_days(): void
+    {
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+
+        $this->actingAs($admin)->from('/admin/settings')->put('/admin/settings', [
+            'custom_expiry_minutes' => '43201',
+            'default_expiry_minutes' => '43201',
+            'storage_limit_mb' => '250',
+            'cleanup_grace_days' => '7',
+            'cleanup_policy' => 'oldest_expired',
+            'enabled_categories' => ['confession'],
+            'letter_media_limit_mb' => '10',
+            'audio_limit_mb' => '20',
+            'profile_image_limit_mb' => '5',
+            'memory_files_per_upload' => '5',
+        ])->assertRedirect('/admin/settings')
+            ->assertSessionHasErrors('custom_expiry_minutes');
+    }
+
     public function test_creation_settings_control_categories_and_upload_limits(): void
     {
         Storage::fake('public');
@@ -2012,6 +2086,62 @@ class DearYouFlowTest extends TestCase
             ->assertSee($feedback->message);
     }
 
+    public function test_platform_dashboard_summarizes_recent_feedback(): void
+    {
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+
+        Feedback::create([
+            'category' => 'suggestion',
+            'message' => 'Please add another envelope style.',
+            'rating' => 5,
+            'status' => 'new',
+        ]);
+        Feedback::create([
+            'category' => 'design',
+            'message' => 'The mobile layout is looking better.',
+            'rating' => 3,
+            'status' => 'reviewed',
+        ]);
+
+        $this->actingAs($admin)->get('/admin/platform')
+            ->assertOk()
+            ->assertSee('Feedback')
+            ->assertSee('New feedback')
+            ->assertSee('Average rating')
+            ->assertSee('4.0')
+            ->assertSee('Please add another envelope style.');
+    }
+
+    public function test_every_auto_filter_has_a_permanent_clear_action(): void
+    {
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+        $creator = User::factory()->create();
+
+        foreach ([
+            '/admin/feedback' => route('admin.feedback.index'),
+            '/admin/audit' => route('admin.audit'),
+            '/admin/moderation/letters' => route('admin.moderation.index'),
+            '/admin/users' => route('admin.users.index'),
+            '/admin/letters' => route('admin.letters.index'),
+            '/admin/inbox' => route('admin.inbox'),
+        ] as $url => $clearUrl) {
+            $this->actingAs($admin)->get($url)
+                ->assertOk()
+                ->assertSee('auto-filter-clear', false)
+                ->assertSee($clearUrl, false);
+        }
+
+        foreach ([
+            '/letters' => route('letters.index'),
+            '/inbox' => route('inbox'),
+        ] as $url => $clearUrl) {
+            $this->actingAs($creator)->get($url)
+                ->assertOk()
+                ->assertSee('auto-filter-clear', false)
+                ->assertSee($clearUrl, false);
+        }
+    }
+
     public function test_admin_can_review_resolve_and_delete_feedback(): void
     {
         $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
@@ -2068,5 +2198,58 @@ class DearYouFlowTest extends TestCase
         $this->artisan('dearyou:check-production', ['--strict' => true])
             ->expectsOutputToContain('DearYou is ready')
             ->assertSuccessful();
+    }
+
+    public function test_expired_security_codes_are_pruned_without_removing_active_codes(): void
+    {
+        $expiredUser = User::factory()->create();
+        $activeUser = User::factory()->create();
+
+        DB::table('email_verification_codes')->insert([
+            [
+                'user_id' => $expiredUser->id,
+                'code' => Hash::make('111111'),
+                'attempts' => 0,
+                'expires_at' => now()->subMinute(),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'user_id' => $activeUser->id,
+                'code' => Hash::make('222222'),
+                'attempts' => 0,
+                'expires_at' => now()->addMinutes(10),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+        ]);
+
+        DB::table('password_reset_codes')->insert([
+            [
+                'email' => 'expired@example.com',
+                'code' => Hash::make('333333'),
+                'attempts' => 0,
+                'expires_at' => now()->subMinute(),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'email' => 'active@example.com',
+                'code' => Hash::make('444444'),
+                'attempts' => 0,
+                'expires_at' => now()->addMinutes(10),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+        ]);
+
+        $this->artisan('dearyou:prune-security-codes')
+            ->expectsOutput('Security codes pruned: 1 verification, 1 password reset.')
+            ->assertSuccessful();
+
+        $this->assertDatabaseMissing('email_verification_codes', ['user_id' => $expiredUser->id]);
+        $this->assertDatabaseHas('email_verification_codes', ['user_id' => $activeUser->id]);
+        $this->assertDatabaseMissing('password_reset_codes', ['email' => 'expired@example.com']);
+        $this->assertDatabaseHas('password_reset_codes', ['email' => 'active@example.com']);
     }
 }

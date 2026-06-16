@@ -1,6 +1,14 @@
 @extends('layouts.app')
 @section('title', 'Platform Settings - DearYou')
 @section('content')
+@php
+    $presetExpiryOptions = collect(\App\Support\PlatformSettings::DEFAULT_EXPIRY_OPTIONS)
+        ->mapWithKeys(fn ($minutes) => [$minutes => app(\App\Support\PlatformSettings::class)->durationLabel($minutes)])
+        ->all();
+    $customExpiryValue = collect($settings['allowed_expiry_minutes'])
+        ->reject(fn ($minutes) => in_array($minutes, \App\Support\PlatformSettings::DEFAULT_EXPIRY_OPTIONS, true))
+        ->implode(', ');
+@endphp
 <div class="admin-page-header">
     <div>
         <p class="eyebrow">PLATFORM ADMIN</p>
@@ -21,12 +29,13 @@
             </ul>
         </div>
     @endif
+    <div class="platform-settings-section">
     <div class="row g-4">
         <div class="col-lg-6">
             <h2 class="h4">Publishing windows</h2>
             <p class="text-secondary">Choose which private-link durations creators may use.</p>
             <div class="d-flex flex-wrap gap-3 mb-3">
-                @foreach([15 => '15 minutes', 30 => '30 minutes', 60 => '1 hour', 120 => '2 hours'] as $minutes => $label)
+                @foreach($presetExpiryOptions as $minutes => $label)
                     <label class="form-check platform-setting-choice">
                         <input class="form-check-input" type="checkbox" name="allowed_expiry_minutes[]" value="{{ $minutes }}" data-expiry-choice @checked(in_array($minutes, old('allowed_expiry_minutes', $settings['allowed_expiry_minutes'])))>
                         <span>{{ $label }}</span>
@@ -34,9 +43,40 @@
                 @endforeach
             </div>
             @error('allowed_expiry_minutes')<p class="text-danger small">{{ $message }}</p>@enderror
+            <label class="form-label" for="custom_expiry_value">Add custom time</label>
+            <div class="custom-expiry-builder">
+                <input
+                    class="form-control"
+                    id="custom_expiry_value"
+                    type="number"
+                    min="1"
+                    max="43200"
+                    inputmode="numeric"
+                    placeholder="3"
+                    data-custom-expiry-value
+                >
+                <select class="form-select" aria-label="Custom time unit" data-custom-expiry-unit>
+                    <option value="minutes">Minutes</option>
+                    <option value="hours" selected>Hours</option>
+                    <option value="days">Days</option>
+                </select>
+                <button class="btn btn-outline-dearyou" type="button" data-add-custom-expiry>
+                    <i class="bi bi-plus-lg"></i> Add
+                </button>
+            </div>
+            <input
+                id="custom_expiry_minutes"
+                name="custom_expiry_minutes"
+                type="hidden"
+                value="{{ old('custom_expiry_minutes', $customExpiryValue) }}"
+                data-custom-expiry
+            >
+            <div class="custom-expiry-list" data-custom-expiry-list></div>
+            <div class="form-text mb-3">Custom times can be from 1 minute up to 30 days. Remove a custom time by clicking its chip.</div>
+            @error('custom_expiry_minutes')<p class="text-danger small mt-1">{{ $message }}</p>@enderror
             <label class="form-label" for="default_expiry_minutes">Default duration</label>
             <select class="form-select" id="default_expiry_minutes" name="default_expiry_minutes" data-default-expiry>
-                @foreach([15 => '15 minutes', 30 => '30 minutes', 60 => '1 hour', 120 => '2 hours'] as $minutes => $label)
+                @foreach($expiryOptions as $minutes => $label)
                     <option value="{{ $minutes }}" @selected((int) old('default_expiry_minutes', $settings['default_expiry_minutes']) === $minutes)>{{ $label }}</option>
                 @endforeach
             </select>
@@ -65,9 +105,9 @@
             </label>
         </div>
     </div>
+    </div>
 
-    <hr class="my-4">
-
+    <div class="platform-settings-section">
     <div class="row g-4">
         <div class="col-lg-7">
             <h2 class="h4">Letter occasions</h2>
@@ -110,8 +150,9 @@
             </div>
         </div>
     </div>
+    </div>
 
-    <div class="mt-4 d-flex justify-content-end">
+    <div class="platform-settings-actions">
         <button class="btn btn-dearyou" type="submit"><i class="bi bi-check2-circle"></i> Save platform settings</button>
     </div>
 </form>

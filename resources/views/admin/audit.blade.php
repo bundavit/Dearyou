@@ -18,7 +18,7 @@
         @endforeach
     </select>
     <button class="btn btn-outline-secondary auto-filter-submit"><i class="bi bi-funnel"></i> Filter</button>
-    @if(request()->hasAny(['search', 'action']))<a class="btn btn-link" href="{{ route('admin.audit') }}"><i class="bi bi-x-lg"></i> Clear</a>@endif
+    <a class="btn btn-link auto-filter-clear" href="{{ route('admin.audit') }}"><i class="bi bi-x-lg"></i> Clear</a>
 </form>
 
 <section class="dashboard-panel">

@@ -9,3 +9,4 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('dearyou:process-storage')->dailyAt('02:00')->withoutOverlapping();
+Schedule::command('dearyou:prune-security-codes')->hourly()->withoutOverlapping();

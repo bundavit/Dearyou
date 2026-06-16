@@ -4,7 +4,7 @@
 <div class="admin-page-header">
     <div><p class="eyebrow">COMMUNITY</p><h1>Feedback</h1><p class="dashboard-subtitle">Private suggestions and reports sent by DearYou visitors.</p></div>
 </div>
-<form class="filter-card mb-4" method="get" data-auto-filter>
+<form class="filter-card feedback-filter mb-4" method="get" data-auto-filter>
     <select class="form-select" name="status" data-auto-filter-change>
         <option value="">All statuses</option>
         @foreach(\App\Models\Feedback::STATUSES as $value => $label)<option value="{{ $value }}" @selected(request('status') === $value)>{{ $label }}</option>@endforeach
@@ -13,7 +13,8 @@
         <option value="">All categories</option>
         @foreach(\App\Models\Feedback::CATEGORIES as $value => $label)<option value="{{ $value }}" @selected(request('category') === $value)>{{ $label }}</option>@endforeach
     </select>
-    <button class="btn btn-outline-dark auto-filter-submit">Filter</button>
+    <button class="btn btn-outline-secondary auto-filter-submit"><i class="bi bi-funnel"></i> Filter</button>
+    <a class="btn btn-link auto-filter-clear" href="{{ route('admin.feedback.index') }}"><i class="bi bi-x-lg"></i> Clear</a>
 </form>
 <section class="dashboard-panel">
     <div class="admin-record-list">

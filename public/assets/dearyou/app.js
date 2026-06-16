@@ -116,24 +116,118 @@ const platformSettingsForm = document.querySelector("[data-platform-settings-for
 if (platformSettingsForm) {
   const expiryChoices = Array.from(platformSettingsForm.querySelectorAll("[data-expiry-choice]"));
   const defaultExpiry = platformSettingsForm.querySelector("[data-default-expiry]");
+  const customExpiry = platformSettingsForm.querySelector("[data-custom-expiry]");
+  const customExpiryValue = platformSettingsForm.querySelector("[data-custom-expiry-value]");
+  const customExpiryUnit = platformSettingsForm.querySelector("[data-custom-expiry-unit]");
+  const customExpiryAdd = platformSettingsForm.querySelector("[data-add-custom-expiry]");
+  const customExpiryList = platformSettingsForm.querySelector("[data-custom-expiry-list]");
+
+  const durationLabel = minutes => {
+    if (minutes === 1) return "1 minute";
+    if (minutes < 60) return `${minutes} minutes`;
+    if (minutes % 1440 === 0) {
+      const days = minutes / 1440;
+      return days === 1 ? "1 day" : `${days} days`;
+    }
+    if (minutes % 60 === 0) {
+      const hours = minutes / 60;
+      return hours === 1 ? "1 hour" : `${hours} hours`;
+    }
+    return `${minutes} minutes`;
+  };
+
+  const customMinutes = () => (customExpiry?.value || "")
+    .split(",")
+    .map(value => Number.parseInt(value.trim(), 10))
+    .filter(value => Number.isInteger(value) && value >= 1 && value <= 43200);
+
+  const setCustomMinutes = minutes => {
+    if (!customExpiry) return;
+    customExpiry.value = [...new Set(minutes)]
+      .sort((left, right) => left - right)
+      .join(", ");
+  };
+
+  const renderCustomMinutes = () => {
+    if (!customExpiryList) return;
+
+    const values = customMinutes();
+    customExpiryList.innerHTML = "";
+    customExpiryList.hidden = values.length === 0;
+
+    values.forEach(minutes => {
+      const chip = document.createElement("button");
+      chip.type = "button";
+      chip.className = "custom-expiry-chip";
+      chip.dataset.minutes = String(minutes);
+      chip.innerHTML = `<span>${durationLabel(minutes)}</span><i class="bi bi-x-lg" aria-hidden="true"></i>`;
+      chip.setAttribute("aria-label", `Remove ${durationLabel(minutes)}`);
+      customExpiryList.append(chip);
+    });
+  };
 
   const syncDefaultExpiry = () => {
     if (!defaultExpiry) return;
 
-    const enabledValues = expiryChoices
+    const presetValues = expiryChoices
       .filter(choice => choice.checked)
       .map(choice => choice.value);
+    const customValues = customMinutes()
+      .map(String);
+    const enabledValues = [...new Set([...presetValues, ...customValues])]
+      .sort((left, right) => Number(left) - Number(right));
 
     Array.from(defaultExpiry.options).forEach(option => {
-      option.disabled = !enabledValues.includes(option.value);
+      if (!enabledValues.includes(option.value)) option.remove();
     });
+
+    enabledValues.forEach(value => {
+      if (Array.from(defaultExpiry.options).some(option => option.value === value)) return;
+      defaultExpiry.add(new Option(durationLabel(Number(value)), value));
+    });
+
+    Array.from(defaultExpiry.options)
+      .sort((left, right) => Number(left.value) - Number(right.value))
+      .forEach(option => defaultExpiry.add(option));
 
     if (enabledValues.length && !enabledValues.includes(defaultExpiry.value)) {
       defaultExpiry.value = enabledValues[0];
     }
   };
 
+  customExpiryAdd?.addEventListener("click", () => {
+    const amount = Number.parseInt(customExpiryValue?.value || "", 10);
+    const unit = customExpiryUnit?.value || "minutes";
+    const multiplier = unit === "days" ? 1440 : unit === "hours" ? 60 : 1;
+    const minutes = amount * multiplier;
+
+    if (!Number.isInteger(minutes) || minutes < 1 || minutes > 43200) {
+      customExpiryValue?.focus();
+      return;
+    }
+
+    setCustomMinutes([...customMinutes(), minutes]);
+    if (customExpiryValue) customExpiryValue.value = "";
+    renderCustomMinutes();
+    syncDefaultExpiry();
+  });
+
+  customExpiryList?.addEventListener("click", event => {
+    const chip = event.target.closest("[data-minutes]");
+    if (!chip) return;
+
+    const minutes = Number.parseInt(chip.dataset.minutes || "", 10);
+    setCustomMinutes(customMinutes().filter(value => value !== minutes));
+    renderCustomMinutes();
+    syncDefaultExpiry();
+  });
+
   expiryChoices.forEach(choice => choice.addEventListener("change", syncDefaultExpiry));
+  customExpiry?.addEventListener("input", () => {
+    renderCustomMinutes();
+    syncDefaultExpiry();
+  });
+  renderCustomMinutes();
   syncDefaultExpiry();
 }
 

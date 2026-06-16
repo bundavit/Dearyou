@@ -15,6 +15,7 @@ use App\Http\Controllers\Admin\PlatformUserController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\EmailVerificationController;
 use App\Http\Controllers\FeedbackController;
+use App\Http\Controllers\HomeController;
 use App\Http\Controllers\NewPasswordController;
 use App\Http\Controllers\PasswordResetCodeController;
 use App\Http\Controllers\PasswordResetLinkController;
@@ -22,7 +23,7 @@ use App\Http\Controllers\PublicLetterController;
 use App\Http\Controllers\RegistrationController;
 use Illuminate\Support\Facades\Route;
 
-Route::view('/', 'welcome')->name('home');
+Route::get('/', HomeController::class)->name('home');
 Route::post('/feedback', [FeedbackController::class, 'store'])->middleware('throttle:feedback')->name('feedback.store');
 Route::get('/admin/login', [AuthController::class, 'create'])->middleware(['admin.network', 'guest'])->name('login.legacy');
 Route::post('/admin/login', [AuthController::class, 'store'])->middleware(['admin.network', 'guest', 'throttle:login'])->name('login.legacy.store');

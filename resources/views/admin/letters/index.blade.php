@@ -10,7 +10,7 @@
     <select class="form-select" name="status" aria-label="Filter by status" data-auto-filter-change><option value="">All statuses</option>@foreach(['draft','published','unpublished'] as $status)<option value="{{ $status }}" @selected(request('status')===$status)>{{ ucfirst($status) }}</option>@endforeach</select>
     <select class="form-select" name="category" aria-label="Filter by occasion" data-auto-filter-change><option value="">All occasions</option>@foreach(\App\Support\PlatformSettings::CATEGORY_OPTIONS as $category => $label)<option value="{{ $category }}" @selected(request('category')===$category)>{{ $label }}</option>@endforeach</select>
     <button class="btn btn-outline-secondary auto-filter-submit"><i class="bi bi-funnel"></i> Filter</button>
-    @if(request()->hasAny(['search','status','category']))<a class="btn btn-link" href="{{ route(\App\Support\CreatorRoute::name('letters.index')) }}"><i class="bi bi-x-lg"></i> Clear</a>@endif
+    <a class="btn btn-link auto-filter-clear" href="{{ route(\App\Support\CreatorRoute::name('letters.index')) }}"><i class="bi bi-x-lg"></i> Clear</a>
 </form>
 <div class="row g-3">
 @forelse($letters as $letter)

@@ -304,7 +304,129 @@ linear-gradient(145deg,color-mix(in srgb,var(--paper),white 24%),color-mix(in sr
 @media(max-width:900px){.platform-user-filter{grid-template-columns:1fr 1fr}.platform-user-filter input{grid-column:1/-1}.platform-user-detail-grid{grid-template-columns:1fr}.platform-user-controls{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:650px){.platform-user-filter{grid-template-columns:1fr}.platform-user-filter input{grid-column:auto}.platform-user-card{grid-template-columns:auto minmax(0,1fr)}.platform-user-metrics{grid-column:1/-1;justify-content:flex-end;border-top:1px solid #eadfe3;padding-top:.75rem}.platform-user-controls{grid-template-columns:1fr}}
 .platform-settings-form {
-    max-width: 1180px;
+    display: grid;
+    gap: 1rem;
+    width: min(1120px, 100%);
+    max-width: none;
+    margin-inline: auto;
+    padding: 1rem;
+}
+
+.platform-settings-section {
+    padding: 1.25rem;
+    border: 1px solid #eadde2;
+    border-radius: 18px;
+    background: rgba(255, 255, 255, .55);
+}
+
+.platform-settings-section h2 {
+    margin-bottom: .35rem;
+}
+
+.platform-settings-section .text-secondary {
+    margin-bottom: 1rem;
+}
+
+.platform-settings-actions {
+    display: flex;
+    justify-content: center;
+    padding: .25rem 0;
+}
+
+.platform-settings-actions .btn {
+    min-width: 240px;
+}
+
+.custom-expiry-builder {
+    display: grid;
+    grid-template-columns: minmax(100px, 1fr) minmax(125px, 1fr) auto;
+    gap: .75rem;
+    align-items: center;
+}
+
+.custom-expiry-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem;
+    margin-top: .75rem;
+}
+
+.custom-expiry-chip {
+    border: 1px solid rgba(168, 69, 104, .22);
+    border-radius: 999px;
+    background: rgba(216, 91, 120, .12);
+    color: var(--accent-strong);
+    display: inline-flex;
+    align-items: center;
+    gap: .45rem;
+    font-weight: 800;
+    padding: .45rem .75rem;
+}
+
+.custom-expiry-chip:hover,
+.custom-expiry-chip:focus-visible {
+    background: rgba(216, 91, 120, .2);
+}
+
+.platform-dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+    align-items: start;
+}
+
+.feedback-filter {
+    grid-template-columns: repeat(2, minmax(190px, 1fr)) auto auto;
+}
+
+.auto-filter-clear {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .35rem;
+    min-width: 88px;
+    color: #a13f5a;
+    font-weight: 700;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.auto-filter-clear:hover {
+    color: #7e2f47;
+    background: #fbe9ee;
+}
+
+@media (max-width: 900px) {
+    .platform-dashboard-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .feedback-filter {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+@media (max-width: 560px) {
+    .platform-settings-form {
+        padding: .75rem;
+    }
+
+    .platform-settings-section {
+        padding: 1rem;
+    }
+
+    .platform-settings-actions .btn {
+        width: 100%;
+        min-width: 0;
+    }
+
+    .custom-expiry-builder {
+        grid-template-columns: 1fr;
+    }
+
+    .feedback-filter {
+        grid-template-columns: 1fr;
+    }
 }
 
 /* Admin feedback and audit records */
@@ -864,6 +986,161 @@ linear-gradient(145deg,color-mix(in srgb,var(--paper),white 24%),color-mix(in sr
 
     .home-page .home-final-cta {
         padding: 1.5rem;
+    }
+}
+
+/* Consistent public homepage rhythm and full-width footer. */
+.home-page .home-lazy-section,
+.home-page .home-footer {
+    contain-intrinsic-size: auto 440px;
+}
+
+.home-page .home-section {
+    min-height: 0;
+    padding: clamp(4rem, 6.5vw, 6rem) max(5vw, 24px);
+}
+
+.home-page .home-section-heading {
+    width: min(760px, 100%);
+    margin-bottom: clamp(2rem, 3.5vw, 3rem);
+}
+
+.home-page .occasion-grid,
+.home-page .steps-grid {
+    width: min(1240px, 100%);
+    max-width: none;
+}
+
+.home-page .home-features {
+    align-items: center;
+}
+
+.home-page .home-feature-intro {
+    align-self: center;
+}
+
+.home-page .home-privacy {
+    grid-template-columns: auto minmax(0, 820px);
+}
+
+.home-page .faq-list {
+    width: min(920px, 100%);
+    max-width: none;
+}
+
+.home-page .home-final-cta {
+    width: min(1240px, calc(100% - 48px));
+    margin: clamp(1.5rem, 3vw, 2.75rem) auto;
+}
+
+.home-page .home-feedback {
+    padding-top: clamp(4rem, 6vw, 5.5rem);
+}
+
+.home-page .home-footer {
+    padding: clamp(3.25rem, 5vw, 4.5rem) clamp(24px, 5vw, 80px) 1.75rem;
+}
+
+.home-page .home-footer-main,
+.home-page .home-footer-bottom {
+    width: 100%;
+    max-width: none;
+    margin-inline: 0;
+}
+
+.home-page .home-footer-main {
+    grid-template-columns: minmax(320px, 1.5fr) minmax(180px, .55fr) minmax(180px, .55fr);
+    gap: clamp(3rem, 8vw, 9rem);
+}
+
+.home-page .home-footer-main > div:nth-child(2) {
+    justify-self: center;
+}
+
+.home-page .home-footer-main > div:nth-child(3) {
+    justify-self: end;
+}
+
+.home-page .home-footer-brand p {
+    max-width: 430px;
+    font-size: 1.05rem;
+    line-height: 1.7;
+}
+
+.home-page .home-footer h2 {
+    font-size: 1.2rem;
+}
+
+.home-page .home-footer-main a:not(.home-brand),
+.home-page .home-footer-bottom a {
+    font-size: 1rem;
+    line-height: 1.5;
+}
+
+.home-page .home-footer-bottom {
+    margin-top: 3rem;
+    font-size: .95rem;
+}
+
+@media (max-width: 680px) {
+    .home-page .home-lazy-section,
+    .home-page .home-footer {
+        contain-intrinsic-size: auto 620px;
+    }
+
+    .home-page .home-section {
+        padding-block: 3.75rem;
+    }
+
+    .home-page .home-privacy {
+        grid-template-columns: 1fr;
+    }
+
+    .home-page .home-final-cta {
+        width: calc(100% - 24px);
+        margin-block: 1.25rem;
+    }
+
+    .home-page .home-footer {
+        padding: 3rem 22px 1.5rem;
+    }
+
+    .home-page .home-footer-main {
+        grid-template-columns: 1fr 1fr;
+        gap: 2.25rem 1.5rem;
+    }
+
+    .home-page .home-footer-brand {
+        grid-column: 1 / -1;
+    }
+
+    .home-page .home-footer-main > div:nth-child(2),
+    .home-page .home-footer-main > div:nth-child(3) {
+        justify-self: start;
+    }
+
+    .home-page .home-footer-brand p {
+        font-size: 1rem;
+    }
+
+    .home-page .home-footer-main a:not(.home-brand),
+    .home-page .home-footer-bottom a {
+        font-size: .98rem;
+    }
+
+    .home-page .home-footer-bottom {
+        gap: .55rem;
+        font-size: .9rem;
+    }
+}
+
+@media (max-width: 430px) {
+    .home-page .home-footer-main {
+        grid-template-columns: 1fr;
+    }
+
+    .home-page .home-footer-brand {
+        grid-column: auto;
     }
 }
 

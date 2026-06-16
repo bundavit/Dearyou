@@ -12,14 +12,18 @@ class PlatformSettingsController extends Controller
 {
     public function edit(PlatformSettings $settings)
     {
-        return view('admin.settings', ['settings' => $settings->all()]);
+        return view('admin.settings', [
+            'settings' => $settings->all(),
+            'expiryOptions' => $settings->expiryOptions(),
+        ]);
     }
 
     public function update(Request $request, PlatformSettings $settings)
     {
         $validated = $request->validate([
-            'allowed_expiry_minutes' => ['required', 'array', 'min:1'],
-            'allowed_expiry_minutes.*' => ['required', 'integer', Rule::in([15, 30, 60, 120])],
+            'allowed_expiry_minutes' => ['nullable', 'array'],
+            'allowed_expiry_minutes.*' => ['required', 'integer', Rule::in(PlatformSettings::DEFAULT_EXPIRY_OPTIONS)],
+            'custom_expiry_minutes' => ['nullable', 'string', 'max:500', 'regex:/^\s*\d+(?:\s*,\s*\d+)*\s*$/'],
             'default_expiry_minutes' => ['required', 'integer'],
             'storage_limit_mb' => ['required', 'integer', 'min:1', 'max:10240'],
             'cleanup_grace_days' => ['required', 'integer', 'min:1', 'max:90'],
@@ -32,14 +36,41 @@ class PlatformSettingsController extends Controller
             'memory_files_per_upload' => ['required', 'integer', 'min:1', 'max:20'],
         ]);
 
-        $allowedExpiryMinutes = array_map('intval', $validated['allowed_expiry_minutes']);
+        $presetExpiryMinutes = array_map('intval', $validated['allowed_expiry_minutes'] ?? []);
+        $customExpiryMinutes = collect(explode(',', $validated['custom_expiry_minutes'] ?? ''))
+            ->map(fn (string $value) => (int) trim($value))
+            ->filter()
+            ->all();
+        $allowedExpiryMinutes = collect([...$presetExpiryMinutes, ...$customExpiryMinutes])
+            ->filter(fn (int $minutes) => $minutes >= 1 && $minutes <= PlatformSettings::MAX_EXPIRY_MINUTES)
+            ->unique()
+            ->sort()
+            ->values()
+            ->all();
         $defaultExpiryMinutes = (int) $validated['default_expiry_minutes'];
+
+        if ($allowedExpiryMinutes === []) {
+            return back()->withErrors([
+                'custom_expiry_minutes' => 'Enable a preset or add at least one custom duration.',
+            ])->withInput();
+        }
+
+        if (count($customExpiryMinutes) !== count(array_filter(
+            $customExpiryMinutes,
+            fn (int $minutes) => $minutes >= 1 && $minutes <= PlatformSettings::MAX_EXPIRY_MINUTES,
+        ))) {
+            return back()->withErrors([
+                'custom_expiry_minutes' => 'Custom durations must be between 1 minute and 30 days.',
+            ])->withInput();
+        }
 
         if (! in_array($defaultExpiryMinutes, $allowedExpiryMinutes, true)) {
             return back()->withErrors([
                 'default_expiry_minutes' => 'The default duration must also be enabled.',
             ])->withInput();
         }
+
+        unset($validated['custom_expiry_minutes']);
 
         $settings->update([
             ...$validated,

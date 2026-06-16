@@ -24,7 +24,7 @@
         <option value="deleted" @selected(($filters['status'] ?? '') === 'deleted')>Deleted</option>
     </select>
     <button class="btn btn-outline-secondary auto-filter-submit"><i class="bi bi-funnel"></i> Filter</button>
-    @if(array_filter($filters))<a class="btn btn-link" href="{{ route('admin.users.index') }}">Clear</a>@endif
+    <a class="btn btn-link auto-filter-clear" href="{{ route('admin.users.index') }}"><i class="bi bi-x-lg"></i> Clear</a>
 </form>
 
 <div class="platform-user-list">

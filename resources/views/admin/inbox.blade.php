@@ -14,6 +14,7 @@
             @foreach($letters as $letter)<option value="{{ $letter->id }}" @selected((string) request('letter') === (string) $letter->id)>{{ $letter->title }}</option>@endforeach
         </select>
         <button class="btn btn-outline-secondary auto-filter-submit"><i class="bi bi-funnel"></i> Filter</button>
+        <a class="btn btn-link auto-filter-clear" href="{{ route(\App\Support\CreatorRoute::name('inbox')) }}"><i class="bi bi-x-lg"></i> Clear</a>
     </form>
 </div>
 

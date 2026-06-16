@@ -9,6 +9,8 @@ class PlatformSettings
 {
     public const DEFAULT_EXPIRY_OPTIONS = [15, 30, 60, 120];
 
+    public const MAX_EXPIRY_MINUTES = 43200;
+
     public const CATEGORY_OPTIONS = [
         'confession' => 'Confession',
         'apology' => 'Apology',
@@ -146,7 +148,13 @@ class PlatformSettings
     public function durationLabel(int $minutes): string
     {
         if ($minutes < 60) {
-            return "{$minutes} minutes";
+            return $minutes === 1 ? '1 minute' : "{$minutes} minutes";
+        }
+
+        if ($minutes % 1440 === 0) {
+            $days = intdiv($minutes, 1440);
+
+            return $days === 1 ? '1 day' : "{$days} days";
         }
 
         if ($minutes % 60 === 0) {

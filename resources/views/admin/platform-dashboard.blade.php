@@ -21,10 +21,14 @@
     'published' => ['Published', 'bi-send-check'],
     'responses' => ['Responses', 'bi-chat-heart'],
     'opens' => ['Link opens', 'bi-eye'],
+    'homepage_visits' => ['Homepage visits', 'bi-globe2'],
     'storage' => ['Media storage', 'bi-cloud'],
     'cleanups' => ['Cleanup records', 'bi-clock-history'],
     'moderated' => ['Moderated', 'bi-shield-exclamation'],
     'audits' => ['Audit actions', 'bi-journal-check'],
+    'feedback' => ['Feedback', 'bi-chat-heart'],
+    'new_feedback' => ['New feedback', 'bi-chat-dots'],
+    'feedback_rating' => ['Average rating', 'bi-star-fill'],
 ])
 <div class="dashboard-stats">
     @foreach($statCards as $key => [$label, $icon])
@@ -36,23 +40,50 @@
     @endforeach
 </div>
 
-<section class="dashboard-panel mt-4">
-    <div class="dashboard-panel-header">
-        <div><p class="eyebrow">NEW ACCOUNTS</p><h2>Recent users</h2></div>
-    </div>
-    <div class="dashboard-list">
-        @forelse($recentUsers as $user)
-            <a class="dashboard-list-item" href="{{ route('admin.users.show', $user) }}">
-                <span class="dashboard-item-icon"><i class="bi bi-person"></i></span>
-                <span class="dashboard-item-copy">
-                    <strong>{{ $user->name }}</strong>
-                    <small>{{ $user->email }}</small>
-                </span>
-                <span class="dashboard-item-side"><small>Joined {{ $user->created_at->diffForHumans() }}</small></span>
-            </a>
-        @empty
-            <div class="dashboard-empty"><i class="bi bi-person-plus"></i><p>New registered users will appear here.</p></div>
-        @endforelse
-    </div>
-</section>
+<div class="platform-dashboard-grid mt-4">
+    <section class="dashboard-panel">
+        <div class="dashboard-panel-header">
+            <div><p class="eyebrow">NEW ACCOUNTS</p><h2>Recent users</h2></div>
+            <a href="{{ route('admin.users.index') }}">View all</a>
+        </div>
+        <div class="dashboard-list">
+            @forelse($recentUsers as $user)
+                <a class="dashboard-list-item" href="{{ route('admin.users.show', $user) }}">
+                    <span class="dashboard-item-icon"><i class="bi bi-person"></i></span>
+                    <span class="dashboard-item-copy">
+                        <strong>{{ $user->name }}</strong>
+                        <small>{{ $user->email }}</small>
+                    </span>
+                    <span class="dashboard-item-side"><small>{{ $user->created_at->diffForHumans() }}</small></span>
+                </a>
+            @empty
+                <div class="dashboard-empty"><i class="bi bi-person-plus"></i><p>New registered users will appear here.</p></div>
+            @endforelse
+        </div>
+    </section>
+
+    <section class="dashboard-panel">
+        <div class="dashboard-panel-header">
+            <div><p class="eyebrow">COMMUNITY</p><h2>Recent feedback</h2></div>
+            <a href="{{ route('admin.feedback.index') }}">View all</a>
+        </div>
+        <div class="dashboard-list">
+            @forelse($recentFeedback as $item)
+                <a class="dashboard-list-item" href="{{ route('admin.feedback.show', $item) }}">
+                    <span class="dashboard-item-icon"><i class="bi bi-chat-heart"></i></span>
+                    <span class="dashboard-item-copy">
+                        <strong>{{ \App\Models\Feedback::CATEGORIES[$item->category] }}</strong>
+                        <small>{{ Str::limit($item->message, 56) }}</small>
+                    </span>
+                    <span class="dashboard-item-side">
+                        @if($item->rating)<small><i class="bi bi-star-fill"></i> {{ $item->rating }}</small>@endif
+                        <small>{{ $item->created_at->diffForHumans() }}</small>
+                    </span>
+                </a>
+            @empty
+                <div class="dashboard-empty"><i class="bi bi-chat"></i><p>New visitor feedback will appear here.</p></div>
+            @endforelse
+        </div>
+    </section>
+</div>
 @endsection
