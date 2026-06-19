@@ -355,10 +355,10 @@ class DearYouFlowTest extends TestCase
     {
         $this->get('/')
             ->assertOk()
-            ->assertSee('Private digital letters, made personal')
+            ->assertSee('Private letters, personal pages, thoughtful replies')
             ->assertSee('Create a free account')
             ->assertSee('How DearYou works')
-            ->assertSee('No recipient account')
+            ->assertSee('No recipient signup needed')
             ->assertSee('What happens when the link expires?')
             ->assertSee(route('register'), false)
             ->assertDontSee('Open dashboard');

@@ -26,7 +26,7 @@ class DatabaseSeederTest extends TestCase
         ]);
 
         $this->assertTrue(
-            Hash::check('ChangeMe123!', (string) User::query()->sole()->password),
+            Hash::check('change-me-local-admin-password', (string) User::query()->sole()->password),
         );
         $this->assertNotNull(User::query()->sole()->email_verified_at);
     }

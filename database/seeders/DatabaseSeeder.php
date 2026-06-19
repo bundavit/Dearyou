@@ -34,7 +34,7 @@ class DatabaseSeeder extends Seeder
             ['email' => env('ADMIN_EMAIL', 'admin@dearyou.test')],
             [
                 'name' => 'DearYou Admin',
-                'password' => env('ADMIN_PASSWORD', 'ChangeMe123!'),
+                'password' => env('ADMIN_PASSWORD', 'change-me-local-admin-password'),
                 'role' => User::ROLE_ADMIN,
                 'email_verified_at' => now(),
             ],

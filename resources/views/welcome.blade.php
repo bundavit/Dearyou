@@ -3,8 +3,8 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="Create thoughtful digital letters for confessions, apologies, birthdays, anniversaries, and the moments that deserve more than a text.">
-    <title>DearYou - Put your feelings into words</title>
+    <meta name="description" content="Create private online letters for confessions, apologies, birthdays, anniversaries, and other meaningful moments, then share them with one secure link.">
+    <title>DearYou - Private letters for meaningful moments</title>
     <link rel="icon" type="image/svg+xml" href="{{ asset('dearyou-admin-mark.svg') }}">
     <link rel="preload" href="{{ asset('assets/dearyou/dearyou-floral-envelope-logo-web.webp') }}" as="image" type="image/webp">
     <link rel="stylesheet" href="{{ asset('vendor/bootstrap-icons/bootstrap-icons.min.css') }}">
@@ -23,9 +23,9 @@
 
     <section class="home-hero" aria-labelledby="home-heading">
         <div class="home-hero-copy">
-            <p class="home-kicker"><i class="bi bi-envelope-heart"></i> Private digital letters, made personal</p>
+            <p class="home-kicker"><i class="bi bi-envelope-heart"></i> Private letters, personal pages, thoughtful replies</p>
             <h1 id="home-heading">Some feelings deserve more than a text.</h1>
-            <p class="home-lead">Write a private letter, personalize it with memories and music, then send one secure link. The recipient opens it without creating an account.</p>
+            <p class="home-lead">Create a private online letter for one person, make it feel personal with photos, music, and design, then share a secure link they can open without making an account.</p>
             <div class="home-actions">
                 @auth
                     <a class="home-button home-button-primary" href="{{ auth()->user()->isAdmin() ? route('admin.letters.create') : route('letters.create') }}"><i class="bi bi-pencil-square"></i> Write a letter</a>
@@ -36,9 +36,9 @@
                 @endauth
             </div>
             <div class="home-trust-row">
-                <span><i class="bi bi-person-x"></i> No recipient account</span>
-                <span><i class="bi bi-link-45deg"></i> Time-limited private link</span>
-                <span><i class="bi bi-chat-heart"></i> Optional private reply</span>
+                <span><i class="bi bi-person-x"></i> No recipient signup needed</span>
+                <span><i class="bi bi-link-45deg"></i> Private link you control</span>
+                <span><i class="bi bi-chat-heart"></i> Optional reply to your inbox</span>
             </div>
         </div>
         <div class="home-hero-visual" aria-label="A DearYou letter waiting to be opened">
@@ -64,7 +64,7 @@
         <div class="home-section-heading">
             <p class="home-kicker">HOW DEARYOU WORKS</p>
             <h2>Four simple steps from idea to inbox.</h2>
-            <p>You create and manage the letter. The person receiving it only needs the private link you send.</p>
+            <p>You create the letter, control the link, and receive the reply. The person opening it only needs the private link you send.</p>
         </div>
         <ol class="steps-grid">
             <li><span>1</span><div><h3>Create your account</h3><p>Your account keeps your letters, private links, and responses together.</p></div></li>
@@ -78,7 +78,7 @@
         <div class="home-section-heading">
             <p class="home-kicker">FOR EVERY MEANINGFUL MOMENT</p>
             <h2>Start with the reason you are writing.</h2>
-            <p>Occasions provide a helpful starting style. You can still change the words, colors, envelope, and every personal detail.</p>
+            <p>Each occasion gives you a thoughtful starting point. You can still rewrite everything and change the colors, envelope, seal, and media.</p>
         </div>
         <div class="occasion-grid">
             <article><span><i class="bi bi-heart"></i></span><h3>Confession</h3><p>Put brave, honest feelings into words.</p></article>
@@ -94,7 +94,7 @@
         <div class="home-feature-intro">
             <p class="home-kicker">MAKE IT FEEL LIKE YOU</p>
             <h2>More than a message. A small experience.</h2>
-            <p>Everything is optional. A letter can be simple text, or you can build a richer experience around it.</p>
+            <p>Keep it simple with just words, or turn it into a fuller experience with visuals, music, and memories.</p>
         </div>
         <div class="feature-grid">
             <article><i class="bi bi-brush"></i><div><h3>Personal designs</h3><p>Choose themes, fonts, colors, decorations, envelope styles, and seals.</p></div></article>
@@ -111,7 +111,7 @@
         <div>
             <p class="home-kicker">THOUGHTFUL BY DESIGN</p>
             <h2>Your letter is not a public social post.</h2>
-            <p>A letter is accessible to anyone who has its active link, so share it only with people you trust. You control when the link is published, when it expires, and whether it remains active. DearYou never shows your account email to the recipient.</p>
+            <p>Anyone with the active link can open the letter, so it should only be shared with people you trust. You control when the link goes live, when it expires, and whether it stays active. DearYou does not show your account email to the recipient.</p>
         </div>
     </section>
 
@@ -121,18 +121,18 @@
             <h2>A few common questions.</h2>
         </div>
         <div class="faq-list">
-            <details><summary>Does the recipient need an account?<i class="bi bi-plus-lg"></i></summary><p>No. They open the private link you share and can respond from the letter if you enable replies.</p></details>
-            <details><summary>Can I edit a letter after creating it?<i class="bi bi-plus-lg"></i></summary><p>Yes. You can keep it as a draft, preview it, edit it, publish it, disable its link, or publish it again later.</p></details>
-            <details><summary>What can I add to a letter?<i class="bi bi-plus-lg"></i></summary><p>Text, images, animated GIFs, short supported videos, background music, response choices, and memory chapters.</p></details>
-            <details><summary>How private is the link?<i class="bi bi-plus-lg"></i></summary><p>The link uses a long random address and expires after the duration you choose. Anyone with the active link can open it, so do not post it publicly.</p></details>
-            <details><summary>What happens when the link expires?<i class="bi bi-plus-lg"></i></summary><p>The recipient sees a gentle unavailable page instead of your letter. You can publish the letter again to create a fresh link.</p></details>
-            <details><summary>Is there an upload limit?<i class="bi bi-plus-lg"></i></summary><p>Text letters are unlimited. Uploaded pictures, audio, videos, profile images, and memories share your account's media storage allowance.</p></details>
+            <details><summary>Does the recipient need an account?<i class="bi bi-plus-lg"></i></summary><p>No. They only need the private letter link you send them.</p></details>
+            <details><summary>Can I edit a letter after creating it?<i class="bi bi-plus-lg"></i></summary><p>Yes. You can save drafts, preview the page, update the content, republish, disable the link, or publish again later.</p></details>
+            <details><summary>What can I add to a letter?<i class="bi bi-plus-lg"></i></summary><p>You can add text, images, GIFs, short supported videos, music, response buttons, and memory chapters.</p></details>
+            <details><summary>How private is the link?<i class="bi bi-plus-lg"></i></summary><p>The letter uses a long random link and an expiry time that you choose. Anyone with the active link can open it, so it should not be posted publicly.</p></details>
+            <details><summary>What happens when the link expires?<i class="bi bi-plus-lg"></i></summary><p>The recipient sees an unavailable page instead of the letter. You can publish again later to create a fresh link.</p></details>
+            <details><summary>Is there an upload limit?<i class="bi bi-plus-lg"></i></summary><p>There is no text limit for ordinary writing, but uploaded pictures, audio, videos, profile images, and memories share your account's media allowance.</p></details>
         </div>
     </section>
 
     <section class="home-final-cta">
         <img src="{{ asset('assets/dearyou/dearyou-floral-envelope-logo-web.webp') }}" alt="">
-        <div><p class="home-kicker">READY WHEN YOU ARE</p><h2>Make someone feel remembered.</h2><p>Start with a few honest words. You can shape the rest as you go.</p></div>
+        <div><p class="home-kicker">READY WHEN YOU ARE</p><h2>Make someone feel remembered.</h2><p>Start with a few honest words, then shape the page around what you really want to say.</p></div>
         <a class="home-button home-button-primary" href="{{ auth()->check() ? (auth()->user()->isAdmin() ? route('admin.letters.create') : route('letters.create')) : route('register') }}">{{ auth()->check() ? 'Start writing' : 'Create a free account' }} <i class="bi bi-arrow-right"></i></a>
     </section>
 
@@ -140,7 +140,7 @@
         <div class="home-section-heading">
             <p class="home-kicker"><i class="bi bi-chat-heart"></i> HELP DEARYOU GROW</p>
             <h2>Have an idea or found something confusing?</h2>
-            <p>Send a private note to the DearYou team. Only platform administrators can review it.</p>
+            <p>Send a private note to the DearYou team if something feels confusing, broken, or worth improving. Only platform administrators can review it.</p>
         </div>
         <div class="feedback-card">
             @include('feedback._form', ['feedbackId' => 'home-feedback'])
@@ -152,13 +152,13 @@
     <div class="home-footer-main">
         <div class="home-footer-brand">
             <a class="home-brand" href="{{ route('home') }}"><img src="{{ asset('assets/dearyou/dearyou-floral-envelope-logo-web.webp') }}" alt=""><span>DearYou</span></a>
-            <p>A gentle place for the words that matter.</p>
+            <p>A private place for confessions, apologies, celebrations, and the words that deserve more care.</p>
         </div>
         <div><h2>Explore</h2><a href="#occasions">Occasions</a><a href="#features">Features</a><a href="#how-it-works">How it works</a><a href="#feedback">Feedback</a></div>
         <div><h2>Account</h2>@auth @if(auth()->user()->isAdmin())<a href="{{ route('admin.platform') }}">Admin dashboard</a>@endif<a href="{{ auth()->user()->isAdmin() ? route('admin.letters.index') : route('letters.index') }}">My letters</a>@else<a href="{{ route('login') }}">Sign in</a><a href="{{ route('register') }}">Create account</a>@endauth</div>
     </div>
     <div class="home-footer-bottom">
-        <span>&copy; {{ date('Y') }} DearYou. Made for meaningful moments.</span>
+        <span>&copy; {{ date('Y') }} DearYou. Private letters for meaningful moments.</span>
         <a href="mailto:hello@dearyous.app">Contact</a>
     </div>
 </footer>

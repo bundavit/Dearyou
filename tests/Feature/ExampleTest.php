@@ -19,7 +19,7 @@ class ExampleTest extends TestCase
         $response->assertOk()
             ->assertSee('Some feelings deserve more than a text.')
             ->assertSee('HOW DEARYOU WORKS')
-            ->assertSee('Made for meaningful moments.')
+            ->assertSee('Private letters for meaningful moments.')
             ->assertSee('Start Creating')
             ->assertSee('Log in')
             ->assertSee('Create account')
