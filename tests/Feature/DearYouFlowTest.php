@@ -7,6 +7,7 @@ use App\Models\Letter;
 use App\Models\ModerationAudit;
 use App\Models\Response;
 use App\Models\SiteMetric;
+use App\Models\SiteMetricEvent;
 use App\Models\User;
 use App\Notifications\PasswordResetCode;
 use App\Notifications\StorageCleanupCompleted;
@@ -400,6 +401,7 @@ class DearYouFlowTest extends TestCase
             'key' => SiteMetric::HOMEPAGE_VIEWS,
             'value' => 2,
         ]);
+        $this->assertSame(2, SiteMetricEvent::where('key', SiteMetric::HOMEPAGE_VIEWS)->count());
 
         $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
 
@@ -407,7 +409,32 @@ class DearYouFlowTest extends TestCase
             ->get('/admin/platform')
             ->assertOk()
             ->assertSee('Homepage visits')
+            ->assertSee('Homepage visits over time')
+            ->assertSee('Last 7 days')
+            ->assertSee('Last 4 weeks')
             ->assertSee('2');
+    }
+
+    public function test_platform_admin_can_view_deployment_health(): void
+    {
+        config([
+            'app.url' => 'https://dearyous.app',
+            'mail.default' => 'resend',
+            'mail.from.address' => 'hello@dearyous.app',
+            'queue.default' => 'database',
+            'services.resend.key' => 'test-resend-key',
+        ]);
+
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+
+        $this->actingAs($admin)
+            ->get('/admin/health')
+            ->assertOk()
+            ->assertSee('Email and worker health')
+            ->assertSee('APP_URL')
+            ->assertSee('Resend API key')
+            ->assertSee('Queue configuration')
+            ->assertSee('dearyou:check-production');
     }
 
     public function test_platform_admin_can_search_view_and_manage_user_accounts(): void
@@ -590,6 +617,31 @@ class DearYouFlowTest extends TestCase
         $this->assertDatabaseHas('responses', ['letter_id' => $letter->id, 'message' => 'Yes!']);
         $letter->update(['status' => 'unpublished']);
         $this->get("/l/{$link->token}")->assertNotFound();
+    }
+
+    public function test_published_letter_can_accept_reaction_responses(): void
+    {
+        $user = User::factory()->create();
+        $letter = $this->letter($user, [
+            'status' => 'published',
+            'allow_response' => true,
+            'response_mode' => 'reactions',
+        ]);
+        $link = $letter->link()->create(['token' => str_repeat('r', 64), 'is_active' => true]);
+
+        $this->get("/l/{$link->token}")
+            ->assertOk()
+            ->assertSee('value="happy"', false)
+            ->assertSee('Surprised');
+
+        $this->post("/l/{$link->token}/response", ['response_value' => 'thankful', 'message' => 'This made my day'])
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('responses', [
+            'letter_id' => $letter->id,
+            'response_value' => 'thankful',
+            'message' => 'This made my day',
+        ]);
     }
 
     public function test_every_valid_public_link_open_is_counted(): void
@@ -1579,6 +1631,9 @@ class DearYouFlowTest extends TestCase
         $this->actingAs($admin)->get('/admin/settings')
             ->assertOk()
             ->assertSee('Creation upload limits')
+            ->assertSee('+15 minutes')
+            ->assertSee('+1 hour')
+            ->assertSee('+1 day')
             ->assertSee('value="6"', false);
 
         $this->assertSame(400 * 1024 * 1024, app(CreatorStorage::class)->limitBytes());
@@ -2108,6 +2163,7 @@ class DearYouFlowTest extends TestCase
             ->assertSee('Feedback')
             ->assertSee('New feedback')
             ->assertSee('Average rating')
+            ->assertSee('<span class="nav-count">1</span>', false)
             ->assertSee('4.0')
             ->assertSee('Please add another envelope style.');
     }

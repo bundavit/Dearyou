@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\SiteMetric;
+use App\Models\SiteMetricEvent;
+use Throwable;
 use Illuminate\View\View;
 
 class HomeController extends Controller
@@ -15,6 +17,15 @@ class HomeController extends Controller
                 ['value' => 0],
             )
             ->increment('value');
+
+        try {
+            SiteMetricEvent::query()->create([
+                'key' => SiteMetric::HOMEPAGE_VIEWS,
+                'occurred_at' => now(),
+            ]);
+        } catch (Throwable) {
+            // Metrics should never block the public homepage during deployment.
+        }
 
         return view('welcome');
     }

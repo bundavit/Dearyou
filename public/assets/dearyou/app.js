@@ -212,6 +212,18 @@ if (platformSettingsForm) {
     syncDefaultExpiry();
   });
 
+  platformSettingsForm.querySelectorAll("[data-quick-expiry]").forEach(button => {
+    button.addEventListener("click", () => {
+      const minutes = Number.parseInt(button.dataset.quickExpiry || "", 10);
+
+      if (!Number.isInteger(minutes) || minutes < 1 || minutes > 43200) return;
+
+      setCustomMinutes([...customMinutes(), minutes]);
+      renderCustomMinutes();
+      syncDefaultExpiry();
+    });
+  });
+
   customExpiryList?.addEventListener("click", event => {
     const chip = event.target.closest("[data-minutes]");
     if (!chip) return;
@@ -562,6 +574,82 @@ const updateFontPreview = () => {
 };
 document.querySelector("[data-font-select]")?.addEventListener("change", updateFontPreview);
 updateFontPreview();
+
+document.querySelectorAll("[data-letter-editor-form]").forEach(form => {
+  const key = form.dataset.autosaveKey;
+  const status = form.querySelector("[data-draft-autosave-status]");
+  if (!key || !window.localStorage) return;
+
+  const fields = () => Array.from(form.querySelectorAll("input, textarea, select"))
+    .filter(field => {
+      if (!field.name || field.type === "file") return false;
+      if (["_token", "_method"].includes(field.name)) return false;
+      if (field.type === "hidden" && !["allow_response"].includes(field.name)) return false;
+      return true;
+    });
+
+  const snapshot = () => {
+    const data = {};
+    fields().forEach(field => {
+      if (field.type === "checkbox" || field.type === "radio") {
+        if (!data[field.name]) data[field.name] = {};
+        data[field.name][field.value] = field.checked;
+      } else {
+        data[field.name] = field.value;
+      }
+    });
+    return data;
+  };
+
+  const restore = data => {
+    fields().forEach(field => {
+      if (field.type === "checkbox" || field.type === "radio") {
+        const group = data[field.name];
+        if (group && Object.prototype.hasOwnProperty.call(group, field.value)) field.checked = Boolean(group[field.value]);
+      } else if (Object.prototype.hasOwnProperty.call(data, field.name)) {
+        field.value = data[field.name];
+      }
+      field.dispatchEvent(new Event("change", { bubbles: true }));
+      field.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+  };
+
+  const saved = localStorage.getItem(key);
+  if (saved) {
+    try {
+      const parsed = JSON.parse(saved);
+      const banner = document.createElement("div");
+      banner.className = "draft-restore-banner";
+      banner.innerHTML = `<div><strong>Saved draft found</strong><span>Restore the text and choices saved on this device?</span></div><button type="button" class="btn btn-sm btn-dearyou" data-draft-restore>Restore</button><button type="button" class="btn btn-sm btn-outline-secondary" data-draft-ignore>Ignore</button>`;
+      form.prepend(banner);
+      banner.querySelector("[data-draft-restore]")?.addEventListener("click", () => {
+        restore(parsed.data || {});
+        banner.remove();
+        if (status) status.textContent = "Draft restored.";
+      });
+      banner.querySelector("[data-draft-ignore]")?.addEventListener("click", () => {
+        localStorage.removeItem(key);
+        banner.remove();
+        if (status) status.textContent = "Draft autosave is on for this device.";
+      });
+    } catch {
+      localStorage.removeItem(key);
+    }
+  }
+
+  let timer;
+  const save = () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      localStorage.setItem(key, JSON.stringify({ data: snapshot(), savedAt: new Date().toISOString() }));
+      if (status) status.textContent = "Draft saved just now.";
+    }, 650);
+  };
+
+  form.addEventListener("input", save);
+  form.addEventListener("change", save);
+  form.addEventListener("submit", () => localStorage.removeItem(key));
+});
 
 const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
 const enableDragOrder = (container, itemSelector, idAttribute) => {

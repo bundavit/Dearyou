@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Models\Feedback;
 use App\Models\Response;
 use App\Support\CreatorStorage;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -54,6 +55,14 @@ class AppServiceProvider extends ServiceProvider
 
         View::composer('layouts.creator', function ($view) {
             $view->with('creatorStorage', app(CreatorStorage::class)->usage(auth()->user()));
+        });
+
+        View::composer('layouts.app', function ($view) {
+            $user = auth()->user();
+
+            $view->with('adminNewFeedback', $user?->isAdmin()
+                ? Feedback::query()->where('status', 'new')->count()
+                : 0);
         });
 
         View::composer('partials.user-navbar', function ($view) {

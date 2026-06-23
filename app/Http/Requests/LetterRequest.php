@@ -65,7 +65,7 @@ class LetterRequest extends FormRequest
             'secondary_color' => 'required|regex:/^#[0-9a-fA-F]{6}$/',
             'decoration_type' => ['required', Rule::in(['hearts', 'stars', 'balloons', 'confetti', 'flowers', 'sparkles', 'none'])],
             'allow_response' => 'boolean',
-            'response_mode' => ['required', Rule::in(['none', 'message', 'buttons', 'buttons_with_message'])],
+            'response_mode' => ['required', Rule::in(['none', 'message', 'buttons', 'buttons_with_message', 'reactions'])],
             'positive_button_text' => 'nullable|string|max:50',
             'negative_button_text' => 'nullable|string|max:50',
             'question_text' => 'nullable|string|max:200',

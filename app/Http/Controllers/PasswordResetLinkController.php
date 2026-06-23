@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Notifications\PasswordResetCode;
+use App\Support\LocalSecurityCodeLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -37,6 +38,8 @@ class PasswordResetLinkController extends Controller
                     'updated_at' => now(),
                 ],
             );
+
+            LocalSecurityCodeLogger::record('password reset', $user->email, $code);
 
             $user->notify(new PasswordResetCode($code));
         }

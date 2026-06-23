@@ -64,6 +64,11 @@
                     <i class="bi bi-plus-lg"></i> Add
                 </button>
             </div>
+            <div class="custom-expiry-quick-actions" aria-label="Quick custom time presets">
+                <button class="btn btn-sm btn-outline-dearyou" type="button" data-quick-expiry="15">+15 minutes</button>
+                <button class="btn btn-sm btn-outline-dearyou" type="button" data-quick-expiry="60">+1 hour</button>
+                <button class="btn btn-sm btn-outline-dearyou" type="button" data-quick-expiry="1440">+1 day</button>
+            </div>
             <input
                 id="custom_expiry_minutes"
                 name="custom_expiry_minutes"

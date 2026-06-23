@@ -1,13 +1,13 @@
 {
   "info": {
     "name": "DearYou API",
-    "description": "Create a token from Admin > Account > Advanced: API access. Paste the complete token into the collection variable named token. Use Read and write access for create, update, publish, unpublish, and delete requests.",
+    "description": "DearYou API smoke tests. Log in through the website first, then create a token from Account > API access. Paste the complete token into the collection variable named token. Use Read and write access for create, update, publish, unpublish, and delete requests. API tokens belong to the logged-in user, so requests only return that user's letters and responses.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
     {
       "key": "baseUrl",
-      "value": "http://127.0.0.1:8000"
+      "value": "http://127.0.0.1:8001"
     },
     {
       "key": "token",
@@ -35,7 +35,7 @@
         "type": "text/javascript",
         "exec": [
           "if (!pm.collectionVariables.get('token')) {",
-          "    throw new Error('DearYou API token is missing. Create one in Admin > Account > Advanced: API access, then paste it into the collection variable named token.');",
+          "    throw new Error('DearYou API token is missing. Log in, create one in Account > API access, then paste it into the collection variable named token.');",
           "}"
         ]
       }
@@ -87,7 +87,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"category\": \"custom\",\n  \"title\": \"A note\",\n  \"recipient_name\": \"Alex\",\n  \"sender_name\": \"Sam\",\n  \"body\": \"Hello\",\n  \"theme\": \"warm\",\n  \"primary_color\": \"#d85b78\",\n  \"secondary_color\": \"#fff1e8\",\n  \"decoration_type\": \"sparkles\",\n  \"allow_response\": true,\n  \"response_mode\": \"message\",\n  \"question_text\": \"Would you like to reply?\"\n}",
+              "raw": "{\n  \"category\": \"custom\",\n  \"title\": \"A note from Postman\",\n  \"recipient_name\": \"Alex\",\n  \"sender_name\": \"Sam\",\n  \"body\": \"Hello from the DearYou API. This is a simple text-only letter.\",\n  \"image_alt\": \"A shared memory\",\n  \"relationship_started_at\": null,\n  \"chapter_heading\": \"A beautiful new chapter begins.\",\n  \"theme\": \"warm\",\n  \"font_style\": \"classic\",\n  \"envelope_style\": \"classic\",\n  \"seal_style\": \"round\",\n  \"primary_color\": \"#d85b78\",\n  \"secondary_color\": \"#fff1e8\",\n  \"decoration_type\": \"sparkles\",\n  \"allow_response\": true,\n  \"response_mode\": \"buttons_with_message\",\n  \"question_text\": \"Would you like to reply?\",\n  \"positive_button_text\": \"Yes\",\n  \"negative_button_text\": \"Not yet\",\n  \"expiry_minutes\": 60\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -113,7 +113,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"category\": \"custom\",\n  \"title\": \"Updated note\",\n  \"recipient_name\": \"Alex\",\n  \"sender_name\": \"Sam\",\n  \"body\": \"Updated message\",\n  \"theme\": \"warm\",\n  \"primary_color\": \"#d85b78\",\n  \"secondary_color\": \"#fff1e8\",\n  \"decoration_type\": \"sparkles\",\n  \"allow_response\": true,\n  \"response_mode\": \"message\"\n}",
+              "raw": "{\n  \"category\": \"custom\",\n  \"title\": \"Updated note from Postman\",\n  \"recipient_name\": \"Alex\",\n  \"sender_name\": \"Sam\",\n  \"body\": \"Updated message from the DearYou API.\",\n  \"image_alt\": \"A shared memory\",\n  \"relationship_started_at\": null,\n  \"chapter_heading\": \"A beautiful new chapter begins.\",\n  \"theme\": \"warm\",\n  \"font_style\": \"classic\",\n  \"envelope_style\": \"classic\",\n  \"seal_style\": \"round\",\n  \"primary_color\": \"#d85b78\",\n  \"secondary_color\": \"#fff1e8\",\n  \"decoration_type\": \"sparkles\",\n  \"allow_response\": true,\n  \"response_mode\": \"buttons_with_message\",\n  \"question_text\": \"Would you like to reply?\",\n  \"positive_button_text\": \"Yes\",\n  \"negative_button_text\": \"Not yet\",\n  \"expiry_minutes\": 60\n}",
               "options": {
                 "raw": {
                   "language": "json"

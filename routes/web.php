@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\AccountController;
 use App\Http\Controllers\Admin\ApiTokenController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\FeedbackController as AdminFeedbackController;
+use App\Http\Controllers\Admin\HealthController;
 use App\Http\Controllers\Admin\InboxController;
 use App\Http\Controllers\Admin\LetterController;
 use App\Http\Controllers\Admin\LetterModerationController;
@@ -90,6 +91,7 @@ Route::prefix('admin')->name('admin.')->middleware(['admin.network', 'auth', 'ac
     Route::patch('/users/{user}/restore', [PlatformUserController::class, 'restore'])->name('users.restore');
     Route::get('/settings', [PlatformSettingsController::class, 'edit'])->name('settings.edit');
     Route::put('/settings', [PlatformSettingsController::class, 'update'])->name('settings.update');
+    Route::get('/health', HealthController::class)->name('health');
     Route::get('/moderation/letters', [LetterModerationController::class, 'index'])->name('moderation.index');
     Route::get('/moderation/letters/{letter}', [LetterModerationController::class, 'show'])->name('moderation.show');
     Route::post('/moderation/letters/{letter}/reveal', [LetterModerationController::class, 'reveal'])->name('moderation.reveal');

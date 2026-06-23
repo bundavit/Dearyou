@@ -40,6 +40,44 @@
     @endforeach
 </div>
 
+<section class="dashboard-panel analytics-panel mt-4">
+    <div class="dashboard-panel-header">
+        <div>
+            <p class="eyebrow">HOMEPAGE ACTIVITY</p>
+            <h2>Homepage visits over time</h2>
+        </div>
+        <span class="analytics-total">{{ $stats['homepage_visits'] }} total visit{{ $stats['homepage_visits'] === 1 ? '' : 's' }}</span>
+    </div>
+
+    <div class="analytics-grid">
+        <div class="analytics-card">
+            <h3>Last 7 days</h3>
+            <div class="analytics-bars">
+                @foreach($homepageVisitsByDay as $point)
+                    <div class="analytics-bar-row">
+                        <span>{{ $point['label'] }}</span>
+                        <span class="analytics-bar-track"><span class="analytics-bar-fill" style="--bar-size: {{ $point['percent'] }}%"></span></span>
+                        <strong>{{ $point['count'] }}</strong>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+
+        <div class="analytics-card">
+            <h3>Last 4 weeks</h3>
+            <div class="analytics-bars">
+                @foreach($homepageVisitsByWeek as $point)
+                    <div class="analytics-bar-row">
+                        <span>{{ $point['label'] }}</span>
+                        <span class="analytics-bar-track"><span class="analytics-bar-fill" style="--bar-size: {{ $point['percent'] }}%"></span></span>
+                        <strong>{{ $point['count'] }}</strong>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+    </div>
+</section>
+
 <div class="platform-dashboard-grid mt-4">
     <section class="dashboard-panel">
         <div class="dashboard-panel-header">

@@ -136,7 +136,6 @@
         @if($letter->image_path)
             <figure class="letter-image letter-image-after-message">@if(\App\Models\Letter::isVideoMediaPath($letter->image_path))<video src="{{ Storage::url($letter->image_path) }}" preload="metadata" muted loop playsinline data-letter-video data-autoplay-when-visible aria-label="{{ $letter->image_alt ?: 'Letter video' }}"></video>@else<img src="{{ Storage::url($letter->image_path) }}" alt="{{ $letter->image_alt ?: '' }}" loading="lazy" decoding="async">@endif @if($letter->image_alt)<figcaption>{{ $letter->image_alt }}</figcaption>@endif</figure>
         @endif
-
         @if(session('response_sent'))
             @include('public.partials.response-result', ['responseValue' => session('response_value')])
         @elseif($letter->allow_response && empty($preview) && $letter->response_mode !== 'none')
@@ -147,6 +146,21 @@
                     <input type="hidden" name="response_value" value="message">
                     <textarea class="form-control mt-3" name="message" rows="4" placeholder="Write a private response" required></textarea>
                     <button class="btn btn-dearyou mt-3"><i class="bi bi-send"></i> Send private response</button>
+                @elseif($letter->response_mode === 'reactions')
+                    <div class="reaction-response-grid" aria-label="Choose a reaction">
+                        @foreach([
+                            'happy' => ['Happy', 'bi-emoji-smile'],
+                            'surprised' => ['Surprised', 'bi-stars'],
+                            'emotional' => ['Emotional', 'bi-heart-pulse'],
+                            'thankful' => ['Thankful', 'bi-flower1'],
+                        ] as $value => [$label, $icon])
+                            <button type="submit" name="response_value" value="{{ $value }}" class="reaction-choice">
+                                <i class="bi {{ $icon }}" aria-hidden="true"></i>
+                                <span>{{ $label }}</span>
+                            </button>
+                        @endforeach
+                    </div>
+                    <textarea class="form-control mt-3" name="message" rows="3" placeholder="Add a private note (optional)"></textarea>
                 @else
                     <div class="d-flex flex-wrap gap-2 justify-content-center">
                         <button type="{{ $letter->response_mode === 'buttons' ? 'submit' : 'button' }}" name="response_value" value="positive" data-response-choice="positive" class="btn btn-dearyou">{{ $letter->positive_button_text ?: 'Yes' }}</button>

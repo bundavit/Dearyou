@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Notifications\VerifyEmail;
+use App\Support\LocalSecurityCodeLogger;
 use Database\Factories\UserFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -45,6 +46,8 @@ class User extends Authenticatable implements MustVerifyEmail
                 'updated_at' => now(),
             ],
         );
+
+        LocalSecurityCodeLogger::record('email verification', $this->email, $code);
 
         $this->notify(new VerifyEmail($code));
     }

@@ -6,7 +6,21 @@
     <div><p class="eyebrow">{{ $editing ? 'EDIT LETTER' : 'NEW LETTER' }}</p><h1>{{ $editing ? $letter->title : 'Create something meaningful' }}</h1></div>
     @if($editing)<a class="btn btn-outline-secondary" target="_blank" href="{{ route(\App\Support\CreatorRoute::name('letters.preview'),$letter) }}"><i class="bi bi-eye"></i> Preview</a>@endif
 </div>
-<form method="post" enctype="multipart/form-data" action="{{ $editing ? route(\App\Support\CreatorRoute::name('letters.update'),$letter) : route(\App\Support\CreatorRoute::name('letters.store')) }}">@csrf @if($editing)@method('PUT')@endif
+@unless($editing)
+<section class="form-card onboarding-card mb-4" aria-labelledby="letter-onboarding-title">
+    <div>
+        <p class="eyebrow">QUICK START</p>
+        <h2 id="letter-onboarding-title">Your first letter in 3 simple steps</h2>
+        <p>Pick an occasion, write your message, then preview and publish a private link.</p>
+    </div>
+    <ol class="onboarding-steps">
+        <li><span>1</span><strong>Choose a style</strong><small>Use a preset or customize the design.</small></li>
+        <li><span>2</span><strong>Add your words</strong><small>Autosave keeps text safe on this device.</small></li>
+        <li><span>3</span><strong>Preview and publish</strong><small>Share only the private link.</small></li>
+    </ol>
+</section>
+@endunless
+<form method="post" enctype="multipart/form-data" action="{{ $editing ? route(\App\Support\CreatorRoute::name('letters.update'),$letter) : route(\App\Support\CreatorRoute::name('letters.store')) }}" data-letter-editor-form data-autosave-key="dearyou-letter-draft-{{ $editing ? $letter->id : 'new-'.auth()->id() }}">@csrf @if($editing)@method('PUT')@endif
 <div class="form-card"><div class="row g-3">
 <div class="col-md-6"><label class="form-label">Occasion</label><div class="input-group"><select name="category" id="category" class="form-select">@foreach($categories as $value => $label)<option value="{{ $value }}" @selected(old('category',$letter->category)===$value)>{{ $label }}</option>@endforeach</select><button class="btn btn-outline-secondary" type="button" id="apply-preset"><i class="bi bi-magic"></i> Apply preset</button></div><div class="form-text">Presets update theme and response fields only when you click Apply.</div></div>
 <div class="col-md-6"><label class="form-label">Title</label><input name="title" class="form-control" value="{{ old('title',$letter->title) }}" required></div>
@@ -76,7 +90,7 @@
 <div class="col-md-6 col-xl"><label class="form-label">Paper color</label><input type="color" name="secondary_color" class="form-control form-control-color w-100" value="{{ old('secondary_color',$letter->secondary_color ?: '#fff1e8') }}"></div>
 </div></details></div>
 <div class="col-12"><details class="editor-section" open><summary><span><i class="bi bi-chat-heart"></i> Response</span><small>Question, choices, and expiration</small></summary><div class="row g-3 pt-3">
-<div class="col-md-4"><label class="form-label">Mode</label><select name="response_mode" class="form-select">@foreach(['none','message','buttons','buttons_with_message'] as $m)<option value="{{ $m }}" @selected(old('response_mode',$letter->response_mode)===$m)>{{ str_replace('_',' ',ucfirst($m)) }}</option>@endforeach</select></div>
+<div class="col-md-4"><label class="form-label">Mode</label><select name="response_mode" class="form-select">@foreach(['none','message','buttons','buttons_with_message','reactions'] as $m)<option value="{{ $m }}" @selected(old('response_mode',$letter->response_mode)===$m)>{{ str_replace('_',' ',ucfirst($m)) }}</option>@endforeach</select><div class="form-text">Reactions let recipients choose a feeling such as happy or thankful.</div></div>
 <div class="col-md-8"><label class="form-label">Question</label><input name="question_text" class="form-control" value="{{ old('question_text',$letter->question_text) }}" placeholder="Do you want to give us a chance?"></div>
 <div class="col-md-4"><label class="form-label">Positive button</label><input name="positive_button_text" class="form-control" value="{{ old('positive_button_text',$letter->positive_button_text ?: 'Yes') }}"></div>
 <div class="col-md-4"><label class="form-label">Negative button</label><input name="negative_button_text" class="form-control" value="{{ old('negative_button_text',$letter->negative_button_text ?: 'No') }}"></div>
@@ -131,7 +145,7 @@
 </div>
 </div></details></div>
 </div>@if($errors->any())<div class="alert alert-danger mt-3">@if($errors->has('media'))<strong>Storage limit reached.</strong> @endif{{ $errors->first() }}</div>@endif
-<button class="btn btn-dearyou btn-wide mt-4"><i class="bi bi-check2-circle"></i> Save letter</button></div></form>
+<div class="letter-save-row mt-4"><button class="btn btn-dearyou btn-wide"><i class="bi bi-check2-circle"></i> Save letter</button><span class="draft-autosave-status" data-draft-autosave-status>Draft autosave is on for this device.</span></div></div></form>
 @if($editing)<section class="form-card mt-4 anniversary-options" data-anniversary-options>
 <div class="d-flex justify-content-between align-items-center"><div><h2 class="h5 mb-1">Memory timeline</h2><p class="text-secondary mb-0">Add dated moments for anniversary letters.</p></div><span class="badge text-bg-light">{{ $letter->memories->count() }} memories</span></div>
 <form method="post" enctype="multipart/form-data" action="{{ route(\App\Support\CreatorRoute::name('memories.store'),$letter) }}" class="row g-3 mt-2">@csrf
