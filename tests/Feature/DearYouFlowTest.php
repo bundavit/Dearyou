@@ -9,6 +9,7 @@ use App\Models\Response;
 use App\Models\SiteMetric;
 use App\Models\SiteMetricEvent;
 use App\Models\User;
+use App\Notifications\FeedbackReceived;
 use App\Notifications\PasswordResetCode;
 use App\Notifications\StorageCleanupCompleted;
 use App\Notifications\StorageLimitWarning;
@@ -2106,6 +2107,9 @@ class DearYouFlowTest extends TestCase
 
     public function test_guest_can_send_private_feedback(): void
     {
+        Notification::fake();
+        config(['dearyou.feedback_notify_email' => 'admin@example.com']);
+
         $this->from('/#feedback')->post('/feedback', [
             'category' => 'suggestion',
             'rating' => 5,
@@ -2122,6 +2126,8 @@ class DearYouFlowTest extends TestCase
             'email' => 'visitor@example.com',
             'status' => 'new',
         ]);
+
+        Notification::assertSentOnDemand(FeedbackReceived::class);
     }
 
     public function test_feedback_is_private_to_platform_admins(): void

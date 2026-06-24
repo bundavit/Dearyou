@@ -3,8 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Models\Feedback;
+use App\Notifications\FeedbackReceived;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\Rule;
+use Throwable;
 
 class FeedbackController extends Controller
 {
@@ -19,12 +23,25 @@ class FeedbackController extends Controller
             'website' => ['nullable', 'max:0'],
         ]);
 
-        Feedback::create([
+        $feedback = Feedback::create([
             ...collect($validated)->except('website')->all(),
             'user_id' => $request->user()?->id,
             'email' => $validated['email'] ?? $request->user()?->email,
             'ip_hash' => hash('sha256', (string) $request->ip().'|'.config('app.key')),
         ]);
+
+        $notifyEmail = config('dearyou.feedback_notify_email');
+
+        if (filled($notifyEmail)) {
+            try {
+                Notification::route('mail', $notifyEmail)->notify(new FeedbackReceived($feedback));
+            } catch (Throwable $exception) {
+                Log::warning('Unable to send feedback notification email.', [
+                    'feedback_id' => $feedback->id,
+                    'message' => $exception->getMessage(),
+                ]);
+            }
+        }
 
         return redirect('/#feedback')->with('success', 'Thank you. Your feedback was sent privately to the DearYou team.');
     }
