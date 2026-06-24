@@ -184,6 +184,29 @@
         </div>
     </div>
 
+    <div class="platform-settings-section">
+        <div class="row g-4 align-items-start">
+            <div class="col-lg-7">
+                <h2 class="h4">Homepage announcement</h2>
+                <p class="text-secondary">Show a short banner on the homepage for updates, maintenance, or launch notes.</p>
+                <div class="form-check form-switch mb-3">
+                    <input class="form-check-input" type="checkbox" id="homepage_announcement_enabled" name="homepage_announcement_enabled" value="1" @checked(old('homepage_announcement_enabled', $settings['homepage_announcement_enabled']))>
+                    <label class="form-check-label fw-bold" for="homepage_announcement_enabled">Show announcement on homepage</label>
+                </div>
+                <label class="form-label" for="homepage_announcement_text">Announcement text</label>
+                <textarea class="form-control" id="homepage_announcement_text" name="homepage_announcement_text" rows="3" maxlength="180" placeholder="Example: New letter styles are live.">{{ old('homepage_announcement_text', $settings['homepage_announcement_text']) }}</textarea>
+                <div class="form-text">Keep it short. The banner is visible to visitors before they sign in.</div>
+                @error('homepage_announcement_text')<p class="text-danger small mt-1">{{ $message }}</p>@enderror
+            </div>
+            <div class="col-lg-5">
+                <div class="admin-inline-note">
+                    <strong>Good uses:</strong>
+                    maintenance windows, new features, launch messages, or a simple thank-you note after updates.
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="platform-settings-actions">
         <button class="btn btn-dearyou" type="submit"><i class="bi bi-check2-circle"></i> Save platform settings</button>
     </div>

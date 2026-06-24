@@ -20,6 +20,7 @@
                 <a class="nav-link {{ request()->routeIs('admin.moderation.*') ? 'active' : '' }}" href="{{ route('admin.moderation.index') }}"><i class="bi bi-shield-exclamation"></i> Moderation</a>
                 <a class="nav-link {{ request()->routeIs('admin.settings.*') ? 'active' : '' }}" href="{{ route('admin.settings.edit') }}"><i class="bi bi-sliders"></i> Settings</a>
                 <a class="nav-link {{ request()->routeIs('admin.health') ? 'active' : '' }}" href="{{ route('admin.health') }}"><i class="bi bi-activity"></i> Health</a>
+                <a class="nav-link {{ request()->routeIs('admin.email-tools') ? 'active' : '' }}" href="{{ route('admin.email-tools') }}"><i class="bi bi-envelope-check"></i> Email tools</a>
                 <a class="nav-link {{ request()->routeIs('admin.feedback.*') ? 'active' : '' }}" href="{{ route('admin.feedback.index') }}"><i class="bi bi-chat-heart"></i> Feedback @if($adminNewFeedback)<span class="nav-count">{{ $adminNewFeedback }}</span>@endif</a>
                 <a class="nav-link {{ request()->routeIs('admin.audit') ? 'active' : '' }}" href="{{ route('admin.audit') }}"><i class="bi bi-journal-check"></i> Audit log</a>
             @endif

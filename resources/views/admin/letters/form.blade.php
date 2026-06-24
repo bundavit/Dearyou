@@ -10,19 +10,20 @@
 <section class="form-card onboarding-card mb-4" aria-labelledby="letter-onboarding-title">
     <div>
         <p class="eyebrow">QUICK START</p>
-        <h2 id="letter-onboarding-title">Your first letter in 3 simple steps</h2>
-        <p>Pick an occasion, write your message, then preview and publish a private link.</p>
+        <h2 id="letter-onboarding-title">Your first letter in 4 simple steps</h2>
+        <p>Start with a preset if you want help, then shape the words, design, response, and private link.</p>
     </div>
     <ol class="onboarding-steps">
-        <li><span>1</span><strong>Choose a style</strong><small>Use a preset or customize the design.</small></li>
-        <li><span>2</span><strong>Add your words</strong><small>Autosave keeps text safe on this device.</small></li>
-        <li><span>3</span><strong>Preview and publish</strong><small>Share only the private link.</small></li>
+        <li><span>1</span><strong>Pick a preset</strong><small>It can fill starter words, design, and reply settings.</small></li>
+        <li><span>2</span><strong>Make it personal</strong><small>Autosave keeps text safe on this device.</small></li>
+        <li><span>3</span><strong>Add extras</strong><small>Photos, music, memories, and reactions are optional.</small></li>
+        <li><span>4</span><strong>Preview and publish</strong><small>Share only the private link.</small></li>
     </ol>
 </section>
 @endunless
 <form method="post" enctype="multipart/form-data" action="{{ $editing ? route(\App\Support\CreatorRoute::name('letters.update'),$letter) : route(\App\Support\CreatorRoute::name('letters.store')) }}" data-letter-editor-form data-autosave-key="dearyou-letter-draft-{{ $editing ? $letter->id : 'new-'.auth()->id() }}">@csrf @if($editing)@method('PUT')@endif
 <div class="form-card"><div class="row g-3">
-<div class="col-md-6"><label class="form-label">Occasion</label><div class="input-group"><select name="category" id="category" class="form-select">@foreach($categories as $value => $label)<option value="{{ $value }}" @selected(old('category',$letter->category)===$value)>{{ $label }}</option>@endforeach</select><button class="btn btn-outline-secondary" type="button" id="apply-preset"><i class="bi bi-magic"></i> Apply preset</button></div><div class="form-text">Presets update theme and response fields only when you click Apply.</div></div>
+<div class="col-md-6"><label class="form-label">Occasion</label><div class="input-group"><select name="category" id="category" class="form-select">@foreach($categories as $value => $label)<option value="{{ $value }}" @selected(old('category',$letter->category)===$value)>{{ $label }}</option>@endforeach</select><button class="btn btn-outline-secondary" type="button" id="apply-preset"><i class="bi bi-magic"></i> Apply preset</button></div><div class="form-text">Presets can fill starter words, design, and response fields when you click Apply.</div></div>
 <div class="col-md-6"><label class="form-label">Title</label><input name="title" class="form-control" value="{{ old('title',$letter->title) }}" required></div>
 <div class="col-md-6"><label class="form-label">Recipient name <span class="text-secondary">(optional)</span></label><input name="recipient_name" class="form-control" value="{{ old('recipient_name',$letter->recipient_name) }}" placeholder="Someone special" data-chapter-recipient-name></div>
 <div class="col-md-6"><label class="form-label">Sender name <span class="text-secondary">(optional)</span></label><input name="sender_name" class="form-control" value="{{ old('sender_name',$letter->sender_name) }}" placeholder="Anonymous" data-chapter-sender-name></div>
@@ -52,6 +53,9 @@
                 'airmail' => ['Airmail', 'Playful red and blue border'],
                 'vintage' => ['Vintage', 'Old-paper letter with a stamp'],
                 'gift' => ['Gift ribbon', 'Wrapped like a small present'],
+                'petal' => ['Petal fold', 'Soft layered envelope flaps'],
+                'pocket' => ['Pocket note', 'A tucked note card style'],
+                'ribbon' => ['Ribbon wrap', 'Elegant wrapped ribbon band'],
             ] as $value => [$label, $description])
                 <label class="envelope-style-option">
                     <input type="radio" name="envelope_style" value="{{ $value }}" @checked(old('envelope_style',$letter->envelope_style ?: 'classic')===$value)>

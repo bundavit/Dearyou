@@ -442,6 +442,43 @@ class DearYouFlowTest extends TestCase
             ->assertSee('dearyou:check-production');
     }
 
+    public function test_platform_admin_can_view_email_delivery_tools(): void
+    {
+        config([
+            'mail.default' => 'resend',
+            'mail.from.address' => 'hello@dearyous.app',
+            'queue.default' => 'database',
+            'services.resend.key' => 'test-resend-key',
+            'dearyou.feedback_notify_email' => 'admin@dearyous.app',
+        ]);
+
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+        $user = User::factory()->unverified()->create([
+            'name' => 'Needs Verify',
+            'email' => 'needs@example.com',
+        ]);
+
+        DB::table('failed_jobs')->insert([
+            'uuid' => (string) \Illuminate\Support\Str::uuid(),
+            'connection' => 'database',
+            'queue' => 'default',
+            'payload' => json_encode(['displayName' => VerifyEmail::class]),
+            'exception' => 'Resend failed because the key was missing.',
+            'failed_at' => now(),
+        ]);
+
+        $this->actingAs($admin)
+            ->get('/admin/email-tools')
+            ->assertOk()
+            ->assertSee('Email tools')
+            ->assertSee('Ready')
+            ->assertSee('needs@example.com')
+            ->assertSee('Failed email jobs')
+            ->assertSee('Resend failed because the key was missing.');
+
+        $this->actingAs(User::factory()->create())->get('/admin/email-tools')->assertForbidden();
+    }
+
     public function test_platform_admin_can_search_view_and_manage_user_accounts(): void
     {
         Notification::fake();
@@ -692,6 +729,31 @@ class DearYouFlowTest extends TestCase
         $letter->update(['status' => 'unpublished']);
         $this->get("/l/{$link->token}")->assertNotFound();
         $this->assertSame(2, $letter->fresh()->open_count);
+    }
+
+    public function test_public_letter_words_can_be_downloaded(): void
+    {
+        $user = User::factory()->create();
+        $letter = $this->letter($user, [
+            'status' => 'published',
+            'title' => 'A Tiny Keepsake',
+            'recipient_name' => 'Meng',
+            'sender_name' => 'Vit',
+            'body' => 'These are the words.',
+        ]);
+        $link = $letter->link()->create(['token' => str_repeat('d', 64), 'is_active' => true]);
+
+        $this->get("/l/{$link->token}")
+            ->assertOk()
+            ->assertSee('Download the words');
+
+        $this->get("/l/{$link->token}/download")
+            ->assertOk()
+            ->assertHeader('content-type', 'text/plain; charset=UTF-8')
+            ->assertSee('Dear Meng,')
+            ->assertSee('A Tiny Keepsake')
+            ->assertSee('These are the words.')
+            ->assertSee('Vit');
     }
 
     public function test_admin_pages_show_letter_open_totals(): void
@@ -1023,6 +1085,9 @@ class DearYouFlowTest extends TestCase
         $this->actingAs($user)
             ->get('/letters/create')
             ->assertOk()
+            ->assertSee('Your first letter in 4 simple steps')
+            ->assertSee('Pick a preset')
+            ->assertSee('Presets can fill starter words')
             ->assertSee('Positive response preview')
             ->assertSee('A beautiful new chapter begins.')
             ->assertSee('data-chapter-sender-image', false)
@@ -1429,7 +1494,7 @@ class DearYouFlowTest extends TestCase
             'body' => 'Open me',
             'theme' => 'celebration',
             'font_style' => 'friendly',
-            'envelope_style' => 'gift',
+            'envelope_style' => 'petal',
             'seal_style' => 'diamond',
             'primary_color' => '#7b68c7',
             'secondary_color' => '#fff6cf',
@@ -1442,11 +1507,11 @@ class DearYouFlowTest extends TestCase
             ->put("/letters/{$letter->id}", $payload)
             ->assertRedirect();
 
-        $this->assertSame('gift', $letter->fresh()->envelope_style);
+        $this->assertSame('petal', $letter->fresh()->envelope_style);
         $this->assertSame('diamond', $letter->fresh()->seal_style);
         $this->get("/l/{$link->token}")
             ->assertOk()
-            ->assertSee('envelope-style-gift', false)
+            ->assertSee('envelope-style-petal', false)
             ->assertSee('seal-style-diamond', false)
             ->assertSee('bi-gem', false);
 
@@ -1639,6 +1704,8 @@ class DearYouFlowTest extends TestCase
             'profile_image_limit_mb' => 4,
             'memory_files_per_upload' => 6,
             'feedback_notify_email' => 'feedback@dearyous.app',
+            'homepage_announcement_enabled' => 1,
+            'homepage_announcement_text' => 'New letter styles are live.',
         ])->assertRedirect()->assertSessionHas('success');
 
         $this->actingAs($creator)->get('/letters/create')
@@ -1659,12 +1726,18 @@ class DearYouFlowTest extends TestCase
             ->assertSee('+1 hour')
             ->assertSee('+1 day')
             ->assertSee('Feedback notification email')
+            ->assertSee('Homepage announcement')
             ->assertSee('value="6"', false);
+
+        $this->get('/')
+            ->assertOk()
+            ->assertSee('New letter styles are live.');
 
         $this->assertSame(400 * 1024 * 1024, app(CreatorStorage::class)->limitBytes());
         $this->assertSame(['custom', 'birthday'], app(PlatformSettings::class)->enabledCategories());
         $this->assertSame(6, app(PlatformSettings::class)->memoryFilesPerUpload());
         $this->assertSame('feedback@dearyous.app', app(PlatformSettings::class)->feedbackNotifyEmail());
+        $this->assertSame('New letter styles are live.', app(PlatformSettings::class)->homepageAnnouncement());
         $this->assertDatabaseHas('moderation_audits', [
             'admin_user_id' => $admin->id,
             'action' => 'platform_settings_updated',
@@ -2180,7 +2253,21 @@ class DearYouFlowTest extends TestCase
     public function test_platform_dashboard_summarizes_recent_feedback(): void
     {
         $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+        $creator = User::factory()->create();
 
+        $letter = $this->letter($creator, [
+            'category' => 'birthday',
+            'status' => 'published',
+            'title' => 'A birthday letter',
+            'open_count' => 8,
+        ]);
+        $link = $letter->link()->create(['token' => str_repeat('d', 64), 'is_active' => true]);
+        $letter->responses()->create([
+            'letter_link_id' => $link->id,
+            'response_value' => 'positive',
+            'message' => 'Yes',
+            'submitted_at' => now(),
+        ]);
         Feedback::create([
             'category' => 'suggestion',
             'message' => 'Please add another envelope style.',
@@ -2199,6 +2286,13 @@ class DearYouFlowTest extends TestCase
             ->assertSee('Feedback')
             ->assertSee('New feedback')
             ->assertSee('Average rating')
+            ->assertSee('Response rate')
+            ->assertSee('Letters, feedback, and engagement')
+            ->assertSee('Letter statuses')
+            ->assertSee('Most used occasions')
+            ->assertSee('Feedback categories')
+            ->assertSee('Top opened letters')
+            ->assertSee('A birthday letter')
             ->assertSee('<span class="nav-count">1</span>', false)
             ->assertSee('4.0')
             ->assertSee('Please add another envelope style.');

@@ -4,12 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Models\SiteMetric;
 use App\Models\SiteMetricEvent;
+use App\Support\PlatformSettings;
 use Throwable;
 use Illuminate\View\View;
 
 class HomeController extends Controller
 {
-    public function __invoke(): View
+    public function __invoke(PlatformSettings $settings): View
     {
         SiteMetric::query()
             ->firstOrCreate(
@@ -27,6 +28,8 @@ class HomeController extends Controller
             // Metrics should never block the public homepage during deployment.
         }
 
-        return view('welcome');
+        return view('welcome', [
+            'announcement' => $settings->homepageAnnouncement(),
+        ]);
     }
 }

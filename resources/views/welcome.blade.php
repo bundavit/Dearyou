@@ -21,6 +21,13 @@
         </div>
     @endif
 
+    @if(!empty($announcement))
+        <div class="home-announcement" role="status">
+            <i class="bi bi-megaphone" aria-hidden="true"></i>
+            <span>{{ $announcement }}</span>
+        </div>
+    @endif
+
     <section class="home-hero" aria-labelledby="home-heading">
         <div class="home-hero-copy">
             <p class="home-kicker"><i class="bi bi-envelope-heart"></i> Private letters, personal pages, thoughtful replies</p>

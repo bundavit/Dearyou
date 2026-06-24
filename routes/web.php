@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\AccountController;
 use App\Http\Controllers\Admin\ApiTokenController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\EmailToolsController;
 use App\Http\Controllers\Admin\FeedbackController as AdminFeedbackController;
 use App\Http\Controllers\Admin\HealthController;
 use App\Http\Controllers\Admin\InboxController;
@@ -48,6 +49,7 @@ Route::middleware(['auth', 'active'])->group(function () {
 Route::post('/logout', [AuthController::class, 'destroy'])->middleware('auth')->name('logout');
 Route::post('/admin/logout', [AuthController::class, 'destroy'])->middleware('auth')->name('logout.legacy');
 Route::get('/l/{token}', [PublicLetterController::class, 'show'])->name('letters.public');
+Route::get('/l/{token}/download', [PublicLetterController::class, 'download'])->name('letters.download');
 Route::post('/l/{token}/response', [PublicLetterController::class, 'respond'])->middleware('throttle:recipient-responses')->name('letters.respond');
 
 Route::get('/dashboard', function () {
@@ -94,6 +96,7 @@ Route::prefix('admin')->name('admin.')->middleware(['admin.network', 'auth', 'ac
     Route::get('/settings', [PlatformSettingsController::class, 'edit'])->name('settings.edit');
     Route::put('/settings', [PlatformSettingsController::class, 'update'])->name('settings.update');
     Route::get('/health', HealthController::class)->name('health');
+    Route::get('/email-tools', EmailToolsController::class)->name('email-tools');
     Route::get('/moderation/letters', [LetterModerationController::class, 'index'])->name('moderation.index');
     Route::get('/moderation/letters/{letter}', [LetterModerationController::class, 'show'])->name('moderation.show');
     Route::post('/moderation/letters/{letter}/reveal', [LetterModerationController::class, 'reveal'])->name('moderation.reveal');

@@ -136,6 +136,13 @@
         @if($letter->image_path)
             <figure class="letter-image letter-image-after-message">@if(\App\Models\Letter::isVideoMediaPath($letter->image_path))<video src="{{ Storage::url($letter->image_path) }}" preload="metadata" muted loop playsinline data-letter-video data-autoplay-when-visible aria-label="{{ $letter->image_alt ?: 'Letter video' }}"></video>@else<img src="{{ Storage::url($letter->image_path) }}" alt="{{ $letter->image_alt ?: '' }}" loading="lazy" decoding="async">@endif @if($letter->image_alt)<figcaption>{{ $letter->image_alt }}</figcaption>@endif</figure>
         @endif
+        @if(empty($preview) && isset($link))
+            <div class="letter-keepsake-actions">
+                <a class="letter-download-link" href="{{ route('letters.download', $link->token) }}">
+                    <i class="bi bi-download" aria-hidden="true"></i> Download the words
+                </a>
+            </div>
+        @endif
         @if(session('response_sent'))
             @include('public.partials.response-result', ['responseValue' => session('response_value')])
         @elseif($letter->allow_response && empty($preview) && $letter->response_mode !== 'none')

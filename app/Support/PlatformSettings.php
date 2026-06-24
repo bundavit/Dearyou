@@ -123,6 +123,25 @@ class PlatformSettings
         return $email !== '' ? $email : null;
     }
 
+    public function homepageAnnouncementEnabled(): bool
+    {
+        return (bool) $this->value('homepage_announcement_enabled', false);
+    }
+
+    public function homepageAnnouncementText(): ?string
+    {
+        $text = trim((string) $this->value('homepage_announcement_text', ''));
+
+        return $text !== '' ? $text : null;
+    }
+
+    public function homepageAnnouncement(): ?string
+    {
+        return $this->homepageAnnouncementEnabled()
+            ? $this->homepageAnnouncementText()
+            : null;
+    }
+
     public function kilobytes(int $megabytes): int
     {
         return $megabytes * 1024;
@@ -153,6 +172,8 @@ class PlatformSettings
             'profile_image_limit_mb' => $this->profileImageLimitMb(),
             'memory_files_per_upload' => $this->memoryFilesPerUpload(),
             'feedback_notify_email' => $this->feedbackNotifyEmail(),
+            'homepage_announcement_enabled' => $this->homepageAnnouncementEnabled(),
+            'homepage_announcement_text' => $this->homepageAnnouncementText(),
         ];
     }
 

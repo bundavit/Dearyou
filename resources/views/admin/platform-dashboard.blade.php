@@ -20,6 +20,7 @@
     'letters' => ['Letters', 'bi-envelope-paper-heart'],
     'published' => ['Published', 'bi-send-check'],
     'responses' => ['Responses', 'bi-chat-heart'],
+    'response_rate' => ['Response rate', 'bi-graph-up-arrow'],
     'opens' => ['Link opens', 'bi-eye'],
     'homepage_visits' => ['Homepage visits', 'bi-globe2'],
     'storage' => ['Media storage', 'bi-cloud'],
@@ -73,6 +74,81 @@
                         <strong>{{ $point['count'] }}</strong>
                     </div>
                 @endforeach
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="dashboard-panel analytics-panel mt-4">
+    <div class="dashboard-panel-header">
+        <div>
+            <p class="eyebrow">PLATFORM INSIGHTS</p>
+            <h2>Letters, feedback, and engagement</h2>
+        </div>
+        <span class="analytics-total">Privacy-safe summary only</span>
+    </div>
+
+    <div class="analytics-grid analytics-grid-wide">
+        <div class="analytics-card">
+            <h3>Letter statuses</h3>
+            <div class="analytics-bars">
+                @forelse($letterStatusBreakdown as $point)
+                    <div class="analytics-bar-row">
+                        <span>{{ $point['label'] }}</span>
+                        <span class="analytics-bar-track"><span class="analytics-bar-fill" style="--bar-size: {{ $point['percent'] }}%"></span></span>
+                        <strong>{{ $point['count'] }}</strong>
+                    </div>
+                @empty
+                    <p class="text-secondary mb-0">No letters yet.</p>
+                @endforelse
+            </div>
+        </div>
+
+        <div class="analytics-card">
+            <h3>Most used occasions</h3>
+            <div class="analytics-bars">
+                @forelse($occasionBreakdown as $point)
+                    <div class="analytics-bar-row">
+                        <span>{{ $point['label'] }}</span>
+                        <span class="analytics-bar-track"><span class="analytics-bar-fill" style="--bar-size: {{ $point['percent'] }}%"></span></span>
+                        <strong>{{ $point['count'] }}</strong>
+                    </div>
+                @empty
+                    <p class="text-secondary mb-0">No occasions yet.</p>
+                @endforelse
+            </div>
+        </div>
+
+        <div class="analytics-card">
+            <h3>Feedback categories</h3>
+            <div class="analytics-bars">
+                @forelse($feedbackByCategory as $point)
+                    <div class="analytics-bar-row">
+                        <span>{{ $point['label'] }}</span>
+                        <span class="analytics-bar-track"><span class="analytics-bar-fill" style="--bar-size: {{ $point['percent'] }}%"></span></span>
+                        <strong>{{ $point['count'] }}</strong>
+                    </div>
+                @empty
+                    <p class="text-secondary mb-0">No feedback yet.</p>
+                @endforelse
+            </div>
+        </div>
+
+        <div class="analytics-card">
+            <h3>Top opened letters</h3>
+            <div class="dashboard-list compact-list">
+                @forelse($topOpenedLetters as $letter)
+                    <a class="dashboard-list-item" href="{{ route('admin.letters.show', $letter) }}">
+                        <span class="dashboard-item-icon"><i class="bi bi-eye"></i></span>
+                        <span class="dashboard-item-copy">
+                            <strong>{{ $letter->title }}</strong>
+                            <small>{{ $letter->user?->name ?? 'Deleted user' }}</small>
+                        </span>
+                        <span class="dashboard-item-side"><small>{{ $letter->open_count }} opens</small></span>
+                    </a>
+                @empty
+                    <div class="dashboard-empty"><i class="bi bi-eye"></i><p>Opened letters will appear here.</p></div>
+                @endforelse
             </div>
         </div>
     </div>

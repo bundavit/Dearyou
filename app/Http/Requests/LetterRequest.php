@@ -59,7 +59,7 @@ class LetterRequest extends FormRequest
             'remove_recipient_profile' => 'boolean',
             'theme' => 'required|string|max:40',
             'font_style' => ['required', Rule::in(['classic', 'elegant', 'modern', 'friendly', 'typewriter', 'handwritten', 'formal'])],
-            'envelope_style' => ['required', Rule::in(['classic', 'rounded', 'airmail', 'vintage', 'gift'])],
+            'envelope_style' => ['required', Rule::in(['classic', 'rounded', 'airmail', 'vintage', 'gift', 'petal', 'pocket', 'ribbon'])],
             'seal_style' => ['required', Rule::in(['round', 'heart', 'star', 'flower', 'diamond'])],
             'primary_color' => 'required|regex:/^#[0-9a-fA-F]{6}$/',
             'secondary_color' => 'required|regex:/^#[0-9a-fA-F]{6}$/',

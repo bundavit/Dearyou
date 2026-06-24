@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\LetterLink;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class PublicLetterController extends Controller
 {
@@ -18,6 +19,26 @@ class PublicLetterController extends Controller
         ]);
 
         return view('public.letter', ['letter' => $link->letter, 'link' => $link]);
+    }
+
+    public function download(string $token)
+    {
+        $link = LetterLink::with('letter')->where('token', $token)->first();
+        abort_unless($link?->letter?->isPubliclyAvailable(), 404);
+
+        $letter = $link->letter;
+        $filename = Str::slug($letter->title ?: 'dearyou-letter') ?: 'dearyou-letter';
+        $content = trim(implode("\n\n", array_filter([
+            'Dear '.$letter->recipientLabel().',',
+            $letter->title,
+            $letter->body,
+            "With care,\n".$letter->senderLabel(),
+        ])))."\n";
+
+        return response($content, 200, [
+            'Content-Type' => 'text/plain; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="'.$filename.'.txt"',
+        ]);
     }
 
     public function respond(Request $request, string $token)
