@@ -65,7 +65,7 @@
                 <div class="password-field"><input class="form-control" id="delete-current-password" type="password" name="current_password" required autocomplete="current-password" data-password-input><button type="button" aria-label="Show password" aria-pressed="false" data-password-toggle><i class="bi bi-eye"></i></button></div>
             </div>
             <div class="col-md-6">
-                <label class="form-label" for="delete-confirmation">Type DELETE to confirm</label>
+                <label class="form-label" for="delete-confirmation">Type delete to confirm</label>
                 <input class="form-control" id="delete-confirmation" name="confirmation" required autocomplete="off">
             </div>
         </div>

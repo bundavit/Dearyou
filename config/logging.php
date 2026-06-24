@@ -73,6 +73,20 @@ return [
             'replace_placeholders' => true,
         ],
 
+        'mail' => [
+            'driver' => 'single',
+            'path' => storage_path('logs/dearyou-mail.log'),
+            'level' => env('LOG_LEVEL', 'debug'),
+            'replace_placeholders' => true,
+        ],
+
+        'feedback' => [
+            'driver' => 'single',
+            'path' => storage_path('logs/dearyou-feedback.log'),
+            'level' => env('LOG_LEVEL', 'debug'),
+            'replace_placeholders' => true,
+        ],
+
         'slack' => [
             'driver' => 'slack',
             'url' => env('LOG_SLACK_WEBHOOK_URL'),

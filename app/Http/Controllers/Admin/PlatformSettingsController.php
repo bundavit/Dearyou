@@ -34,6 +34,7 @@ class PlatformSettingsController extends Controller
             'audio_limit_mb' => ['required', 'integer', 'min:1', 'max:200'],
             'profile_image_limit_mb' => ['required', 'integer', 'min:1', 'max:50'],
             'memory_files_per_upload' => ['required', 'integer', 'min:1', 'max:20'],
+            'feedback_notify_email' => ['nullable', 'email:rfc', 'max:255'],
         ]);
 
         $presetExpiryMinutes = array_map('intval', $validated['allowed_expiry_minutes'] ?? []);
@@ -77,6 +78,7 @@ class PlatformSettingsController extends Controller
             'allowed_expiry_minutes' => $allowedExpiryMinutes,
             'default_expiry_minutes' => $defaultExpiryMinutes,
             'cleanup_enabled' => $request->boolean('cleanup_enabled'),
+            'feedback_notify_email' => $validated['feedback_notify_email'] ?? '',
         ]);
 
         ModerationAudit::create([

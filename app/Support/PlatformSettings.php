@@ -113,6 +113,16 @@ class PlatformSettings
         return $this->boundedLimit('memory_files_per_upload', 10, 1, 20);
     }
 
+    public function feedbackNotifyEmail(): ?string
+    {
+        $email = trim((string) $this->value(
+            'feedback_notify_email',
+            config('dearyou.feedback_notify_email'),
+        ));
+
+        return $email !== '' ? $email : null;
+    }
+
     public function kilobytes(int $megabytes): int
     {
         return $megabytes * 1024;
@@ -142,6 +152,7 @@ class PlatformSettings
             'audio_limit_mb' => $this->audioLimitMb(),
             'profile_image_limit_mb' => $this->profileImageLimitMb(),
             'memory_files_per_upload' => $this->memoryFilesPerUpload(),
+            'feedback_notify_email' => $this->feedbackNotifyEmail(),
         ];
     }
 

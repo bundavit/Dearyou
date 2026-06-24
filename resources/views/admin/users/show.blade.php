@@ -112,6 +112,27 @@
         </section>
 
         <section class="form-card">
+            <h2>Email verification</h2>
+            @if($managedUser->hasVerifiedEmail())
+                <p><span class="account-verification-status is-verified"><i class="bi bi-patch-check-fill"></i> Email verified</span></p>
+                <button class="btn btn-outline-secondary w-100" disabled>Already verified</button>
+            @elseif($managedUser->trashed())
+                <p>Restore this account before sending or approving verification.</p>
+                <button class="btn btn-outline-secondary w-100" disabled>Account deleted</button>
+            @else
+                <p>Send a fresh six-digit code or manually verify the account after support checks.</p>
+                <form method="post" action="{{ route('admin.users.verification.send', $managedUser->id) }}" class="mb-2">
+                    @csrf
+                    <button class="btn btn-outline-primary w-100"><i class="bi bi-send"></i> Send verification code</button>
+                </form>
+                <form method="post" action="{{ route('admin.users.verification.verify', $managedUser->id) }}" onsubmit="return confirm('Mark this email as verified?')">
+                    @csrf @method('patch')
+                    <button class="btn btn-dearyou w-100"><i class="bi bi-patch-check"></i> Mark verified</button>
+                </form>
+            @endif
+        </section>
+
+        <section class="form-card">
             <h2>{{ $managedUser->trashed() ? 'Restore account' : 'Delete account' }}</h2>
             @if(auth()->user()->is($managedUser))
                 <p>Your current administrator account cannot be deleted here.</p>

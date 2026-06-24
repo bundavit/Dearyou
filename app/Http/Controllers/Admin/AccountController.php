@@ -80,11 +80,15 @@ class AccountController extends Controller
     {
         $validated = $request->validate([
             'current_password' => ['required', 'current_password'],
-            'confirmation' => ['required', 'in:DELETE'],
+            'confirmation' => ['required', 'string'],
         ]);
         $user = $request->user();
 
         abort_if($user->isAdmin(), 422, 'Platform administrator accounts cannot be deleted here.');
+
+        if (strtolower(trim($validated['confirmation'])) !== 'delete') {
+            return back()->withErrors(['confirmation' => 'Type delete to confirm account deletion.']);
+        }
 
         $user->tokens()->delete();
         $user->delete();

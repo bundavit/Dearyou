@@ -157,6 +157,33 @@
     </div>
     </div>
 
+    <div class="platform-settings-section">
+        <div class="row g-4 align-items-end">
+            <div class="col-lg-7">
+                <h2 class="h4">Admin notifications</h2>
+                <p class="text-secondary">Choose where private website feedback should be sent.</p>
+                <label class="form-label" for="feedback_notify_email">Feedback notification email</label>
+                <input
+                    class="form-control"
+                    id="feedback_notify_email"
+                    name="feedback_notify_email"
+                    type="email"
+                    value="{{ old('feedback_notify_email', $settings['feedback_notify_email']) }}"
+                    placeholder="admin@dearyous.app"
+                    autocomplete="email"
+                >
+                <div class="form-text">Leave blank to disable email alerts. Feedback still appears in the admin feedback page.</div>
+                @error('feedback_notify_email')<p class="text-danger small mt-1">{{ $message }}</p>@enderror
+            </div>
+            <div class="col-lg-5">
+                <div class="admin-inline-note">
+                    <strong>Useful for launch:</strong>
+                    you can route all feedback to your admin inbox without opening the server `.env` file.
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="platform-settings-actions">
         <button class="btn btn-dearyou" type="submit"><i class="bi bi-check2-circle"></i> Save platform settings</button>
     </div>

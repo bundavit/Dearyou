@@ -84,6 +84,8 @@ Route::prefix('admin')->name('admin.')->middleware(['admin.network', 'auth', 'ac
     Route::get('/platform', PlatformDashboardController::class)->name('platform');
     Route::get('/users', [PlatformUserController::class, 'index'])->name('users.index');
     Route::get('/users/{user}', [PlatformUserController::class, 'show'])->name('users.show');
+    Route::post('/users/{user}/verification', [PlatformUserController::class, 'sendVerification'])->middleware('throttle:verification')->name('users.verification.send');
+    Route::patch('/users/{user}/verification', [PlatformUserController::class, 'verifyEmail'])->name('users.verification.verify');
     Route::patch('/users/{user}/role', [PlatformUserController::class, 'updateRole'])->name('users.role');
     Route::patch('/users/{user}/status', [PlatformUserController::class, 'updateStatus'])->name('users.status');
     Route::delete('/users/{user}', [PlatformUserController::class, 'destroy'])->name('users.destroy');

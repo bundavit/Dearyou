@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Feedback;
 use App\Notifications\FeedbackReceived;
+use App\Support\PlatformSettings;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
@@ -30,7 +31,17 @@ class FeedbackController extends Controller
             'ip_hash' => hash('sha256', (string) $request->ip().'|'.config('app.key')),
         ]);
 
-        $notifyEmail = config('dearyou.feedback_notify_email');
+        Log::channel('feedback')->info('Feedback submitted', [
+            'feedback_id' => $feedback->id,
+            'category' => $feedback->category,
+            'rating' => $feedback->rating,
+            'email' => $feedback->email ?: 'not provided',
+            'user_id' => $feedback->user_id,
+            'source_page' => $feedback->source_page,
+            'message' => $feedback->message,
+        ]);
+
+        $notifyEmail = app(PlatformSettings::class)->feedbackNotifyEmail();
 
         if (filled($notifyEmail)) {
             try {

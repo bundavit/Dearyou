@@ -3,12 +3,14 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use Illuminate\Auth\Events\Verified;
 use App\Models\ModerationAudit;
 use App\Models\Response;
 use App\Models\User;
 use App\Support\AccountDeletion;
 use App\Support\CreatorStorage;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class PlatformUserController extends Controller
@@ -111,6 +113,36 @@ class PlatformUserController extends Controller
             : "{$user->name}'s account was reactivated.";
 
         return back()->with('success', $message);
+    }
+
+    public function sendVerification(Request $request, int $user)
+    {
+        $user = $this->user($user);
+        abort_if($user->trashed(), 422, 'Restore this account before sending verification email.');
+
+        if ($user->hasVerifiedEmail()) {
+            return back()->with('success', "{$user->name}'s email is already verified.");
+        }
+
+        $user->sendEmailVerificationNotification();
+        $this->audit($request, $user, 'user_verification_code_sent');
+
+        return back()->with('success', "A verification code was sent to {$user->email}.");
+    }
+
+    public function verifyEmail(Request $request, int $user)
+    {
+        $user = $this->user($user);
+        abort_if($user->trashed(), 422, 'Restore this account before verifying email.');
+
+        if (! $user->hasVerifiedEmail()) {
+            $user->forceFill(['email_verified_at' => now()])->save();
+            DB::table('email_verification_codes')->where('user_id', $user->id)->delete();
+            event(new Verified($user));
+            $this->audit($request, $user, 'user_manually_verified');
+        }
+
+        return back()->with('success', "{$user->name}'s email was marked verified.");
     }
 
     public function destroy(Request $request, int $user)

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Support\PlatformSettings;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -44,6 +45,11 @@ class HealthController extends Controller
                 'From: '.config('mail.from.address'),
             ),
             $this->check(
+                'Feedback notification email',
+                $this->validFeedbackRecipient(),
+                'Recipient: '.($this->maskedEmail($this->feedbackNotifyEmail()) ?: 'not configured'),
+            ),
+            $this->check(
                 'Queue configuration',
                 ! in_array(config('queue.default'), ['sync', 'null'], true) && $this->tableExists('jobs'),
                 'QUEUE_CONNECTION is '.config('queue.default').'. Confirm dearyou-worker is running on the server.',
@@ -60,6 +66,12 @@ class HealthController extends Controller
                 'Storage link',
                 file_exists(public_path('storage')),
                 'public/storage should point to storage/app/public.',
+            ),
+            $this->check(
+                'Backup directory',
+                filled(config('dearyou.backup_dir')),
+                $this->backupDetail(),
+                true,
             ),
             $this->check(
                 'Scheduler tasks',
@@ -103,6 +115,55 @@ class HealthController extends Controller
 
         return filter_var($address, FILTER_VALIDATE_EMAIL)
             && ! str_ends_with($address, '@example.com');
+    }
+
+    private function validFeedbackRecipient(): bool
+    {
+        return filter_var($this->feedbackNotifyEmail(), FILTER_VALIDATE_EMAIL) !== false;
+    }
+
+    private function feedbackNotifyEmail(): ?string
+    {
+        try {
+            return app(PlatformSettings::class)->feedbackNotifyEmail();
+        } catch (Throwable) {
+            return config('dearyou.feedback_notify_email');
+        }
+    }
+
+    private function maskedEmail(?string $email): ?string
+    {
+        if (! $email || ! str_contains($email, '@')) {
+            return null;
+        }
+
+        [$name, $domain] = explode('@', $email, 2);
+
+        return substr($name, 0, 2).'***@'.$domain;
+    }
+
+    private function backupDetail(): string
+    {
+        $dir = (string) config('dearyou.backup_dir');
+
+        if ($dir === '') {
+            return 'Set DEARYOU_BACKUP_DIR in .env.';
+        }
+
+        if (! is_dir($dir)) {
+            return "Configured path: {$dir}. Create it on the server and run deploy/backup.sh.";
+        }
+
+        $latest = collect(glob($dir.DIRECTORY_SEPARATOR.'*.gz') ?: [])
+            ->map(fn (string $path) => ['path' => $path, 'time' => filemtime($path) ?: 0])
+            ->sortByDesc('time')
+            ->first();
+
+        if (! $latest) {
+            return "Configured path: {$dir}. No backup archives found yet.";
+        }
+
+        return 'Latest backup: '.basename($latest['path']).' at '.date('M j, Y g:i A', $latest['time']);
     }
 
     private function tableExists(string $table): bool

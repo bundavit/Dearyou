@@ -424,6 +424,8 @@ class DearYouFlowTest extends TestCase
             'mail.from.address' => 'hello@dearyous.app',
             'queue.default' => 'database',
             'services.resend.key' => 'test-resend-key',
+            'dearyou.feedback_notify_email' => 'admin@dearyous.app',
+            'dearyou.backup_dir' => storage_path('app/test-backups'),
         ]);
 
         $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
@@ -434,16 +436,20 @@ class DearYouFlowTest extends TestCase
             ->assertSee('Email and worker health')
             ->assertSee('APP_URL')
             ->assertSee('Resend API key')
+            ->assertSee('Feedback notification email')
             ->assertSee('Queue configuration')
+            ->assertSee('Backup directory')
             ->assertSee('dearyou:check-production');
     }
 
     public function test_platform_admin_can_search_view_and_manage_user_accounts(): void
     {
+        Notification::fake();
         $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
         $user = User::factory()->create([
             'name' => 'Letter Writer',
             'email' => 'writer@example.com',
+            'email_verified_at' => null,
         ]);
         $this->letter($user, ['title' => 'Private title', 'open_count' => 4]);
 
@@ -458,7 +464,23 @@ class DearYouFlowTest extends TestCase
             ->get("/admin/users/{$user->id}")
             ->assertOk()
             ->assertSee('Private title')
-            ->assertDontSee('Hello');
+            ->assertDontSee('Hello')
+            ->assertSee('Email verification')
+            ->assertSee('Send verification code');
+
+        $this->actingAs($admin)
+            ->post("/admin/users/{$user->id}/verification")
+            ->assertRedirect()
+            ->assertSessionHas('success');
+        Notification::assertSentTo($user, VerifyEmail::class);
+        $this->assertDatabaseHas('email_verification_codes', ['user_id' => $user->id]);
+
+        $this->actingAs($admin)
+            ->patch("/admin/users/{$user->id}/verification")
+            ->assertRedirect()
+            ->assertSessionHas('success');
+        $this->assertNotNull($user->fresh()->email_verified_at);
+        $this->assertDatabaseMissing('email_verification_codes', ['user_id' => $user->id]);
 
         $this->actingAs($admin)
             ->patch("/admin/users/{$user->id}/role", ['role' => User::ROLE_ADMIN])
@@ -1616,6 +1638,7 @@ class DearYouFlowTest extends TestCase
             'audio_limit_mb' => 20,
             'profile_image_limit_mb' => 4,
             'memory_files_per_upload' => 6,
+            'feedback_notify_email' => 'feedback@dearyous.app',
         ])->assertRedirect()->assertSessionHas('success');
 
         $this->actingAs($creator)->get('/letters/create')
@@ -1635,11 +1658,13 @@ class DearYouFlowTest extends TestCase
             ->assertSee('+15 minutes')
             ->assertSee('+1 hour')
             ->assertSee('+1 day')
+            ->assertSee('Feedback notification email')
             ->assertSee('value="6"', false);
 
         $this->assertSame(400 * 1024 * 1024, app(CreatorStorage::class)->limitBytes());
         $this->assertSame(['custom', 'birthday'], app(PlatformSettings::class)->enabledCategories());
         $this->assertSame(6, app(PlatformSettings::class)->memoryFilesPerUpload());
+        $this->assertSame('feedback@dearyous.app', app(PlatformSettings::class)->feedbackNotifyEmail());
         $this->assertDatabaseHas('moderation_audits', [
             'admin_user_id' => $admin->id,
             'action' => 'platform_settings_updated',
@@ -1979,7 +2004,7 @@ class DearYouFlowTest extends TestCase
 
         $this->actingAs($creator)->delete('/account', [
             'current_password' => 'StrongPass1',
-            'confirmation' => 'DELETE',
+            'confirmation' => 'delete',
         ])->assertRedirect('/')
             ->assertSessionHas('success', 'Your account was deleted.');
 
@@ -1996,7 +2021,12 @@ class DearYouFlowTest extends TestCase
         $this->actingAs($creator)->delete('/account', [
             'current_password' => 'wrong-password',
             'confirmation' => 'delete',
-        ])->assertSessionHasErrors(['current_password', 'confirmation']);
+        ])->assertSessionHasErrors(['current_password']);
+
+        $this->actingAs($creator)->delete('/account', [
+            'current_password' => 'StrongPass1',
+            'confirmation' => 'not delete',
+        ])->assertSessionHasErrors(['confirmation']);
 
         $this->assertNotSoftDeleted($creator);
         $this->assertAuthenticatedAs($creator);
@@ -2108,7 +2138,7 @@ class DearYouFlowTest extends TestCase
     public function test_guest_can_send_private_feedback(): void
     {
         Notification::fake();
-        config(['dearyou.feedback_notify_email' => 'admin@example.com']);
+        app(PlatformSettings::class)->update(['feedback_notify_email' => 'admin@example.com']);
 
         $this->from('/#feedback')->post('/feedback', [
             'category' => 'suggestion',
