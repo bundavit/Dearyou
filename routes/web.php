@@ -97,6 +97,7 @@ Route::prefix('admin')->name('admin.')->middleware(['admin.network', 'auth', 'ac
     Route::put('/settings', [PlatformSettingsController::class, 'update'])->name('settings.update');
     Route::get('/health', HealthController::class)->name('health');
     Route::get('/email-tools', EmailToolsController::class)->name('email-tools');
+    Route::post('/email-tools/failed-jobs/retry', [EmailToolsController::class, 'retryFailedJobs'])->name('email-tools.retry-failed');
     Route::get('/moderation/letters', [LetterModerationController::class, 'index'])->name('moderation.index');
     Route::get('/moderation/letters/{letter}', [LetterModerationController::class, 'show'])->name('moderation.show');
     Route::post('/moderation/letters/{letter}/reveal', [LetterModerationController::class, 'reveal'])->name('moderation.reveal');

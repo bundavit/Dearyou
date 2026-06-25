@@ -84,6 +84,11 @@ class PlatformSettingsController extends Controller
             'homepage_announcement_enabled' => $request->boolean('homepage_announcement_enabled'),
             'homepage_announcement_text' => $validated['homepage_announcement_text'] ?? '',
         ]);
+        $settings->recordHomepageAnnouncement(
+            $validated['homepage_announcement_text'] ?? '',
+            $request->boolean('homepage_announcement_enabled'),
+            $request->user(),
+        );
 
         ModerationAudit::create([
             'admin_user_id' => $request->user()->id,

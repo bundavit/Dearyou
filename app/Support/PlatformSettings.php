@@ -2,7 +2,9 @@
 
 namespace App\Support;
 
+use App\Models\User;
 use App\Models\PlatformSetting;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Schema;
 
 class PlatformSettings
@@ -22,6 +24,9 @@ class PlatformSettings
         'friendship' => 'Friendship',
         'graduation' => 'Graduation',
         'celebration' => 'Celebration',
+        'encouragement' => 'Encouragement',
+        'missing-you' => 'Missing you',
+        'good-luck' => 'Good luck',
         'custom' => 'Custom',
     ];
 
@@ -142,6 +147,44 @@ class PlatformSettings
             : null;
     }
 
+    public function homepageAnnouncementHistory(): array
+    {
+        $history = $this->value('homepage_announcement_history', []);
+
+        if (! is_array($history)) {
+            return [];
+        }
+
+        return collect($history)
+            ->filter(fn ($item) => is_array($item) && filled($item['text'] ?? null))
+            ->take(8)
+            ->values()
+            ->all();
+    }
+
+    public function recordHomepageAnnouncement(?string $text, bool $enabled, ?User $admin = null): void
+    {
+        $text = trim((string) $text);
+
+        if ($text === '') {
+            return;
+        }
+
+        $history = collect($this->homepageAnnouncementHistory())
+            ->reject(fn (array $item) => ($item['text'] ?? null) === $text)
+            ->prepend([
+                'text' => $text,
+                'enabled' => $enabled,
+                'admin' => $admin?->name ?: $admin?->email,
+                'created_at' => Carbon::now()->toDateTimeString(),
+            ])
+            ->take(8)
+            ->values()
+            ->all();
+
+        $this->update(['homepage_announcement_history' => $history]);
+    }
+
     public function kilobytes(int $megabytes): int
     {
         return $megabytes * 1024;
@@ -174,6 +217,7 @@ class PlatformSettings
             'feedback_notify_email' => $this->feedbackNotifyEmail(),
             'homepage_announcement_enabled' => $this->homepageAnnouncementEnabled(),
             'homepage_announcement_text' => $this->homepageAnnouncementText(),
+            'homepage_announcement_history' => $this->homepageAnnouncementHistory(),
         ];
     }
 

@@ -474,6 +474,7 @@ class DearYouFlowTest extends TestCase
             ->assertSee('Ready')
             ->assertSee('needs@example.com')
             ->assertSee('Failed email jobs')
+            ->assertSee('Retry all')
             ->assertSee('Resend failed because the key was missing.');
 
         $this->actingAs(User::factory()->create())->get('/admin/email-tools')->assertForbidden();
@@ -692,7 +693,9 @@ class DearYouFlowTest extends TestCase
         $this->get("/l/{$link->token}")
             ->assertOk()
             ->assertSee('value="happy"', false)
-            ->assertSee('Surprised');
+            ->assertSee('Loved')
+            ->assertSee('Surprised')
+            ->assertSee('Hopeful');
 
         $this->post("/l/{$link->token}/response", ['response_value' => 'thankful', 'message' => 'This made my day'])
             ->assertRedirect();
@@ -745,7 +748,8 @@ class DearYouFlowTest extends TestCase
 
         $this->get("/l/{$link->token}")
             ->assertOk()
-            ->assertSee('Download the words');
+            ->assertSee('Download keepsake')
+            ->assertSee('Text only');
 
         $this->get("/l/{$link->token}/download")
             ->assertOk()
@@ -754,6 +758,12 @@ class DearYouFlowTest extends TestCase
             ->assertSee('A Tiny Keepsake')
             ->assertSee('These are the words.')
             ->assertSee('Vit');
+
+        $this->get("/l/{$link->token}/download?format=html")
+            ->assertOk()
+            ->assertHeader('content-type', 'text/html; charset=UTF-8')
+            ->assertSee('A Tiny Keepsake')
+            ->assertSee('These are the words.');
     }
 
     public function test_admin_pages_show_letter_open_totals(): void

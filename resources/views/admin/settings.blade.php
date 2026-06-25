@@ -203,6 +203,20 @@
                     <strong>Good uses:</strong>
                     maintenance windows, new features, launch messages, or a simple thank-you note after updates.
                 </div>
+                @if(!empty($settings['homepage_announcement_history']))
+                    <div class="announcement-history mt-3">
+                        <strong>Recent announcements</strong>
+                        @foreach($settings['homepage_announcement_history'] as $announcement)
+                            <div class="announcement-history-item">
+                                <span>{{ $announcement['text'] }}</span>
+                                <small>
+                                    {{ $announcement['enabled'] ?? false ? 'Shown' : 'Saved' }}
+                                    @if(!empty($announcement['created_at'])) <span aria-hidden="true">&middot;</span> {{ \Illuminate\Support\Carbon::parse($announcement['created_at'])->diffForHumans() }} @endif
+                                </small>
+                            </div>
+                        @endforeach
+                    </div>
+                @endif
             </div>
         </div>
     </div>
@@ -212,3 +226,4 @@
     </div>
 </form>
 @endsection
+

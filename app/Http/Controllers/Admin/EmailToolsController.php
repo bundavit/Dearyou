@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Support\PlatformSettings;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Schema;
@@ -30,6 +32,13 @@ class EmailToolsController extends Controller
             'failedJobs' => $this->failedEmailJobs(),
             'recentCodes' => $this->recentCodeLogLines(),
         ]);
+    }
+
+    public function retryFailedJobs(): RedirectResponse
+    {
+        Artisan::call('queue:retry', ['id' => ['all']]);
+
+        return back()->with('success', 'Failed email jobs were queued again.');
     }
 
     private function failedEmailJobs(): array

@@ -77,6 +77,10 @@
                 'star' => ['Star', 'bi-star-fill'],
                 'flower' => ['Flower', 'bi-flower1'],
                 'diamond' => ['Diamond', 'bi-gem'],
+                'square' => ['Square', 'bi-square-fill'],
+                'scallop' => ['Scallop', 'bi-flower2'],
+                'moon' => ['Moon', 'bi-moon-stars-fill'],
+                'sparkle' => ['Sparkle', 'bi-stars'],
             ] as $value => [$label, $icon])
                 <label class="seal-style-option">
                     <input type="radio" name="seal_style" value="{{ $value }}" @checked(old('seal_style',$letter->seal_style ?: 'round')===$value)>

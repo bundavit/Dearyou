@@ -4,6 +4,13 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="Create private online letters for confessions, apologies, birthdays, anniversaries, and other meaningful moments, then share them with one secure link.">
+    <link rel="canonical" href="{{ route('home') }}">
+    <meta property="og:title" content="DearYou - Private letters for meaningful moments">
+    <meta property="og:description" content="Create a thoughtful private letter with photos, music, reactions, and one secure link.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="{{ route('home') }}">
+    <meta property="og:image" content="{{ asset('assets/dearyou/dearyou-floral-envelope-logo-web.webp') }}">
+    <meta name="twitter:card" content="summary_large_image">
     <title>DearYou - Private letters for meaningful moments</title>
     <link rel="icon" type="image/svg+xml" href="{{ asset('dearyou-admin-mark.svg') }}">
     <link rel="preload" href="{{ asset('assets/dearyou/dearyou-floral-envelope-logo-web.webp') }}" as="image" type="image/webp">
@@ -93,7 +100,9 @@
             <article><span><i class="bi bi-calendar-heart"></i></span><h3>Anniversary</h3><p>Bring your favorite memories into one place.</p></article>
             <article><span><i class="bi bi-balloon-heart"></i></span><h3>Birthday</h3><p>Make a wish feel more personal than a post.</p></article>
             <article><span><i class="bi bi-stars"></i></span><h3>Celebration</h3><p>Celebrate milestones, graduations, and wins.</p></article>
-            <article><span><i class="bi bi-envelope-paper-heart"></i></span><h3>Just because</h3><p>Send a thoughtful note without needing a reason.</p></article>
+            <article><span><i class="bi bi-sunrise"></i></span><h3>Encouragement</h3><p>Send courage when someone needs a softer push.</p></article>
+            <article><span><i class="bi bi-envelope-paper-heart"></i></span><h3>Missing you</h3><p>Make distance feel a little warmer.</p></article>
+            <article><span><i class="bi bi-magic"></i></span><h3>Good luck</h3><p>Give someone confidence before a big moment.</p></article>
         </div>
     </section>
 

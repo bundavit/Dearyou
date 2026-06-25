@@ -2279,3 +2279,80 @@ linear-gradient(145deg,color-mix(in srgb,var(--paper),white 24%),color-mix(in sr
         text-align: center;
     }
 }
+
+/* Final polish: extra seal shapes, keepsake downloads, and announcement history. */
+.seal-style-preview-square {
+    border-radius: 14px;
+}
+
+.seal-style-preview-scallop {
+    border-radius: 36% 64% 42% 58% / 58% 35% 65% 42%;
+}
+
+.seal-style-preview-moon {
+    border-radius: 50%;
+    box-shadow: inset -13px 0 0 rgba(255,255,255,.36), 0 8px 16px #65334225;
+}
+
+.seal-style-preview-sparkle {
+    border-radius: 16px 999px 16px 999px;
+}
+
+.recipient-page.seal-style-square .envelope-seal,
+.recipient-page.seal-style-square .opened-envelope-seal {
+    border-radius: 14px;
+}
+
+.recipient-page.seal-style-scallop .envelope-seal,
+.recipient-page.seal-style-scallop .opened-envelope-seal {
+    border-radius: 36% 64% 42% 58% / 58% 35% 65% 42%;
+}
+
+.recipient-page.seal-style-moon .envelope-seal,
+.recipient-page.seal-style-moon .opened-envelope-seal {
+    border-radius: 50%;
+    box-shadow: inset -13px 0 0 color-mix(in srgb, var(--accent), white 82%), 0 9px 20px #56313c2b;
+}
+
+.recipient-page.seal-style-sparkle .envelope-seal,
+.recipient-page.seal-style-sparkle .opened-envelope-seal {
+    border-radius: 16px 999px 16px 999px;
+}
+
+.letter-keepsake-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: .65rem;
+}
+
+.letter-download-link-soft {
+    background: transparent;
+    box-shadow: none;
+    color: color-mix(in srgb, var(--accent), #4a3038 25%);
+}
+
+.announcement-history {
+    display: grid;
+    gap: .65rem;
+    padding: .8rem;
+    border: 1px solid rgba(216,91,120,.18);
+    border-radius: 16px;
+    background: rgba(255,255,255,.55);
+}
+
+.announcement-history-item {
+    display: grid;
+    gap: .15rem;
+    padding: .65rem .75rem;
+    border-radius: 12px;
+    background: rgba(255,255,255,.72);
+}
+
+.announcement-history-item span {
+    font-weight: 700;
+}
+
+.announcement-history-item small {
+    color: #7b6670;
+}

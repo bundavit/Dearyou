@@ -59,7 +59,14 @@
     <section class="dashboard-panel email-tool-card">
         <div class="dashboard-panel-header">
             <div><p class="eyebrow">QUEUE</p><h2>Failed email jobs</h2></div>
-            <code>queue:retry all</code>
+            @if(count($failedJobs))
+                <form method="post" action="{{ route('admin.email-tools.retry-failed') }}">
+                    @csrf
+                    <button class="btn btn-sm btn-dearyou"><i class="bi bi-arrow-clockwise"></i> Retry all</button>
+                </form>
+            @else
+                <code>queue:clear</code>
+            @endif
         </div>
         <div class="dashboard-list compact-list">
             @forelse($failedJobs as $job)

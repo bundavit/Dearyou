@@ -4,6 +4,8 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="robots" content="noindex,nofollow">
+    <meta name="description" content="A private DearYou letter. Only people with the active link can open it.">
     <title>{{ $letter->title }} | DearYou</title>
     <link rel="icon" type="image/svg+xml" href="{{ asset('dearyou-admin-mark.svg') }}">
     <link rel="stylesheet" href="{{ asset('vendor/bootstrap/css/bootstrap.min.css') }}">
@@ -22,6 +24,9 @@
         'friendship' => ['label' => 'A NOTE FOR A WONDERFUL FRIEND', 'hint' => 'Good friends deserve good words.'],
         'graduation' => ['label' => 'A PROUD LETTER FOR', 'hint' => 'A new chapter deserves a celebration.'],
         'celebration' => ['label' => 'SOMETHING TO CELEBRATE WITH', 'hint' => 'Open this when you are ready to smile.'],
+        'encouragement' => ['label' => 'A GENTLE PUSH FOR', 'hint' => 'A few brave words are waiting inside.'],
+        'missing-you' => ['label' => 'A NOTE FROM FAR AWAY FOR', 'hint' => 'Distance still leaves room for warm words.'],
+        'good-luck' => ['label' => 'A LITTLE COURAGE FOR', 'hint' => 'Open this before the big moment.'],
         'custom' => ['label' => 'A PRIVATE LETTER FOR', 'hint' => 'From someone who wanted to say this properly.'],
     ];
     $copy = $occasionCopy[$letter->category] ?? $occasionCopy['custom'];
@@ -51,6 +56,10 @@
         'star' => 'bi-star-fill',
         'flower' => 'bi-flower1',
         'diamond' => 'bi-gem',
+        'square' => 'bi-square-fill',
+        'scallop' => 'bi-flower2',
+        'moon' => 'bi-moon-stars-fill',
+        'sparkle' => 'bi-stars',
     ];
     $sealStyle = $letter->seal_style ?: 'round';
     $sealIcon = $sealIcons[$sealStyle] ?? $sealIcons['round'];
@@ -138,8 +147,11 @@
         @endif
         @if(empty($preview) && isset($link))
             <div class="letter-keepsake-actions">
-                <a class="letter-download-link" href="{{ route('letters.download', $link->token) }}">
-                    <i class="bi bi-download" aria-hidden="true"></i> Download the words
+                <a class="letter-download-link" href="{{ route('letters.download', ['token' => $link->token, 'format' => 'html']) }}">
+                    <i class="bi bi-file-earmark-richtext" aria-hidden="true"></i> Download keepsake
+                </a>
+                <a class="letter-download-link letter-download-link-soft" href="{{ route('letters.download', $link->token) }}">
+                    <i class="bi bi-file-text" aria-hidden="true"></i> Text only
                 </a>
             </div>
         @endif
@@ -157,9 +169,11 @@
                     <div class="reaction-response-grid" aria-label="Choose a reaction">
                         @foreach([
                             'happy' => ['Happy', 'bi-emoji-smile'],
+                            'loved' => ['Loved', 'bi-heart-fill'],
                             'surprised' => ['Surprised', 'bi-stars'],
                             'emotional' => ['Emotional', 'bi-heart-pulse'],
                             'thankful' => ['Thankful', 'bi-flower1'],
+                            'hopeful' => ['Hopeful', 'bi-sunrise'],
                         ] as $value => [$label, $icon])
                             <button type="submit" name="response_value" value="{{ $value }}" class="reaction-choice">
                                 <i class="bi {{ $icon }}" aria-hidden="true"></i>

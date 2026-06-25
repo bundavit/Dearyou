@@ -60,7 +60,7 @@ class LetterRequest extends FormRequest
             'theme' => 'required|string|max:40',
             'font_style' => ['required', Rule::in(['classic', 'elegant', 'modern', 'friendly', 'typewriter', 'handwritten', 'formal'])],
             'envelope_style' => ['required', Rule::in(['classic', 'rounded', 'airmail', 'vintage', 'gift', 'petal', 'pocket', 'ribbon'])],
-            'seal_style' => ['required', Rule::in(['round', 'heart', 'star', 'flower', 'diamond'])],
+            'seal_style' => ['required', Rule::in(['round', 'heart', 'star', 'flower', 'diamond', 'square', 'scallop', 'moon', 'sparkle'])],
             'primary_color' => 'required|regex:/^#[0-9a-fA-F]{6}$/',
             'secondary_color' => 'required|regex:/^#[0-9a-fA-F]{6}$/',
             'decoration_type' => ['required', Rule::in(['hearts', 'stars', 'balloons', 'confetti', 'flowers', 'sparkles', 'none'])],

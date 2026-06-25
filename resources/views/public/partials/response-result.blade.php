@@ -9,7 +9,17 @@
         </div>
         @if($letter->relationship_started_at)<p class="started-date">Started from {{ $letter->relationship_started_at->format('F j, Y') }}</p>@endif
     @else
-        <h2>{{ $responseValue === 'positive' ? 'Thank you for this warm answer.' : 'Thank you for answering honestly.' }}</h2>
+        @php
+            $reactionLabels = [
+                'happy' => 'They felt happy reading this.',
+                'loved' => 'They felt loved by your words.',
+                'surprised' => 'They were surprised in the sweetest way.',
+                'emotional' => 'Your words moved them.',
+                'thankful' => 'They felt thankful for this letter.',
+                'hopeful' => 'They felt hopeful after reading this.',
+            ];
+        @endphp
+        <h2>{{ $reactionLabels[$responseValue] ?? ($responseValue === 'positive' ? 'Thank you for this warm answer.' : 'Thank you for answering honestly.') }}</h2>
         <p>Your response was sent privately and respectfully.</p>
     @endif
 </div>

@@ -21,13 +21,22 @@ class PublicLetterController extends Controller
         return view('public.letter', ['letter' => $link->letter, 'link' => $link]);
     }
 
-    public function download(string $token)
+    public function download(Request $request, string $token)
     {
-        $link = LetterLink::with('letter')->where('token', $token)->first();
+        $link = LetterLink::with('letter.memories.images')->where('token', $token)->first();
         abort_unless($link?->letter?->isPubliclyAvailable(), 404);
 
         $letter = $link->letter;
         $filename = Str::slug($letter->title ?: 'dearyou-letter') ?: 'dearyou-letter';
+
+        if ($request->query('format') === 'html') {
+            return response()
+                ->view('public.download', ['letter' => $letter], 200, [
+                    'Content-Type' => 'text/html; charset=UTF-8',
+                    'Content-Disposition' => 'attachment; filename="'.$filename.'-keepsake.html"',
+                ]);
+        }
+
         $content = trim(implode("\n\n", array_filter([
             'Dear '.$letter->recipientLabel().',',
             $letter->title,
