@@ -56,6 +56,8 @@
                 'petal' => ['Petal fold', 'Soft layered envelope flaps'],
                 'pocket' => ['Pocket note', 'A tucked note card style'],
                 'ribbon' => ['Ribbon wrap', 'Elegant wrapped ribbon band'],
+                'lace' => ['Lace edge', 'Delicate scalloped border'],
+                'postcard' => ['Postcard', 'Flat travel-note envelope'],
             ] as $value => [$label, $description])
                 <label class="envelope-style-option">
                     <input type="radio" name="envelope_style" value="{{ $value }}" @checked(old('envelope_style',$letter->envelope_style ?: 'classic')===$value)>
@@ -81,6 +83,7 @@
                 'scallop' => ['Scallop', 'bi-flower2'],
                 'moon' => ['Moon', 'bi-moon-stars-fill'],
                 'sparkle' => ['Sparkle', 'bi-stars'],
+                'sun' => ['Sun', 'bi-sun-fill'],
             ] as $value => [$label, $icon])
                 <label class="seal-style-option">
                     <input type="radio" name="seal_style" value="{{ $value }}" @checked(old('seal_style',$letter->seal_style ?: 'round')===$value)>
@@ -111,7 +114,7 @@
     </select>
     <div class="form-text">The countdown starts each time you publish or regenerate the link.</div>
 </div>
-<div class="col-12 form-check ms-2"><input type="hidden" name="allow_response" value="0"><input class="form-check-input" type="checkbox" name="allow_response" value="1" id="allow" @checked(old('allow_response',$letter->allow_response ?? true))><label class="form-check-label" for="allow">Allow a private response</label></div>
+<div class="col-12 form-check ms-2"><input type="hidden" name="allow_response" value="0"><input class="form-check-input" type="checkbox" name="allow_response" value="1" id="allow" @checked(old('allow_response',$letter->allow_response ?? true))><label class="form-check-label" for="allow">Allow an optional private note</label><div class="form-text">Reaction and button choices still work when this is off.</div></div>
 </div></details></div>
 <div class="col-12 confession-options" data-confession-options>
 <details class="editor-section" open><summary><span><i class="bi bi-heart"></i> Accepted confession</span><small>Customize the positive response moment</small></summary>

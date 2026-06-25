@@ -22,6 +22,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class DearYouFlowTest extends TestCase
@@ -459,7 +460,7 @@ class DearYouFlowTest extends TestCase
         ]);
 
         DB::table('failed_jobs')->insert([
-            'uuid' => (string) \Illuminate\Support\Str::uuid(),
+            'uuid' => (string) Str::uuid(),
             'connection' => 'database',
             'queue' => 'default',
             'payload' => json_encode(['displayName' => VerifyEmail::class]),
@@ -704,6 +705,32 @@ class DearYouFlowTest extends TestCase
             'letter_id' => $letter->id,
             'response_value' => 'thankful',
             'message' => 'This made my day',
+        ]);
+    }
+
+    public function test_reaction_responses_show_without_private_message_enabled(): void
+    {
+        $user = User::factory()->create();
+        $letter = $this->letter($user, [
+            'status' => 'published',
+            'allow_response' => false,
+            'response_mode' => 'reactions',
+        ]);
+        $link = $letter->link()->create(['token' => str_repeat('x', 64), 'is_active' => true]);
+
+        $this->get("/l/{$link->token}")
+            ->assertOk()
+            ->assertSee('value="happy"', false)
+            ->assertSee('Loved')
+            ->assertDontSee('Add a private note');
+
+        $this->post("/l/{$link->token}/response", ['response_value' => 'happy', 'message' => 'Should not save'])
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('responses', [
+            'letter_id' => $letter->id,
+            'response_value' => 'happy',
+            'message' => null,
         ]);
     }
 
@@ -1504,8 +1531,8 @@ class DearYouFlowTest extends TestCase
             'body' => 'Open me',
             'theme' => 'celebration',
             'font_style' => 'friendly',
-            'envelope_style' => 'petal',
-            'seal_style' => 'diamond',
+            'envelope_style' => 'lace',
+            'seal_style' => 'sun',
             'primary_color' => '#7b68c7',
             'secondary_color' => '#fff6cf',
             'decoration_type' => 'balloons',
@@ -1517,13 +1544,13 @@ class DearYouFlowTest extends TestCase
             ->put("/letters/{$letter->id}", $payload)
             ->assertRedirect();
 
-        $this->assertSame('petal', $letter->fresh()->envelope_style);
-        $this->assertSame('diamond', $letter->fresh()->seal_style);
+        $this->assertSame('lace', $letter->fresh()->envelope_style);
+        $this->assertSame('sun', $letter->fresh()->seal_style);
         $this->get("/l/{$link->token}")
             ->assertOk()
-            ->assertSee('envelope-style-petal', false)
-            ->assertSee('seal-style-diamond', false)
-            ->assertSee('bi-gem', false);
+            ->assertSee('envelope-style-lace', false)
+            ->assertSee('seal-style-sun', false)
+            ->assertSee('bi-sun-fill', false);
 
         $this->actingAs($user)
             ->put("/letters/{$letter->id}", array_merge($payload, ['envelope_style' => 'unknown']))

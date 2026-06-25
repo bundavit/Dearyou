@@ -5,8 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\SiteMetric;
 use App\Models\SiteMetricEvent;
 use App\Support\PlatformSettings;
-use Throwable;
 use Illuminate\View\View;
+use Throwable;
 
 class HomeController extends Controller
 {

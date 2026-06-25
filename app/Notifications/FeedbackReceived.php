@@ -16,9 +16,7 @@ class FeedbackReceived extends Notification implements ShouldQueue
 
     public int $timeout = 30;
 
-    public function __construct(public readonly Feedback $feedback)
-    {
-    }
+    public function __construct(public readonly Feedback $feedback) {}
 
     public function via(object $notifiable): array
     {

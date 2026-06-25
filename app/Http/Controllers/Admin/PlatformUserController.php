@@ -3,12 +3,12 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Auth\Events\Verified;
 use App\Models\ModerationAudit;
 use App\Models\Response;
 use App\Models\User;
 use App\Support\AccountDeletion;
 use App\Support\CreatorStorage;
+use Illuminate\Auth\Events\Verified;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;

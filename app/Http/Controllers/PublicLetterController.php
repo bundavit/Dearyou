@@ -53,8 +53,18 @@ class PublicLetterController extends Controller
     public function respond(Request $request, string $token)
     {
         $link = LetterLink::with('letter')->where('token', $token)->first();
-        abort_unless($link?->letter?->isPubliclyAvailable() && $link->letter->allow_response, 404);
+        abort_unless($link?->letter?->isPubliclyAvailable(), 404);
+
+        $responseMode = $link->letter->response_mode ?: 'none';
+        $allowsChoiceResponse = in_array($responseMode, ['buttons', 'buttons_with_message', 'reactions'], true);
+        $allowsMessageResponse = $link->letter->allow_response && in_array($responseMode, ['message', 'buttons_with_message', 'reactions'], true);
+        abort_unless($allowsChoiceResponse || $allowsMessageResponse, 404);
+
         $data = $request->validate(['response_value' => 'required|string|max:100', 'message' => 'nullable|string|max:3000']);
+        if (! $allowsMessageResponse) {
+            $data['message'] = null;
+        }
+
         $link->letter->responses()->create($data + ['letter_link_id' => $link->id, 'submitted_at' => now()]);
 
         if ($request->expectsJson()) {

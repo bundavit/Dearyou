@@ -60,6 +60,7 @@
         'scallop' => 'bi-flower2',
         'moon' => 'bi-moon-stars-fill',
         'sparkle' => 'bi-stars',
+        'sun' => 'bi-sun-fill',
     ];
     $sealStyle = $letter->seal_style ?: 'round';
     $sealIcon = $sealIcons[$sealStyle] ?? $sealIcons['round'];
@@ -155,17 +156,24 @@
                 </a>
             </div>
         @endif
+        @php
+            $responseMode = $letter->response_mode ?: 'none';
+            $allowsChoiceResponse = in_array($responseMode, ['buttons', 'buttons_with_message', 'reactions'], true);
+            $allowsMessageResponse = $letter->allow_response && in_array($responseMode, ['message', 'buttons_with_message', 'reactions'], true);
+            $showResponseForm = empty($preview) && isset($link) && $responseMode !== 'none' && ($allowsChoiceResponse || $allowsMessageResponse);
+            $buttonNeedsCompose = $responseMode === 'buttons_with_message' && $letter->allow_response;
+        @endphp
         @if(session('response_sent'))
             @include('public.partials.response-result', ['responseValue' => session('response_value')])
-        @elseif($letter->allow_response && empty($preview) && $letter->response_mode !== 'none')
-            <form class="response-form" method="post" action="{{ route('letters.respond',$link->token) }}" data-response-form data-async-response data-mode="{{ $letter->response_mode }}">
+        @elseif($showResponseForm)
+            <form class="response-form" method="post" action="{{ route('letters.respond',$link->token) }}" data-response-form data-async-response data-mode="{{ $responseMode }}">
                 @csrf
                 <h2>{{ $letter->question_text ?: 'Would you like to reply?' }}</h2>
-                @if($letter->response_mode === 'message')
+                @if($responseMode === 'message')
                     <input type="hidden" name="response_value" value="message">
                     <textarea class="form-control mt-3" name="message" rows="4" placeholder="Write a private response" required></textarea>
                     <button class="btn btn-dearyou mt-3"><i class="bi bi-send"></i> Send private response</button>
-                @elseif($letter->response_mode === 'reactions')
+                @elseif($responseMode === 'reactions')
                     <div class="reaction-response-grid" aria-label="Choose a reaction">
                         @foreach([
                             'happy' => ['Happy', 'bi-emoji-smile'],
@@ -181,13 +189,15 @@
                             </button>
                         @endforeach
                     </div>
-                    <textarea class="form-control mt-3" name="message" rows="3" placeholder="Add a private note (optional)"></textarea>
+                    @if($letter->allow_response)
+                        <textarea class="form-control mt-3" name="message" rows="3" placeholder="Add a private note (optional)"></textarea>
+                    @endif
                 @else
                     <div class="d-flex flex-wrap gap-2 justify-content-center">
-                        <button type="{{ $letter->response_mode === 'buttons' ? 'submit' : 'button' }}" name="response_value" value="positive" data-response-choice="positive" class="btn btn-dearyou">{{ $letter->positive_button_text ?: 'Yes' }}</button>
-                        <button type="{{ $letter->response_mode === 'buttons' ? 'submit' : 'button' }}" name="response_value" value="negative" data-response-choice="negative" class="btn btn-outline-secondary">{{ $letter->negative_button_text ?: 'No' }}</button>
+                        <button type="{{ $buttonNeedsCompose ? 'button' : 'submit' }}" name="response_value" value="positive" @if($buttonNeedsCompose) data-response-choice="positive" @endif class="btn btn-dearyou">{{ $letter->positive_button_text ?: 'Yes' }}</button>
+                        <button type="{{ $buttonNeedsCompose ? 'button' : 'submit' }}" name="response_value" value="negative" @if($buttonNeedsCompose) data-response-choice="negative" @endif class="btn btn-outline-secondary">{{ $letter->negative_button_text ?: 'No' }}</button>
                     </div>
-                    @if($letter->response_mode === 'buttons_with_message')
+                    @if($buttonNeedsCompose)
                         <div class="response-compose mt-3" hidden>
                             <input type="hidden" name="response_value" data-response-value>
                             <p class="response-guidance mb-2"></p>

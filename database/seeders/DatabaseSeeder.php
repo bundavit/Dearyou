@@ -2,8 +2,8 @@
 
 namespace Database\Seeders;
 
-use App\Support\PlatformSettings;
 use App\Models\User;
+use App\Support\PlatformSettings;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 

@@ -13,7 +13,7 @@ class LocalSecurityCodeLogger
         }
 
         $line = sprintf(
-            "[%s] %s | %s | code: %s | expires in 10 minutes%s",
+            '[%s] %s | %s | code: %s | expires in 10 minutes%s',
             now()->format('Y-m-d H:i:s'),
             $purpose,
             $email,
