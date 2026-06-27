@@ -791,6 +791,38 @@ class DearYouFlowTest extends TestCase
             ->assertHeader('content-type', 'text/html; charset=UTF-8')
             ->assertSee('A Tiny Keepsake')
             ->assertSee('These are the words.');
+
+        Storage::fake('public');
+        $pngPath = 'letters/keepsake.png';
+        $gifPath = 'letters/keepsake.gif';
+        $videoPath = 'letters/keepsake.mp4';
+
+        Storage::disk('public')->put($pngPath, base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII='));
+        Storage::disk('public')->put($gifPath, base64_decode('R0lGODlhAQABAPAAAP///wAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw=='));
+        Storage::disk('public')->put($videoPath, 'fake video bytes');
+
+        $imageLetter = $this->letter($user, ['status' => 'published', 'image_path' => $pngPath, 'image_alt' => 'A saved picture']);
+        $gifLetter = $this->letter($user, ['status' => 'published', 'image_path' => $gifPath]);
+        $videoLetter = $this->letter($user, ['status' => 'published', 'image_path' => $videoPath, 'image_alt' => 'A saved video']);
+        $imageLink = $imageLetter->link()->create(['token' => str_repeat('e', 64), 'is_active' => true]);
+        $gifLink = $gifLetter->link()->create(['token' => str_repeat('f', 64), 'is_active' => true]);
+        $videoLink = $videoLetter->link()->create(['token' => str_repeat('g', 64), 'is_active' => true]);
+
+        $this->get("/l/{$imageLink->token}/download?format=html")
+            ->assertOk()
+            ->assertSee('src="data:image/png;base64,', false)
+            ->assertSee('A saved picture');
+
+        $this->get("/l/{$gifLink->token}/download?format=html")
+            ->assertOk()
+            ->assertSee('src="data:image/gif;base64,', false);
+
+        $this->get("/l/{$videoLink->token}/download?format=html")
+            ->assertOk()
+            ->assertSee('keepsake-video-frame', false)
+            ->assertSee('<video src="data:video/mp4;base64,', false)
+            ->assertSee('autoplay muted loop playsinline preload="metadata"', false)
+            ->assertSee('A saved video');
     }
 
     public function test_admin_pages_show_letter_open_totals(): void

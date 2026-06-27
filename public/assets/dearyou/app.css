@@ -2224,8 +2224,9 @@ linear-gradient(145deg,color-mix(in srgb,var(--paper),white 24%),color-mix(in sr
 
 .reaction-response-grid {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: .75rem;
+    grid-template-columns: repeat(6, minmax(86px, 1fr));
+    justify-content: center;
+    gap: .55rem;
     margin-top: 1rem;
 }
 
@@ -2233,12 +2234,14 @@ linear-gradient(145deg,color-mix(in srgb,var(--paper),white 24%),color-mix(in sr
     display: grid;
     place-items: center;
     gap: .35rem;
-    min-height: 88px;
-    padding: .9rem .55rem;
+    width: 100%;
+    min-height: 82px;
+    padding: .8rem .4rem;
     border: 1px solid color-mix(in srgb, var(--accent), white 58%);
     border-radius: 18px;
     background: rgba(255, 255, 255, .74);
     color: var(--ink);
+    font-size: .9rem;
     font-weight: 800;
     transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
 }
@@ -2267,7 +2270,21 @@ linear-gradient(145deg,color-mix(in srgb,var(--paper),white 24%),color-mix(in sr
 
 @media (max-width: 620px) {
     .reaction-response-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        max-width: 330px;
+        gap: .55rem;
+        margin-inline: auto;
+    }
+
+    .reaction-choice {
+        min-height: 76px;
+        padding: .65rem .35rem;
+        border-radius: 16px;
+        font-size: .78rem;
+    }
+
+    .reaction-choice i {
+        font-size: 1.35rem;
     }
 
     .letter-save-row .btn {

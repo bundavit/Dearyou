@@ -16,8 +16,8 @@
         'sun' => '&#9728;',
     ];
     $sealSymbol = $sealSymbols[$sealStyle] ?? '&hearts;';
-    $toDataUri = static function (?string $path): ?string {
-        if (! $path || \App\Models\Letter::isVideoMediaPath($path)) {
+    $embedMedia = static function (?string $path): ?array {
+        if (! $path) {
             return null;
         }
 
@@ -27,11 +27,35 @@
             return null;
         }
 
-        $mime = $disk->mimeType($path) ?: 'image/jpeg';
+        $extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+        $extensionMimes = [
+            'jpg' => 'image/jpeg',
+            'jpeg' => 'image/jpeg',
+            'png' => 'image/png',
+            'gif' => 'image/gif',
+            'webp' => 'image/webp',
+            'mp4' => 'video/mp4',
+            'webm' => 'video/webm',
+            'mov' => 'video/quicktime',
+        ];
+        $mime = $disk->mimeType($path) ?: ($extensionMimes[$extension] ?? 'application/octet-stream');
 
-        return 'data:'.$mime.';base64,'.base64_encode($disk->get($path));
+        if (
+            isset($extensionMimes[$extension])
+            && (! str_starts_with($mime, 'image/') && ! str_starts_with($mime, 'video/'))
+        ) {
+            $mime = $extensionMimes[$extension];
+        }
+
+        $type = str_starts_with($mime, 'video/') ? 'video' : 'image';
+
+        return [
+            'src' => 'data:'.$mime.';base64,'.base64_encode($disk->get($path)),
+            'type' => $type,
+            'mime' => $mime,
+        ];
     };
-    $imageDataUri = $toDataUri($letter->image_path);
+    $embeddedMedia = $embedMedia($letter->image_path);
 @endphp
 <!doctype html>
 <html lang="en">
@@ -65,8 +89,8 @@
 
         .keepsake-scene {
             width: min(1040px, calc(100% - 32px));
-            margin: 46px auto;
-            padding: clamp(22px, 4vw, 56px) 0 72px;
+            margin: 36px auto;
+            padding: clamp(18px, 3vw, 42px) 0 72px;
         }
 
         .opened-envelope {
@@ -120,8 +144,9 @@
             position: relative;
             z-index: 6;
             width: min(760px, calc(100% - 80px));
+            min-height: clamp(360px, 44vw, 480px);
             margin: 0 auto;
-            padding: clamp(34px, 6vw, 70px);
+            padding: clamp(28px, 5vw, 56px);
             border: 1px solid color-mix(in srgb, var(--accent), #ffffff 58%);
             border-radius: 24px;
             background: var(--paper);
@@ -150,18 +175,14 @@
             display: inline-block;
         }
 
-        .brand {
-            color: var(--accent);
-            font: 700 14px/1.1 Arial, sans-serif;
-            letter-spacing: .18em;
-            text-transform: uppercase;
-        }
-
         h1 {
-            margin: 22px 0 28px;
-            font-size: clamp(2.2rem, 6vw, 4.5rem);
-            line-height: 1.05;
-            letter-spacing: -.03em;
+            max-width: 24ch;
+            margin: 18px auto 22px;
+            font-size: clamp(1.8rem, 3.1vw, 2.45rem);
+            line-height: 1.16;
+            letter-spacing: 0;
+            text-align: center;
+            overflow-wrap: anywhere;
         }
 
         .to, .signoff {
@@ -171,20 +192,40 @@
 
         .body {
             white-space: pre-wrap;
-            font-size: 1.08rem;
+            font-size: 1.02rem;
+            overflow-wrap: anywhere;
         }
 
         figure {
-            margin: 2rem 0;
+            margin: 2rem 0 0;
         }
 
-        img {
+        img,
+        video {
             display: block;
             width: 100%;
-            max-height: 420px;
-            object-fit: cover;
+            max-height: 390px;
+            object-fit: contain;
             border-radius: 20px;
             box-shadow: 0 18px 40px rgba(61, 45, 53, .14);
+            background: rgba(255, 255, 255, .38);
+        }
+
+        .keepsake-video-frame {
+            display: flex;
+            justify-content: center;
+            overflow: visible;
+        }
+
+        .keepsake-video-frame video {
+            width: auto;
+            max-width: 100%;
+            height: auto;
+            max-height: 390px;
+            object-fit: contain;
+            border-radius: 20px;
+            box-shadow: 0 18px 40px rgba(61, 45, 53, .14);
+            background: rgba(255, 255, 255, .38);
         }
 
         figcaption {
@@ -279,8 +320,21 @@
                 padding: 28px;
             }
 
+            h1 {
+                max-width: 18ch;
+                font-size: clamp(1.55rem, 8vw, 2rem);
+            }
+
             .opened-envelope {
                 min-height: 560px;
+            }
+
+            img {
+                max-height: 330px;
+            }
+
+            video {
+                max-height: 330px;
             }
         }
 
@@ -300,6 +354,26 @@
                 filter: none;
                 page-break-inside: avoid;
             }
+
+            .opened-envelope-paper {
+                box-shadow: none;
+            }
+
+            figure,
+            img,
+            video {
+                break-inside: avoid;
+                page-break-inside: avoid;
+            }
+
+            img,
+            video {
+                max-height: 340px;
+            }
+
+            video::-webkit-media-controls {
+                display: none !important;
+            }
         }
     </style>
 </head>
@@ -309,19 +383,24 @@
         <div class="opened-envelope-back"></div>
         <div class="opened-envelope-flap"></div>
         <article class="opened-envelope-paper">
-            <p class="brand">DearYou</p>
             <p class="to">Dear {{ $letter->recipientLabel() }},</p>
             <h1>{{ $letter->title }}</h1>
             <div class="body">{{ $letter->body }}</div>
 
-            @if($imageDataUri)
+            <p class="signoff">With care,<br><strong>{{ $letter->senderLabel() }}</strong></p>
+
+            @if($embeddedMedia)
                 <figure>
-                    <img src="{{ $imageDataUri }}" alt="{{ $letter->image_alt ?: 'Letter image' }}">
+                    @if($embeddedMedia['type'] === 'video')
+                        <div class="keepsake-video-frame">
+                            <video src="{{ $embeddedMedia['src'] }}" autoplay muted loop playsinline preload="metadata" aria-label="{{ $letter->image_alt ?: 'Letter video' }}"></video>
+                        </div>
+                    @else
+                        <img src="{{ $embeddedMedia['src'] }}" alt="{{ $letter->image_alt ?: 'Letter image' }}">
+                    @endif
                     @if($letter->image_alt)<figcaption>{{ $letter->image_alt }}</figcaption>@endif
                 </figure>
             @endif
-
-            <p class="signoff">With care,<br><strong>{{ $letter->senderLabel() }}</strong></p>
         </article>
         <div class="opened-envelope-front"></div>
         <div class="opened-envelope-seal"><span>{!! $sealSymbol !!}</span></div>
