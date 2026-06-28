@@ -63,6 +63,15 @@ postman/local/
 /public/build/
 /public/hot
 
+# Unused copied vendor/source assets and local review exports
+/assets/
+/public/assets/dearyou/cherry-blossom-sunset.png
+/public/assets/dearyou/dearyou-floral-envelope-logo.png
+/screenshots/
+/recordings/
+*-keepsake.html
+*.har
+
 # Laravel runtime
 /bootstrap/cache/*.php
 !/bootstrap/cache/.gitignore

@@ -6,6 +6,10 @@
 *.md diff=markdown
 *.php diff=php
 
+# Keep GitHub language stats focused on DearYou source code.
+public/vendor/** linguist-vendored
+deploy/*.sh linguist-generated=true
+
 /.github export-ignore
 CHANGELOG.md export-ignore
 .styleci.yml export-ignore
