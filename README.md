@@ -6,11 +6,22 @@ Live site: <https://dearyous.app>
 
 ## Screenshots
 
-| Homepage | Public letter | Creator letters | Create letter |
-| --- | --- | --- | --- |
-| ![DearYou homepage](screenshots/homepage.png) | ![Recipient letter view](screenshots/public-letter.png) | ![Creator letters dashboard](screenshots/letters.png) | ![Create letter form](screenshots/create-letter.png) |
+<p align="center">
+  <img src="screenshots/homepage.png" alt="DearYou homepage" width="780" />
+</p>
+<p align="center"><sub><strong>Homepage</strong> — landing page and product overview</sub></p>
 
-These four screens cover the core product flow: public landing page, recipient experience on a private link, creator dashboard, and the letter builder with themes and styling.
+<p align="center">
+  <img src="screenshots/public-letter.png" alt="Recipient letter view" width="780" />
+</p>
+<p align="center"><sub><strong>Public letter</strong> — styled recipient experience on a private link</sub></p>
+
+<p align="center">
+  <img src="screenshots/letters.png" alt="Creator letters dashboard" width="780" />
+  <br /><br />
+  <img src="screenshots/create-letter.png" alt="Create letter form" width="780" />
+</p>
+<p align="center"><sub><strong>Creator workspace</strong> — manage drafts and build themed letters</sub></p>
 
 ## Portfolio Summary
 
@@ -113,10 +124,10 @@ To regenerate portfolio screenshots locally:
 ```bash
 php artisan serve --port=8001
 php scripts/prepare-screenshot-data.php
-node scripts/capture-screenshots.mjs
+node scripts/capture-portfolio-screenshots.mjs
 ```
 
-Then copy the four curated images into `screenshots/` (`homepage.png`, `public-letter.png`, `letters.png`, `create-letter.png`).
+Captures four fixed-viewport images (`1280×800`) into `screenshots/` for a consistent README layout.
 
 ## Deployment
 
