@@ -1,26 +1,44 @@
 # DearYou
 
-DearYou is a multi-user digital letter platform for creating private letters that feel more personal than a text message. Creators can write letters, add media and memories, choose envelope, seal, and theme styles, publish expiring private links, receive recipient responses, and track opens.
+DearYou is a private digital letter platform built with Laravel. It lets people create styled letters, attach media and memories, publish expiring private links, receive recipient reactions or replies, and keep an offline keepsake copy of the letter.
 
 Live site: <https://dearyous.app>
 
-## Highlights
+## Portfolio Summary
 
-- Creator accounts with registration, email verification by code, login, and password reset by code
-- Private letters with themes, fonts, envelopes, seals, media, music, memories, and optional replies
-- Expiring public share links with open tracking and recipient response capture
-- Keepsake HTML downloads with embedded image, GIF, or video media for offline viewing
-- Platform admin area for users, settings, feedback, moderation, audit logs, storage limits, expiry options, and stats
-- DigitalOcean-ready deployment files for Nginx, PHP-FPM, Laravel queues, scheduler, and backups
+I built DearYou as a full-stack Laravel application focused on privacy, emotional presentation, and admin control. The project includes creator accounts, public recipient links, media-rich letters, response tracking, storage limits, moderation tools, audit history, and production deployment scripts for a DigitalOcean server.
+
+The main product challenge was balancing a personal, visual recipient experience with the practical needs of a multi-user platform: authentication, rate limits, upload storage, expiring links, moderation, backups, and operational health checks.
+
+## Core Features
+
+- Account registration, login, password reset, and email verification by code
+- Creator letter dashboard with private drafts and published share links
+- Styled letters with themes, fonts, envelopes, seals, music, media, and memories
+- Recipient page with open tracking, reaction responses, optional private replies, and thank-you states
+- Keepsake HTML downloads that embed image, GIF, or video media for offline viewing
+- User inbox for replies, unread states, filters, and bulk actions
+- Admin platform tools for users, settings, feedback, moderation, storage limits, expiry options, and platform stats
+- Moderation audit logs, soft deletes, account suspension, storage cleanup, and deployment health checks
 
 ## Tech Stack
 
-- Laravel 13 and PHP 8.4
-- MySQL in production, SQLite-friendly local testing
-- Blade templates with custom CSS and JavaScript
-- Laravel Sanctum, queues, scheduler, and storage links
+- Laravel 13, PHP 8.4, Blade, and Laravel Sanctum
+- MySQL in production, SQLite-friendly feature tests
+- Custom CSS and JavaScript for the public, creator, and admin interfaces
+- Vite build pipeline for compiled frontend assets
 - Resend for transactional email
-- Nginx, PHP-FPM, and DigitalOcean for production hosting
+- Queues, scheduler, storage links, and Laravel rate limiting
+- Nginx, PHP-FPM, MySQL, and DigitalOcean for production hosting
+
+## Architecture Notes
+
+- Public routes handle the homepage, feedback, authentication, and `/l/{token}` recipient links.
+- Creator routes are protected by authentication, active-account checks, email verification, and the `user` role.
+- Platform admin routes are protected by authentication, active-account checks, email verification, the `admin` role, and optional network allowlisting.
+- Media uploads are stored outside the Git repository and counted against configurable storage limits.
+- Expiring letter links can be unpublished, regenerated, disabled, or moderated by admins.
+- Keepsake downloads embed media directly into the saved HTML so the downloaded file can work without the original private link.
 
 ## Local Setup
 
@@ -56,7 +74,7 @@ php artisan serve --port=8001
 
 Open `http://127.0.0.1:8001/`.
 
-Useful routes:
+Useful local routes:
 
 - `/` public homepage
 - `/register` creator signup
@@ -70,8 +88,17 @@ Useful routes:
 php artisan test tests/Feature/DearYouFlowTest.php
 vendor/bin/pint --test
 composer audit
-npm audit
+npm audit --omit=dev
+npm run build
 ```
+
+Current audit status:
+
+- Feature flow test: 84 tests passing
+- Laravel Pint: passing
+- Composer audit: no advisories
+- npm production audit: no vulnerabilities
+- Vite production build: passing
 
 ## Deployment
 
@@ -92,10 +119,11 @@ sudo systemctl reload nginx
 
 ## Repository Safety
 
-- Never commit `.env`, API tokens, SSH keys, database dumps, backup archives, or uploaded user media
-- Keep production secrets in server environment files only
-- Store backups outside the repository and copy them to a second private location
-- Rotate any secret immediately if it is ever committed, pasted, or shown in a screenshot
+- `.env`, uploads, backups, database dumps, local caches, and build output are ignored
+- Production secrets are kept on the server, not in the repository
+- Public vendor assets are marked so GitHub language stats focus on the application code
+- Generated local keepsake downloads and review exports are ignored
+- Any exposed secret should be rotated immediately, even if it is later removed from Git
 
 ## License
 
