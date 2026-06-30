@@ -157,4 +157,4 @@ sudo systemctl reload nginx
 
 ## License
 
-No license file is currently included. Add one before sharing this project for reuse outside the portfolio context.
+This project is licensed under the [MIT License](LICENSE).
