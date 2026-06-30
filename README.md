@@ -4,6 +4,14 @@ DearYou is a private digital letter platform built with Laravel. It lets people 
 
 Live site: <https://dearyous.app>
 
+## Screenshots
+
+| Homepage | Public letter | Creator letters | Create letter |
+| --- | --- | --- | --- |
+| ![DearYou homepage](screenshots/homepage.png) | ![Recipient letter view](screenshots/public-letter.png) | ![Creator letters dashboard](screenshots/letters.png) | ![Create letter form](screenshots/create-letter.png) |
+
+These four screens cover the core product flow: public landing page, recipient experience on a private link, creator dashboard, and the letter builder with themes and styling.
+
 ## Portfolio Summary
 
 I built DearYou as a full-stack Laravel application focused on privacy, emotional presentation, and admin control. The project includes creator accounts, public recipient links, media-rich letters, response tracking, storage limits, moderation tools, audit history, and production deployment scripts for a DigitalOcean server.
@@ -52,7 +60,7 @@ Requirements:
 ```bash
 composer install
 npm install
-copy .env.example .env
+cp .env.example .env   # Windows: copy .env.example .env
 php artisan key:generate
 php artisan storage:link
 ```
@@ -85,7 +93,7 @@ Useful local routes:
 ## Quality Checks
 
 ```bash
-php artisan test tests/Feature/DearYouFlowTest.php
+php artisan test
 vendor/bin/pint --test
 composer audit
 npm audit --omit=dev
@@ -94,11 +102,21 @@ npm run build
 
 Current audit status:
 
-- Feature flow test: 84 tests passing
+- Test suite: 94 tests passing (800 assertions)
 - Laravel Pint: passing
 - Composer audit: no advisories
 - npm production audit: no vulnerabilities
 - Vite production build: passing
+
+To regenerate portfolio screenshots locally:
+
+```bash
+php artisan serve --port=8001
+php scripts/prepare-screenshot-data.php
+node scripts/capture-screenshots.mjs
+```
+
+Then copy the four curated images into `screenshots/` (`homepage.png`, `public-letter.png`, `letters.png`, `create-letter.png`).
 
 ## Deployment
 
@@ -120,6 +138,7 @@ sudo systemctl reload nginx
 ## Repository Safety
 
 - `.env`, uploads, backups, database dumps, local caches, and build output are ignored
+- `scripts/screenshot-config.json` is ignored because it stores local login credentials for screenshot automation
 - Production secrets are kept on the server, not in the repository
 - Public vendor assets are marked so GitHub language stats focus on the application code
 - Generated local keepsake downloads and review exports are ignored

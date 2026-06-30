@@ -67,7 +67,7 @@ postman/local/
 /assets/
 /public/assets/dearyou/cherry-blossom-sunset.png
 /public/assets/dearyou/dearyou-floral-envelope-logo.png
-/screenshots/
+/scripts/screenshot-config.json
 /recordings/
 *-keepsake.html
 *.har
