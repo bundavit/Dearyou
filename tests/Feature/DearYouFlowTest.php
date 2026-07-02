@@ -58,6 +58,15 @@ class DearYouFlowTest extends TestCase
         ], $overrides);
     }
 
+    public function test_www_homepage_redirects_to_canonical_domain(): void
+    {
+        config(['app.url' => 'https://dearyous.app']);
+
+        $this->get('https://www.dearyous.app/?ref=google')
+            ->assertRedirect('https://dearyous.app/?ref=google')
+            ->assertStatus(301);
+    }
+
     public function test_creator_can_login_create_and_publish_a_letter(): void
     {
         $user = User::factory()->create(['password' => 'password']);

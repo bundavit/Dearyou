@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\EnsureAccountIsActive;
 use App\Http\Middleware\EnsureUserHasRole;
+use App\Http\Middleware\RedirectToCanonicalHost;
 use App\Http\Middleware\RestrictAdminNetwork;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -15,6 +16,10 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->web(append: [
+            RedirectToCanonicalHost::class,
+        ]);
+
         $middleware->redirectUsersTo(fn ($request) => $request->user()?->isAdmin() ? '/admin/platform' : '/');
         $middleware->alias([
             'active' => EnsureAccountIsActive::class,
