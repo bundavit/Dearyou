@@ -400,15 +400,6 @@ sudo systemctl restart dearyou-worker
 sudo systemctl reload nginx
 ```
 
-## Repository Safety
-
-- `.env`, uploads, backups, database dumps, local caches, and build output are ignored
-- `scripts/screenshot-config.json` is ignored because it stores local login credentials for screenshot automation
-- Production secrets are kept on the server, not in the repository
-- Public vendor assets are marked so GitHub language stats focus on application code
-- Generated keepsake downloads and local review exports are ignored
-- Any exposed secret should be rotated immediately, even if it is later removed from Git
-
 ## Project Status
 
 DearYou is deployed as a production Laravel website for [dearyous.app](https://dearyous.app).
