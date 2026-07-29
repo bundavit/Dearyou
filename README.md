@@ -286,7 +286,7 @@ npm run build                     # Production asset build
 
 Current project status:
 
-- Test suite: 94 tests, 800 assertions
+- Test suite: 95 tests, 803 assertions
 - Laravel Pint: passing
 - Composer audit: no advisories
 - npm production audit: no vulnerabilities
@@ -415,7 +415,7 @@ DearYou is deployed as a production Laravel website for [dearyous.app](https://d
 
 The codebase includes automated feature coverage for authentication, email verification, password reset, letter creation, publishing, expiring links, recipient responses, media uploads, storage limits, account actions, API endpoints, feedback, admin user management, moderation, audit logs, and production readiness checks.
 
-**Test suite:** 94 tests, 800 assertions (PHPUnit).
+**Test suite:** 95 tests, 803 assertions (PHPUnit).
 
 ## License
 
