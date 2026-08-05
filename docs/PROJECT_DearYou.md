@@ -229,6 +229,7 @@ The local app can use MySQL on a custom port, such as `3307`, if another MySQL s
 Common local commands:
 
 ```bash
+cd backend
 composer install
 npm install
 php artisan migrate --seed
@@ -253,6 +254,7 @@ Typical update flow:
 ```bash
 cd /var/www/dearyou
 sudo -u deploy git pull --ff-only origin main
+cd backend
 sudo -u deploy composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
 sudo -u deploy php artisan migrate --force
 sudo -u deploy php artisan optimize:clear
@@ -295,6 +297,7 @@ The project has feature tests for:
 Run tests with:
 
 ```bash
+cd backend
 php artisan test
 ```
 
@@ -312,4 +315,3 @@ Possible improvements for later:
 - Image compression
 - Optional object storage for media
 - Backup restore documentation
-

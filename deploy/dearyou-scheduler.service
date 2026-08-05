@@ -6,5 +6,5 @@ After=network.target mysql.service
 Type=oneshot
 User=www-data
 Group=www-data
-WorkingDirectory=/var/www/dearyou
-ExecStart=/usr/bin/php /var/www/dearyou/artisan schedule:run
+WorkingDirectory=/var/www/dearyou/backend
+ExecStart=/usr/bin/php /var/www/dearyou/backend/artisan schedule:run

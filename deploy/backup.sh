@@ -2,7 +2,7 @@
 set -euo pipefail
 umask 077
 
-APP_DIR="${APP_DIR:-/var/www/dearyou}"
+APP_DIR="${APP_DIR:-/var/www/dearyou/backend}"
 BACKUP_DIR="${BACKUP_DIR:-/var/backups/dearyou}"
 STAMP="$(date +%Y%m%d-%H%M%S)"
 

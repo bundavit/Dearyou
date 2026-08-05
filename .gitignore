@@ -2,10 +2,12 @@
 .DS_Store
 
 # Environment files and local credentials
-.env
-.env.*
-!.env.example
-!.env.production.example
+/.env
+/.env.*
+/backend/.env
+/backend/.env.*
+!/backend/.env.example
+!/backend/.env.production.example
 *.local
 auth.json
 
@@ -33,24 +35,24 @@ uploads-*.tar.gz
 *.bak
 *.backup
 /backups/
-/database/backups/
+/backend/database/backups/
 /deploy/backups/
 /storage/backups/
 
 # User uploads and generated storage
-/public/storage
-/storage/app/private/*
-!/storage/app/private/.gitignore
-/storage/app/public/*
-!/storage/app/public/.gitignore
-/storage/framework/cache/data/*
-!/storage/framework/cache/data/.gitignore
-/storage/framework/sessions/*
-!/storage/framework/sessions/.gitignore
-/storage/framework/views/*
-!/storage/framework/views/.gitignore
-/storage/logs/*
-!/storage/logs/.gitignore
+/backend/public/storage
+/backend/storage/app/private/*
+!/backend/storage/app/private/.gitignore
+/backend/storage/app/public/*
+!/backend/storage/app/public/.gitignore
+/backend/storage/framework/cache/data/*
+!/backend/storage/framework/cache/data/.gitignore
+/backend/storage/framework/sessions/*
+!/backend/storage/framework/sessions/.gitignore
+/backend/storage/framework/views/*
+!/backend/storage/framework/views/.gitignore
+/backend/storage/logs/*
+!/backend/storage/logs/.gitignore
 
 # Postman local secrets and environments
 *.postman_environment.json
@@ -58,25 +60,27 @@ postman/environments/
 postman/local/
 
 # PHP, Node, and generated frontend files
-/vendor/
+/backend/vendor/
+/backend/node_modules/
 /node_modules/
-/public/build/
-/public/hot
+/backend/public/build/
+/backend/public/hot
+/graphify-out/
 
 # Unused copied vendor/source assets and local review exports
 /assets/
-/public/assets/dearyou/cherry-blossom-sunset.png
-/public/assets/dearyou/dearyou-floral-envelope-logo.png
+/backend/public/assets/dearyou/cherry-blossom-sunset.png
+/backend/public/assets/dearyou/dearyou-floral-envelope-logo.png
 /scripts/screenshot-config.json
 /recordings/
 *-keepsake.html
 *.har
 
 # Laravel runtime
-/bootstrap/cache/*.php
-!/bootstrap/cache/.gitignore
-/storage/*.key
-/storage/pail
+/backend/bootstrap/cache/*.php
+!/backend/bootstrap/cache/.gitignore
+/backend/storage/*.key
+/backend/storage/pail
 
 # IDE and operating-system files
 .phpactor.json

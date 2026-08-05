@@ -1,0 +1,11 @@
+.git
+.gitignore
+backend/.env
+backend/node_modules
+backend/vendor
+backend/storage/logs
+backend/storage/framework/cache
+backend/storage/framework/sessions
+backend/storage/framework/views
+graphify-out
+screenshots

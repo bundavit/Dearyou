@@ -8,9 +8,9 @@ use App\Models\User;
 use App\Support\LetterPublisher;
 use Illuminate\Contracts\Console\Kernel;
 
-require __DIR__.'/../vendor/autoload.php';
+require __DIR__.'/../backend/vendor/autoload.php';
 
-$app = require __DIR__.'/../bootstrap/app.php';
+$app = require __DIR__.'/../backend/bootstrap/app.php';
 $app->make(Kernel::class)->bootstrap();
 
 $demoPassword = 'screenshot-demo-password';
@@ -37,7 +37,7 @@ $unverified = User::updateOrCreate(
 
 $admin = User::where('email', env('ADMIN_EMAIL'))->first();
 if (! $admin) {
-    fwrite(STDERR, "Admin user not found. Run: php artisan db:seed\n");
+    fwrite(STDERR, "Admin user not found. Run: cd backend && php artisan db:seed\n");
     exit(1);
 }
 

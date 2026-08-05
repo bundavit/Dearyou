@@ -56,15 +56,15 @@ DearYou has three main areas:
 
 ## Project Structure
 
-DearYou keeps the standard Laravel folder layout so Artisan, Composer, Vite, tests, and deployment tools work normally.
+DearYou is organized as a monorepo. The working Laravel application lives in `backend/`; repository-level deployment, documentation, API collection, and portfolio tooling stay at the root. A separate client can be added later without mixing it into the backend runtime.
 
 ### Frontend
 
 User-facing UI, Blade pages, styling, static assets, and portfolio screenshots.
 
-- `resources/views/` - Blade templates for public pages, auth pages, creator workspace, admin panel, and partials
-- `public/assets/dearyou/` - custom CSS, JavaScript, and DearYou brand images
-- `public/vendor/` - tracked Bootstrap and Bootstrap Icons assets served by the app
+- `backend/resources/views/` - Blade templates for public pages, auth pages, creator workspace, admin panel, and partials
+- `backend/public/assets/dearyou/` - custom CSS, JavaScript, and DearYou brand images
+- `backend/public/vendor/` - tracked Bootstrap and Bootstrap Icons assets served by the app
 - `screenshots/` - portfolio screenshots used in this README
 - `scripts/capture-portfolio-screenshots.mjs` - screenshot automation for README images
 
@@ -72,23 +72,23 @@ User-facing UI, Blade pages, styling, static assets, and portfolio screenshots.
 
 Application logic, routes, controllers, models, middleware, and support services.
 
-- `app/Http/Controllers/` - public, creator, admin, and API controllers
-- `app/Http/Middleware/` - active-account, role, admin-network, and canonical-host middleware
-- `app/Models/` - Eloquent models for users, letters, links, memories, responses, feedback, settings, metrics, and audits
-- `app/Support/` - business logic for publishing, storage allowances, settings, account deletion, routes, and security-code logging
-- `app/Notifications/` - email notifications for verification, password reset, feedback, and storage events
-- `routes/web.php` - browser routes
-- `routes/api.php` - Sanctum-protected API routes
-- `routes/console.php` - scheduled commands and cleanup tasks
-- `config/` - Laravel and application configuration
+- `backend/app/Http/Controllers/` - public, creator, admin, and API controllers
+- `backend/app/Http/Middleware/` - active-account, role, admin-network, and canonical-host middleware
+- `backend/app/Models/` - Eloquent models for users, letters, links, memories, responses, feedback, settings, metrics, and audits
+- `backend/app/Support/` - business logic for publishing, storage allowances, settings, account deletion, routes, and security-code logging
+- `backend/app/Notifications/` - email notifications for verification, password reset, feedback, and storage events
+- `backend/routes/web.php` - browser routes
+- `backend/routes/api.php` - Sanctum-protected API routes
+- `backend/routes/console.php` - scheduled commands and cleanup tasks
+- `backend/config/` - Laravel and application configuration
 
 ### Database
 
 Schema, seed data, factories, and database-backed application state.
 
-- `database/migrations/` - table definitions for users, letters, links, media, responses, feedback, settings, metrics, audits, and jobs
-- `database/seeders/` - initial admin/settings/demo seed logic
-- `database/factories/` - test data factories
+- `backend/database/migrations/` - table definitions for users, letters, links, media, responses, feedback, settings, metrics, audits, and jobs
+- `backend/database/seeders/` - initial admin/settings/demo seed logic
+- `backend/database/factories/` - test data factories
 - MySQL - production relational database
 - Laravel queue tables - queued email and background work
 
@@ -127,7 +127,7 @@ External-facing API docs and service integrations.
 
 Automated tests and project validation.
 
-- `tests/Feature/DearYouFlowTest.php` - main end-to-end feature coverage
+- `backend/tests/Feature/DearYouFlowTest.php` - main end-to-end feature coverage
 - `php artisan test` - Laravel/PHPUnit test runner
 - `vendor/bin/pint --test` - Laravel code style check
 - `composer audit` - PHP dependency advisory check
@@ -146,10 +146,11 @@ Production hosting, environment setup, and server responsibilities.
 - Certbot SSL certificate
 - Name.com DNS
 - `deploy/` - Nginx, worker, scheduler, upload, backup, and deploy files
-- `.env.example` - local environment template
-- `.env.production.example` - production environment template without secrets
-- `composer.json` - PHP dependencies and deployment scripts
-- `package.json` - frontend build scripts
+- `backend/.env.example` - local environment template
+- `backend/.env.production.example` - production environment template without secrets
+- `backend/composer.json` - PHP dependencies and application scripts
+- `backend/package.json` - Blade frontend build scripts
+- `compose.yaml` and `docker/` - optional local PHP, Nginx, MySQL, Node, worker, and scheduler environment
 
 ### Portfolio Tools
 
@@ -217,6 +218,7 @@ Business logic lives in support classes where it would otherwise make controller
 **Windows (PowerShell):**
 
 ```powershell
+Set-Location backend
 composer install
 npm install
 Copy-Item .env.example .env
@@ -227,6 +229,7 @@ php artisan storage:link
 **macOS / Linux:**
 
 ```bash
+cd backend
 composer install
 npm install
 cp .env.example .env
@@ -250,6 +253,36 @@ php artisan serve --port=8001
 ```
 
 Open [http://127.0.0.1:8001](http://127.0.0.1:8001).
+
+### Docker
+
+Docker provides PHP 8.4, Nginx, MySQL 8.4, Vite, the queue worker, and the scheduler without changing the production deployment model.
+
+For a new clone, create the local environment file first. Existing local `.env` files remain inside `backend/` after the repository split.
+
+```bash
+cp backend/.env.example backend/.env
+```
+
+On Windows PowerShell, use `Copy-Item backend/.env.example backend/.env` instead. Start Docker Desktop, then run from the repository root:
+
+```bash
+docker compose build
+docker compose up -d mysql
+docker compose run --rm app composer install
+docker compose run --rm app php artisan key:generate
+docker compose up -d app web node worker scheduler
+docker compose exec app php artisan migrate --seed
+docker compose exec app php artisan storage:link
+```
+
+Open [http://localhost:8088](http://localhost:8088). Override the web port with `APP_FORWARD_PORT` when needed. MySQL remains private on the Docker network at `mysql:3306`, and Vite uses host port `5174` by default (override it with `VITE_FORWARD_PORT`). The Compose credentials are local development defaults only.
+
+Stop the environment with:
+
+```bash
+docker compose down
+```
 
 Useful local routes:
 
@@ -277,6 +310,7 @@ php artisan queue:work
 Run before publishing repo changes:
 
 ```bash
+cd backend
 php artisan test                  # PHPUnit feature test suite
 vendor/bin/pint --test            # Laravel code style
 composer audit                    # PHP dependency security audit
@@ -286,7 +320,7 @@ npm run build                     # Production asset build
 
 Current project status:
 
-- Test suite: 95 tests, 803 assertions
+- Test suite: 85 tests, 761 assertions
 - Laravel Pint: passing
 - Composer audit: no advisories
 - npm production audit: no vulnerabilities
@@ -297,7 +331,10 @@ Current project status:
 To regenerate the four README screenshots locally:
 
 ```bash
+npm install
+cd backend
 php artisan serve --port=8001
+cd ..
 php scripts/prepare-screenshot-data.php
 node scripts/capture-portfolio-screenshots.mjs
 ```
@@ -318,6 +355,7 @@ ADMIN_PASSWORD=your-local-admin-password
 ```
 
 ```bash
+cd backend
 php artisan migrate --seed
 ```
 
@@ -342,6 +380,7 @@ QUEUE_CONNECTION=database
 Because emails are queued, production should run a queue worker:
 
 ```bash
+cd backend
 php artisan queue:work --tries=3
 ```
 
@@ -378,7 +417,7 @@ The collection does not include real login credentials.
 - Generate a fresh production `APP_KEY`
 - Use a dedicated production MySQL database user and password
 - Configure Resend through environment variables only
-- Run `php artisan migrate --force`, `php artisan storage:link`, and `php artisan optimize`
+- From `backend/`, run `php artisan migrate --force`, `php artisan storage:link`, and `php artisan optimize`
 - Run the Laravel queue worker and scheduler
 - Configure upload limits for Nginx and PHP
 - Serve through Nginx and PHP-FPM 8.4 with HTTPS
@@ -391,6 +430,7 @@ The normal production update flow is:
 
 ```bash
 git pull --ff-only origin main
+cd backend
 composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
 php artisan migrate --force
 php artisan optimize:clear
@@ -415,7 +455,7 @@ DearYou is deployed as a production Laravel website for [dearyous.app](https://d
 
 The codebase includes automated feature coverage for authentication, email verification, password reset, letter creation, publishing, expiring links, recipient responses, media uploads, storage limits, account actions, API endpoints, feedback, admin user management, moderation, audit logs, and production readiness checks.
 
-**Test suite:** 95 tests, 803 assertions (PHPUnit).
+**Test suite:** 85 tests, 761 assertions (PHPUnit).
 
 ## License
 

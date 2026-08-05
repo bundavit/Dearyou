@@ -7,10 +7,10 @@
 *.php diff=php
 
 # Keep GitHub language stats focused on DearYou source code.
-public/vendor/** linguist-vendored
-public/assets/dearyou/app.js linguist-generated=true
-resources/js/** linguist-generated=true
-vite.config.js linguist-generated=true
+backend/public/vendor/** linguist-vendored
+backend/public/assets/dearyou/app.js linguist-generated=true
+backend/resources/js/** linguist-generated=true
+backend/vite.config.js linguist-generated=true
 deploy/*.sh linguist-generated=true
 
 /.github export-ignore

@@ -1,22 +1,36 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-APP_DIR="${APP_DIR:-/var/www/dearyou}"
+REPO_DIR="${REPO_DIR:-/var/www/dearyou}"
+APP_DIR="${APP_DIR:-$REPO_DIR/backend}"
 BRANCH="${BRANCH:-main}"
 PHP_FPM_SERVICE="${PHP_FPM_SERVICE:-php8.4-fpm}"
 
-cd "$APP_DIR"
+cd "$REPO_DIR"
+
+CURRENT_APP_DIR="$APP_DIR"
+if [[ ! -f "$CURRENT_APP_DIR/artisan" && -f "$REPO_DIR/artisan" ]]; then
+    CURRENT_APP_DIR="$REPO_DIR"
+fi
 
 restore_application() {
-    php artisan up >/dev/null 2>&1 || true
+    if [[ -f "$APP_DIR/artisan" ]]; then
+        cd "$APP_DIR"
+        php artisan up >/dev/null 2>&1 || true
+    fi
 }
 trap restore_application EXIT
 
+cd "$CURRENT_APP_DIR"
 php artisan down --retry=60 || true
+
+cd "$REPO_DIR"
 
 git fetch origin "$BRANCH"
 git checkout "$BRANCH"
 git pull --ff-only origin "$BRANCH"
+
+cd "$APP_DIR"
 
 composer install \
     --no-dev \
@@ -24,13 +38,14 @@ composer install \
     --prefer-dist \
     --optimize-autoloader
 
-sudo install -m 0644 deploy/dearyou-uploads.ini /etc/php/8.4/fpm/conf.d/99-dearyou-uploads.ini
-sudo install -m 0644 deploy/dearyou-uploads.ini /etc/php/8.4/cli/conf.d/99-dearyou-uploads.ini
-sudo install -m 0644 deploy/dearyou-scheduler.service /etc/systemd/system/dearyou-scheduler.service
-sudo install -m 0644 deploy/dearyou-scheduler.timer /etc/systemd/system/dearyou-scheduler.timer
+sudo install -m 0644 "$REPO_DIR/deploy/dearyou-uploads.ini" /etc/php/8.4/fpm/conf.d/99-dearyou-uploads.ini
+sudo install -m 0644 "$REPO_DIR/deploy/dearyou-uploads.ini" /etc/php/8.4/cli/conf.d/99-dearyou-uploads.ini
+sudo install -m 0644 "$REPO_DIR/deploy/dearyou-scheduler.service" /etc/systemd/system/dearyou-scheduler.service
+sudo install -m 0644 "$REPO_DIR/deploy/dearyou-scheduler.timer" /etc/systemd/system/dearyou-scheduler.timer
 sudo systemctl daemon-reload
 sudo systemctl enable --now dearyou-scheduler.timer
 if [[ -f /etc/nginx/sites-available/dearyou ]]; then
+    sudo sed -i 's#/var/www/dearyou/public#/var/www/dearyou/backend/public#g' /etc/nginx/sites-available/dearyou
     sudo sed -i -E 's/client_max_body_size[[:space:]]+[0-9]+[KMG];/client_max_body_size 128M;/' /etc/nginx/sites-available/dearyou
     sudo nginx -t
     sudo systemctl reload nginx

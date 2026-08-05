@@ -2,7 +2,7 @@
 
 Use an Ubuntu 24.04 Droplet with Nginx, PHP 8.4, and MySQL. A Droplet is used
 instead of App Platform because DearYou stores private images, GIFs, and music
-under `storage/app/public`; a Droplet keeps those uploads on persistent disk.
+under `backend/storage/app/public`; a Droplet keeps those uploads on persistent disk.
 
 ## 1. Create the Droplet
 
@@ -104,7 +104,7 @@ EOF'
 sudo -u deploy chmod 600 /home/deploy/.ssh/config
 
 sudo -u deploy git clone git@github.com:Vitkayo/Dearyou.git /var/www/dearyou
-cd /var/www/dearyou
+cd /var/www/dearyou/backend
 composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
 cp .env.production.example .env
 nano .env
@@ -153,7 +153,7 @@ php artisan db:seed --force
 php artisan storage:link
 php artisan optimize
 
-sudo chown -R deploy:www-data /var/www/dearyou
+sudo chown -R deploy:www-data /var/www/dearyou/backend
 sudo find storage bootstrap/cache -type d -exec chmod 2775 {} \;
 sudo find storage bootstrap/cache -type f -exec chmod 0664 {} \;
 ```
@@ -164,7 +164,7 @@ more sample data.
 ## 5. Configure Nginx
 
 ```bash
-sudo cp deploy/nginx-dearyou.conf /etc/nginx/sites-available/dearyou
+sudo cp /var/www/dearyou/deploy/nginx-dearyou.conf /etc/nginx/sites-available/dearyou
 sudo nano /etc/nginx/sites-available/dearyou
 ```
 
@@ -194,7 +194,7 @@ sudo certbot renew --dry-run
 Confirm `.env` uses `APP_URL=https://dearyous.app`, then run:
 
 ```bash
-cd /var/www/dearyou
+cd /var/www/dearyou/backend
 php artisan optimize
 ```
 
@@ -203,7 +203,7 @@ php artisan optimize
 Install the included worker:
 
 ```bash
-sudo cp deploy/dearyou-worker.service /etc/systemd/system/
+sudo cp /var/www/dearyou/deploy/dearyou-worker.service /etc/systemd/system/
 sudo systemctl daemon-reload
 sudo systemctl enable --now dearyou-worker
 ```
@@ -250,7 +250,7 @@ not enough if the Droplet is lost.
 ```bash
 curl -I https://dearyous.app/up
 sudo systemctl status nginx php8.4-fpm mysql dearyou-worker
-cd /var/www/dearyou
+cd /var/www/dearyou/backend
 php artisan about
 ```
 

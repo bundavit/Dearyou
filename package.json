@@ -1,17 +1,15 @@
 {
     "$schema": "https://www.schemastore.org/package.json",
+    "name": "dearyou-monorepo",
     "private": true,
     "type": "module",
     "scripts": {
-        "build": "vite build",
-        "dev": "vite"
+        "backend:dev": "npm --prefix backend run dev",
+        "backend:build": "npm --prefix backend run build",
+        "screenshots:portfolio": "node scripts/capture-portfolio-screenshots.mjs",
+        "screenshots:all": "node scripts/capture-screenshots.mjs"
     },
     "devDependencies": {
-        "@tailwindcss/vite": "^4.0.0",
-        "axios": "^1.11.0",
-        "concurrently": "^10.0.3",
-        "laravel-vite-plugin": "^2.0.0",
-        "tailwindcss": "^4.0.0",
-        "vite": "^7.0.7"
+        "playwright": "^1.61.1"
     }
 }
