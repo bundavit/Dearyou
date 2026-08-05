@@ -276,7 +276,17 @@ docker compose exec app php artisan migrate --seed
 docker compose exec app php artisan storage:link
 ```
 
-Open [http://localhost:8088](http://localhost:8088). Override the web port with `APP_FORWARD_PORT` when needed. MySQL remains private on the Docker network at `mysql:3306`, and Vite uses host port `5174` by default (override it with `VITE_FORWARD_PORT`). The Compose credentials are local development defaults only.
+Open [http://localhost:8088](http://localhost:8088).
+
+Useful ports:
+
+| Service | Host URL / port |
+|---------|-----------------|
+| App (Nginx) | http://localhost:8088 (`APP_FORWARD_PORT`) |
+| Vite | http://localhost:5174 (`VITE_FORWARD_PORT`) |
+| MySQL (optional host access) | `127.0.0.1:3308` (`MYSQL_FORWARD_PORT`) |
+
+Inside the Docker network, MySQL is `mysql:3306` with user/password `dearyou` / `dearyou_local`. Compose injects those DB settings into the app containers, so your host `backend/.env` can keep a separate non-Docker MySQL (for example port `3307`) without breaking Docker.
 
 Stop the environment with:
 

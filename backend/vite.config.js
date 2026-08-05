@@ -11,6 +11,15 @@ export default defineConfig({
         tailwindcss(),
     ],
     server: {
+        host: '0.0.0.0',
+        port: 5173,
+        strictPort: true,
+        hmr: {
+            host: 'localhost',
+            // Host-mapped Vite port from compose (default 5174 -> container 5173)
+            port: Number(process.env.VITE_HMR_PORT || 5174),
+            clientPort: Number(process.env.VITE_HMR_PORT || 5174),
+        },
         watch: {
             ignored: ['**/storage/framework/views/**'],
         },
