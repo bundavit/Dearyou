@@ -19,7 +19,26 @@ class FeedbackController extends Controller
             ->paginate(25)
             ->withQueryString();
 
-        return view('admin.feedback.index', compact('feedback'));
+        $unreadCount = Feedback::query()->where('status', 'new')->count();
+        $spamCount = Feedback::query()->where('status', 'spam')->count();
+
+        return view('admin.feedback.index', compact('feedback', 'unreadCount', 'spamCount'));
+    }
+
+    public function markAllRead(Request $request)
+    {
+        $filters = $request->validate([
+            'status' => ['nullable', Rule::in(array_keys(Feedback::STATUSES))],
+            'category' => ['nullable', Rule::in(array_keys(Feedback::CATEGORIES))],
+        ]);
+
+        $count = Feedback::query()->where('status', 'new')->update([
+            'status' => 'reviewed',
+            'reviewed_at' => now(),
+        ]);
+
+        return redirect()->route('admin.feedback.index', array_filter($filters))
+            ->with('success', $count === 1 ? '1 feedback item marked as read.' : "{$count} feedback items marked as read.");
     }
 
     public function show(Feedback $feedback)
@@ -37,10 +56,17 @@ class FeedbackController extends Controller
             'status' => ['required', Rule::in(array_keys(Feedback::STATUSES))],
         ]);
 
-        $feedback->update([
+        $attributes = [
             'status' => $validated['status'],
             'reviewed_at' => $validated['status'] === 'new' ? null : ($feedback->reviewed_at ?? now()),
-        ]);
+        ];
+
+        if ($feedback->status === 'spam' && $validated['status'] === 'new') {
+            $attributes['spam_score'] = 0;
+            $attributes['spam_reasons'] = [];
+        }
+
+        $feedback->update($attributes);
 
         return back()->with('success', 'Feedback status updated.');
     }

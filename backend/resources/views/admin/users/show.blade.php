@@ -1,6 +1,7 @@
 @extends('layouts.app')
 @section('title', $managedUser->name.' - DearYou User')
 @section('content')
+@error('verification')<div class="alert alert-danger" role="alert">{{ $message }}</div>@enderror
 <a class="btn btn-link admin-back-link" href="{{ route('admin.users.index') }}"><i class="bi bi-arrow-left"></i> All accounts</a>
 <div class="admin-page-header">
     <div>

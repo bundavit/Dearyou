@@ -97,6 +97,7 @@ Route::prefix('admin')->name('admin.')->middleware(['admin.network', 'auth', 'ac
     Route::put('/settings', [PlatformSettingsController::class, 'update'])->name('settings.update');
     Route::get('/health', HealthController::class)->name('health');
     Route::get('/email-tools', EmailToolsController::class)->name('email-tools');
+    Route::post('/email-tools/feedback-test', [EmailToolsController::class, 'sendFeedbackTest'])->middleware('throttle:3,1')->name('email-tools.feedback-test');
     Route::post('/email-tools/failed-jobs/retry', [EmailToolsController::class, 'retryFailedJobs'])->name('email-tools.retry-failed');
     Route::get('/moderation/letters', [LetterModerationController::class, 'index'])->name('moderation.index');
     Route::get('/moderation/letters/{letter}', [LetterModerationController::class, 'show'])->name('moderation.show');
@@ -108,6 +109,7 @@ Route::prefix('admin')->name('admin.')->middleware(['admin.network', 'auth', 'ac
     Route::patch('/moderation/letters/{letter}/expiry', [LetterModerationController::class, 'overrideExpiry'])->name('moderation.expiry');
     Route::get('/audit', ModerationAuditController::class)->name('audit');
     Route::get('/feedback', [AdminFeedbackController::class, 'index'])->name('feedback.index');
+    Route::post('/feedback/mark-all-read', [AdminFeedbackController::class, 'markAllRead'])->name('feedback.mark-all-read');
     Route::get('/feedback/{feedback}', [AdminFeedbackController::class, 'show'])->name('feedback.show');
     Route::patch('/feedback/{feedback}', [AdminFeedbackController::class, 'update'])->name('feedback.update');
     Route::delete('/feedback/{feedback}', [AdminFeedbackController::class, 'destroy'])->name('feedback.destroy');

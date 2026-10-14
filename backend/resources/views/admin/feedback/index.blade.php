@@ -2,14 +2,21 @@
 @section('title', 'Feedback - DearYou')
 @section('content')
 <div class="admin-page-header">
-    <div><p class="eyebrow">COMMUNITY</p><h1>Feedback</h1><p class="dashboard-subtitle">Private suggestions and reports sent by DearYou visitors.</p></div>
+    <div><p class="eyebrow">COMMUNITY</p><h1>Feedback</h1><p class="dashboard-subtitle">Private suggestions and reports sent by DearYou visitors.</p><p class="dashboard-subtitle">{{ $unreadCount }} unread &middot; {{ $spamCount }} potential spam</p></div>
+    <form method="post" action="{{ route('admin.feedback.mark-all-read') }}">
+        @csrf
+        <input type="hidden" name="status" value="{{ request('status') }}">
+        <input type="hidden" name="category" value="{{ request('category') }}">
+        <button class="btn btn-outline-secondary" @disabled($unreadCount === 0)><i class="bi bi-check2-all"></i> Mark all as read</button>
+        <p class="small text-muted mt-2 mb-0">Marks all new feedback across every page and filter as reviewed.</p>
+    </form>
 </div>
 <form class="filter-card feedback-filter mb-4" method="get" data-auto-filter>
-    <select class="form-select" name="status" data-auto-filter-change>
+    <select class="form-select" name="status" aria-label="Feedback status" data-auto-filter-change>
         <option value="">All statuses</option>
         @foreach(\App\Models\Feedback::STATUSES as $value => $label)<option value="{{ $value }}" @selected(request('status') === $value)>{{ $label }}</option>@endforeach
     </select>
-    <select class="form-select" name="category" data-auto-filter-change>
+    <select class="form-select" name="category" aria-label="Feedback category" data-auto-filter-change>
         <option value="">All categories</option>
         @foreach(\App\Models\Feedback::CATEGORIES as $value => $label)<option value="{{ $value }}" @selected(request('category') === $value)>{{ $label }}</option>@endforeach
     </select>

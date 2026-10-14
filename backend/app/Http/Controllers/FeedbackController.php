@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Feedback;
 use App\Notifications\FeedbackReceived;
+use App\Support\FeedbackSpamDetector;
 use App\Support\PlatformSettings;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -24,11 +25,16 @@ class FeedbackController extends Controller
             'website' => ['nullable', 'max:0'],
         ]);
 
+        $spam = app(FeedbackSpamDetector::class)->inspect($validated['message']);
+
         $feedback = Feedback::create([
             ...collect($validated)->except('website')->all(),
             'user_id' => $request->user()?->id,
             'email' => $validated['email'] ?? $request->user()?->email,
             'ip_hash' => hash('sha256', (string) $request->ip().'|'.config('app.key')),
+            'status' => $spam['flagged'] ? 'spam' : 'new',
+            'spam_score' => $spam['score'],
+            'spam_reasons' => $spam['reasons'],
         ]);
 
         Log::channel('feedback')->info('Feedback submitted', [
@@ -39,17 +45,19 @@ class FeedbackController extends Controller
             'user_id' => $feedback->user_id,
             'source_page' => $feedback->source_page,
             'message' => $feedback->message,
+            'status' => $feedback->status,
+            'spam_score' => $feedback->spam_score,
         ]);
 
         $notifyEmail = app(PlatformSettings::class)->feedbackNotifyEmail();
 
-        if (filled($notifyEmail)) {
+        if ($feedback->status === 'new' && filled($notifyEmail)) {
             try {
                 Notification::route('mail', $notifyEmail)->notify(new FeedbackReceived($feedback));
             } catch (Throwable $exception) {
                 Log::warning('Unable to send feedback notification email.', [
                     'feedback_id' => $feedback->id,
-                    'message' => $exception->getMessage(),
+                    'exception_type' => $exception::class,
                 ]);
             }
         }

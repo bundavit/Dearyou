@@ -13,16 +13,17 @@ if [[ ! -f "$CURRENT_APP_DIR/artisan" && -f "$REPO_DIR/artisan" ]]; then
     CURRENT_APP_DIR="$REPO_DIR"
 fi
 
-restore_application() {
-    if [[ -f "$APP_DIR/artisan" ]]; then
-        cd "$APP_DIR"
-        php artisan up >/dev/null 2>&1 || true
+report_failed_deployment() {
+    local status=$?
+    if [[ "$status" -ne 0 ]]; then
+        echo "DearYou deployment failed. This script has not cleared maintenance mode." >&2
+        echo "Fix the failing step and rerun the deployment. After any rollback, verify the application and worker before running 'php artisan up' in $APP_DIR." >&2
     fi
 }
-trap restore_application EXIT
+trap report_failed_deployment EXIT
 
 cd "$CURRENT_APP_DIR"
-php artisan down --retry=60 || true
+php artisan down --retry=60
 
 cd "$REPO_DIR"
 
@@ -42,6 +43,7 @@ sudo install -m 0644 "$REPO_DIR/deploy/dearyou-uploads.ini" /etc/php/8.4/fpm/con
 sudo install -m 0644 "$REPO_DIR/deploy/dearyou-uploads.ini" /etc/php/8.4/cli/conf.d/99-dearyou-uploads.ini
 sudo install -m 0644 "$REPO_DIR/deploy/dearyou-scheduler.service" /etc/systemd/system/dearyou-scheduler.service
 sudo install -m 0644 "$REPO_DIR/deploy/dearyou-scheduler.timer" /etc/systemd/system/dearyou-scheduler.timer
+sudo install -m 0644 "$REPO_DIR/deploy/dearyou-worker.service" /etc/systemd/system/dearyou-worker.service
 sudo systemctl daemon-reload
 sudo systemctl enable --now dearyou-scheduler.timer
 if [[ -f /etc/nginx/sites-available/dearyou ]]; then
@@ -60,9 +62,9 @@ sudo find storage bootstrap/cache -type d -exec chmod 2775 {} \;
 sudo find storage bootstrap/cache -type f -exec chmod 0664 {} \;
 
 sudo systemctl reload "$PHP_FPM_SERVICE"
-if systemctl list-unit-files --type=service | grep -q '^dearyou-worker.service'; then
-    sudo systemctl restart dearyou-worker
-fi
+sudo systemctl enable dearyou-worker.service
+sudo systemctl restart dearyou-worker.service
+sudo systemctl is-active --quiet dearyou-worker.service
 
 php artisan up
 trap - EXIT

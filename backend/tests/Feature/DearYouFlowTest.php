@@ -481,11 +481,12 @@ class DearYouFlowTest extends TestCase
             ->get('/admin/email-tools')
             ->assertOk()
             ->assertSee('Email tools')
-            ->assertSee('Ready')
+            ->assertSee('Key configured')
             ->assertSee('needs@example.com')
             ->assertSee('Failed email jobs')
-            ->assertSee('Retry all')
-            ->assertSee('Resend failed because the key was missing.');
+            ->assertSee('Retry listed emails')
+            ->assertSee('Inspect the worker log for this job ID.')
+            ->assertDontSee('Resend failed because the key was missing.');
 
         $this->actingAs(User::factory()->create())->get('/admin/email-tools')->assertForbidden();
     }

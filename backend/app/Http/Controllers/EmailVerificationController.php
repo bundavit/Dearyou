@@ -7,6 +7,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class EmailVerificationController extends Controller
 {
@@ -61,7 +63,13 @@ class EmailVerificationController extends Controller
             return redirect()->route($request->user()->isAdmin() ? 'admin.platform' : 'letters.index');
         }
 
-        $request->user()->sendEmailVerificationNotification();
+        try {
+            $request->user()->sendEmailVerificationNotification();
+        } catch (Throwable $exception) {
+            Log::warning('Verification email could not be requested.', ['user_id' => $request->user()->id, 'exception_type' => $exception::class]);
+
+            return back()->withErrors(['delivery' => 'We could not request a verification email. Please try sending a new code in a moment.']);
+        }
 
         return back()->with('status', 'verification-code-sent');
     }

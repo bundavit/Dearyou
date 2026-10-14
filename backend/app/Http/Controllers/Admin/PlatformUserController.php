@@ -11,7 +11,9 @@ use App\Support\CreatorStorage;
 use Illuminate\Auth\Events\Verified;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
+use Throwable;
 
 class PlatformUserController extends Controller
 {
@@ -124,10 +126,16 @@ class PlatformUserController extends Controller
             return back()->with('success', "{$user->name}'s email is already verified.");
         }
 
-        $user->sendEmailVerificationNotification();
+        try {
+            $user->sendEmailVerificationNotification();
+        } catch (Throwable $exception) {
+            Log::warning('Admin verification email could not be requested.', ['user_id' => $user->id, 'exception_type' => $exception::class]);
+
+            return back()->withErrors(['verification' => 'The verification email could not be requested. Check the application queue and try again.']);
+        }
         $this->audit($request, $user, 'user_verification_code_sent');
 
-        return back()->with('success', "A verification code was sent to {$user->email}.");
+        return back()->with('success', "A verification email was requested for {$user->email}. Inbox delivery is not yet confirmed.");
     }
 
     public function verifyEmail(Request $request, int $user)

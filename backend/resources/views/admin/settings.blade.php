@@ -176,10 +176,13 @@
                 @error('feedback_notify_email')<p class="text-danger small mt-1">{{ $message }}</p>@enderror
             </div>
             <div class="col-lg-5">
-                <div class="admin-inline-note">
-                    <strong>Useful for launch:</strong>
-                    you can route all feedback to your admin inbox without opening the server `.env` file.
-                </div>
+                  <div class="admin-inline-note">
+                      <strong>Feedback email limits:</strong>
+                      up to {{ max(0, (int) config('dearyou.feedback_email_hourly_limit', 3)) }} per hour and
+                      {{ max(0, (int) config('dearyou.feedback_email_daily_limit', 5)) }} per UTC day.
+                      Potential spam and feedback above these limits stay in the feedback inbox without an email alert.
+                      Verification and password reset emails are separate.
+                  </div>
             </div>
         </div>
     </div>

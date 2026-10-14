@@ -36,20 +36,34 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         $code = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
 
-        DB::table('email_verification_codes')->updateOrInsert(
-            ['user_id' => $this->id],
-            [
-                'code' => Hash::make($code),
-                'attempts' => 0,
-                'expires_at' => now()->addMinutes(10),
-                'created_at' => now(),
-                'updated_at' => now(),
-            ],
-        );
+        DB::transaction(function () use ($code) {
+            DB::table('email_verification_codes')->updateOrInsert(
+                ['user_id' => $this->id],
+                [
+                    'code' => Hash::make($code),
+                    'attempts' => 0,
+                    'expires_at' => now()->addMinutes(10),
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ],
+            );
+
+            $notification = new VerifyEmail($code);
+            $queue = config('queue.connections.'.config('queue.default'), []);
+            $sameDatabase = ($queue['driver'] ?? null) === 'database'
+                && ($queue['connection'] ?? config('database.default')) === config('database.default');
+            if ($sameDatabase || ($queue['driver'] ?? null) === 'sync') {
+                // The current database queue commits the code and job together.
+                $notification->beforeCommit();
+            } else {
+                // External workers must not see a notification before its code commits.
+                $notification->afterCommit();
+            }
+
+            $this->notify($notification);
+        });
 
         LocalSecurityCodeLogger::record('email verification', $this->email, $code);
-
-        $this->notify(new VerifyEmail($code));
     }
 
     public function letters()

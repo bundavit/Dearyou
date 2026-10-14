@@ -12,10 +12,12 @@
 <body class="login-page">
 <main class="login-card">
     <img class="login-logo" src="{{ asset('assets/dearyou/dearyou-floral-envelope-logo-web.webp') }}" alt="DearYou floral envelope">
+    @include('partials.staging-banner')
     <p class="login-eyebrow">ONE LAST STEP</p>
     <h1>Enter your code</h1>
-    <p class="text-secondary">We sent a six-digit verification code to <strong>{{ auth()->user()->email }}</strong>. It expires in 10 minutes.</p>
-    @if(session('status') === 'verification-code-sent')<div class="alert alert-success auto-dismiss-alert mt-3" role="status" data-auto-dismiss-alert>A new verification code was sent.</div>@endif
+    <p class="text-secondary">Enter the latest six-digit code from the email to <strong>{{ auth()->user()->email }}</strong>. Codes expire 10 minutes after they are requested.</p>
+    @if(session('status') === 'verification-code-sent')<div class="alert alert-success auto-dismiss-alert mt-3" role="status" data-auto-dismiss-alert>A new verification email was requested. Check your inbox and spam folder, and use the latest code.</div>@endif
+    @error('delivery')<div class="alert alert-danger mt-3" role="alert">{{ $message }}</div>@enderror
     <form method="post" action="{{ route('verification.verify') }}" class="text-start mt-4">
         @csrf
         <label class="form-label" for="code">Six-digit code</label>

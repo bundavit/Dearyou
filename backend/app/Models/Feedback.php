@@ -17,6 +17,7 @@ class Feedback extends Model
         'new' => 'New',
         'reviewed' => 'Reviewed',
         'resolved' => 'Resolved',
+        'spam' => 'Potential spam',
     ];
 
     protected $table = 'feedback';
@@ -28,6 +29,8 @@ class Feedback extends Model
         return [
             'rating' => 'integer',
             'reviewed_at' => 'datetime',
+            'spam_score' => 'integer',
+            'spam_reasons' => 'array',
         ];
     }
 
