@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\LetterRequest;
 use App\Models\Letter;
 use App\Models\Response;
+use App\Support\LetterData;
 use App\Support\LetterPublisher;
 use Illuminate\Support\Facades\Storage;
 
@@ -18,11 +19,11 @@ class LetterController extends Controller
         return auth()->user()->letters()->with('link')->latest()->paginate();
     }
 
-    public function store(LetterRequest $request)
+    public function store(LetterRequest $request, LetterData $data)
     {
         $this->requireAbility('letters:write');
 
-        return response()->json(auth()->user()->letters()->create($request->validated()), 201);
+        return response()->json(auth()->user()->letters()->create($data->prepare($request)), 201);
     }
 
     public function show(Letter $letter)
@@ -33,11 +34,11 @@ class LetterController extends Controller
         return $letter->load('link', 'responses', 'memories.images');
     }
 
-    public function update(LetterRequest $request, Letter $letter)
+    public function update(LetterRequest $request, Letter $letter, LetterData $data)
     {
         $this->authorize('update', $letter);
         $this->requireAbility('letters:write');
-        $letter->update($request->validated());
+        $letter->update($data->prepare($request, $letter));
 
         return $letter;
     }

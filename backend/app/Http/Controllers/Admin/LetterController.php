@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\LetterRequest;
 use App\Models\Letter;
 use App\Support\CreatorRoute;
-use App\Support\CreatorStorage;
+use App\Support\LetterData;
 use App\Support\LetterPublisher;
 use App\Support\PlatformSettings;
 use Illuminate\Http\Request;
@@ -47,11 +47,11 @@ class LetterController extends Controller
         ]);
     }
 
-    public function store(LetterRequest $request, CreatorStorage $storage)
+    public function store(LetterRequest $request, LetterData $data)
     {
-        $storage->ensureWithinQuota($request->user(), $this->uploadedFiles($request));
-        $data = $this->letterData($request);
-        $letter = auth()->user()->letters()->create($data);
+        $letter = auth()->user()->letters()->create($data->prepare($request) + [
+            'allow_response' => false,
+        ]);
 
         return redirect()->route(CreatorRoute::name('letters.edit'), $letter)->with('success', 'Letter created.');
     }
@@ -77,15 +77,12 @@ class LetterController extends Controller
         ]);
     }
 
-    public function update(LetterRequest $request, Letter $letter, CreatorStorage $storage)
+    public function update(LetterRequest $request, Letter $letter, LetterData $data)
     {
         $this->authorize('update', $letter);
-        $storage->ensureWithinQuota(
-            $request->user(),
-            $this->uploadedFiles($request),
-            $this->replacedPaths($request, $letter),
-        );
-        $letter->update($this->letterData($request, $letter));
+        $letter->update($data->prepare($request, $letter) + [
+            'allow_response' => false,
+        ]);
 
         return back()->with('success', 'Letter saved.');
     }
@@ -149,71 +146,5 @@ class LetterController extends Controller
         $letter->delete();
 
         return redirect()->route(CreatorRoute::name('letters.index'))->with('success', 'Letter deleted.');
-    }
-
-    private function letterData(LetterRequest $request, ?Letter $letter = null): array
-    {
-        $data = $request->safe()->except([
-            'image',
-            'remove_image',
-            'audio',
-            'remove_audio',
-            'sender_profile',
-            'recipient_profile',
-            'remove_sender_profile',
-            'remove_recipient_profile',
-        ]);
-        $data['allow_response'] = $request->boolean('allow_response');
-
-        $this->handleUpload($request, $letter, $data, 'image', 'image_path', 'remove_image', 'letters');
-        $this->handleUpload($request, $letter, $data, 'audio', 'audio_path', 'remove_audio', 'letters/audio');
-        $this->handleUpload($request, $letter, $data, 'sender_profile', 'sender_profile_path', 'remove_sender_profile', 'letters/profiles');
-        $this->handleUpload($request, $letter, $data, 'recipient_profile', 'recipient_profile_path', 'remove_recipient_profile', 'letters/profiles');
-
-        return $data;
-    }
-
-    private function handleUpload(
-        LetterRequest $request,
-        ?Letter $letter,
-        array &$data,
-        string $input,
-        string $column,
-        string $removeInput,
-        string $directory,
-    ): void {
-        if ($letter && ($request->boolean($removeInput) || $request->hasFile($input))) {
-            if ($letter->{$column}) {
-                Storage::disk('public')->delete($letter->{$column});
-            }
-            $data[$column] = null;
-        }
-
-        if ($request->hasFile($input)) {
-            $data[$column] = $request->file($input)->store($directory, 'public');
-        }
-    }
-
-    private function uploadedFiles(LetterRequest $request): array
-    {
-        return [
-            $request->file('image'),
-            $request->file('audio'),
-            $request->file('sender_profile'),
-            $request->file('recipient_profile'),
-        ];
-    }
-
-    private function replacedPaths(LetterRequest $request, Letter $letter): array
-    {
-        return collect([
-            ['image', 'remove_image', 'image_path'],
-            ['audio', 'remove_audio', 'audio_path'],
-            ['sender_profile', 'remove_sender_profile', 'sender_profile_path'],
-            ['recipient_profile', 'remove_recipient_profile', 'recipient_profile_path'],
-        ])->filter(fn (array $upload) => $request->hasFile($upload[0]) || $request->boolean($upload[1]))
-            ->map(fn (array $upload) => $letter->{$upload[2]})
-            ->filter()
-            ->all();
     }
 }

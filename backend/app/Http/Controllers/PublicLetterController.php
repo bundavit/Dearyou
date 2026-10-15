@@ -6,6 +6,7 @@ use App\Models\LetterLink;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class PublicLetterController extends Controller
 {
@@ -60,7 +61,16 @@ class PublicLetterController extends Controller
         $allowsMessageResponse = $link->letter->allow_response && in_array($responseMode, ['message', 'buttons_with_message', 'reactions'], true);
         abort_unless($allowsChoiceResponse || $allowsMessageResponse, 404);
 
-        $data = $request->validate(['response_value' => 'required|string|max:100', 'message' => 'nullable|string|max:3000']);
+        $allowedValues = match ($responseMode) {
+            'buttons', 'buttons_with_message' => ['positive', 'negative'],
+            'reactions' => ['happy', 'loved', 'surprised', 'emotional', 'thankful', 'hopeful'],
+            'message' => ['message'],
+            default => [],
+        };
+        $data = $request->validate([
+            'response_value' => ['required', 'string', Rule::in($allowedValues)],
+            'message' => [$responseMode === 'message' ? 'required' : 'nullable', 'string', 'max:3000'],
+        ]);
         if (! $allowsMessageResponse) {
             $data['message'] = null;
         }

@@ -68,6 +68,12 @@ class FeedbackController extends Controller
 
         $feedback->update($attributes);
 
+        // Opening the detail page marks new feedback as reviewed again.
+        if ($validated['status'] === 'new') {
+            return redirect()->route('admin.feedback.index', ['status' => 'new'])
+                ->with('success', 'Feedback status updated.');
+        }
+
         return back()->with('success', 'Feedback status updated.');
     }
 

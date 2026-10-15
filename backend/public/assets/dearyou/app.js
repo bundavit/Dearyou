@@ -591,7 +591,7 @@ document.querySelectorAll("[data-letter-editor-form]").forEach(form => {
     .filter(field => {
       if (!field.name || field.type === "file") return false;
       if (["_token", "_method"].includes(field.name)) return false;
-      if (field.type === "hidden" && !["allow_response"].includes(field.name)) return false;
+      if (field.type === "hidden") return false;
       return true;
     });
 

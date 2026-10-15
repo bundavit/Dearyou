@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
+use Illuminate\Validation\ValidationException;
 
 class AccountController extends Controller
 {
@@ -24,7 +25,7 @@ class AccountController extends Controller
     {
         $user = $request->user();
         $settings = app(PlatformSettings::class);
-        $data = $request->validate([
+        $data = $request->validateWithBag('profile', [
             'name' => 'required|string|max:100',
             'email' => ['required', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
             'current_password' => 'required|current_password',
@@ -38,7 +39,11 @@ class AccountController extends Controller
         if ($request->boolean('remove_avatar')) {
             $avatarPath = null;
         } elseif ($request->hasFile('avatar')) {
-            app(CreatorStorage::class)->ensureWithinQuota($user, [$request->file('avatar')], [$oldAvatar]);
+            try {
+                app(CreatorStorage::class)->ensureWithinQuota($user, [$request->file('avatar')], [$oldAvatar]);
+            } catch (ValidationException $exception) {
+                throw $exception->errorBag('profile');
+            }
             $avatarPath = $request->file('avatar')->store('avatars', 'public');
         }
 
@@ -64,7 +69,7 @@ class AccountController extends Controller
 
     public function updatePassword(Request $request)
     {
-        $data = $request->validate([
+        $data = $request->validateWithBag('password', [
             'current_password' => 'required|current_password',
             'password' => ['required', 'confirmed', Password::min(10)->letters()->mixedCase()->numbers()],
         ]);
@@ -78,7 +83,7 @@ class AccountController extends Controller
 
     public function destroy(Request $request)
     {
-        $validated = $request->validate([
+        $validated = $request->validateWithBag('deletion', [
             'current_password' => ['required', 'current_password'],
             'confirmation' => ['required', 'string'],
         ]);
@@ -87,7 +92,7 @@ class AccountController extends Controller
         abort_if($user->isAdmin(), 422, 'Platform administrator accounts cannot be deleted here.');
 
         if (strtolower(trim($validated['confirmation'])) !== 'delete') {
-            return back()->withErrors(['confirmation' => 'Type delete to confirm account deletion.']);
+            return back()->withErrors(['confirmation' => 'Type delete to confirm account deletion.'], 'deletion');
         }
 
         $user->tokens()->delete();

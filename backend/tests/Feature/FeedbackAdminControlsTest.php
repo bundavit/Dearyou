@@ -93,7 +93,12 @@ class FeedbackAdminControlsTest extends TestCase
             ->assertDontSee('Repeated promotion <script>example</script>.', false);
         $this->assertSame('spam', $spam->fresh()->status);
         $this->assertNull($spam->fresh()->reviewed_at);
-        $this->patch("/admin/feedback/{$spam->id}", ['status' => 'new'])->assertRedirect();
+        $restored = $this->from("/admin/feedback/{$spam->id}")
+            ->patch("/admin/feedback/{$spam->id}", ['status' => 'new'])
+            ->assertRedirect(route('admin.feedback.index', ['status' => 'new']));
+        $this->followRedirects($restored)->assertOk()
+            ->assertViewIs('admin.feedback.index')->assertSee('1 unread')
+            ->assertViewHas('feedback', fn ($page) => $page->contains('id', $spam->id));
         $this->assertSame('new', $spam->fresh()->status);
         $this->assertNull($spam->fresh()->reviewed_at);
         $this->assertSame([], $spam->fresh()->spam_reasons);
@@ -103,6 +108,25 @@ class FeedbackAdminControlsTest extends TestCase
         $this->assertSame('spam', $spam->fresh()->status);
         $this->assertNotNull($spam->fresh()->reviewed_at);
         $this->assertDatabaseCount('feedback', 1);
+    }
+
+    public function test_changing_reviewed_feedback_to_new_keeps_it_unread_after_the_redirect(): void
+    {
+        $feedback = $this->feedback(['status' => 'reviewed', 'reviewed_at' => now()]);
+        $this->actingAs(User::factory()->create(['role' => 'admin']));
+
+        $updated = $this->from("/admin/feedback/{$feedback->id}")
+            ->patch("/admin/feedback/{$feedback->id}", ['status' => 'new'])
+            ->assertRedirect(route('admin.feedback.index', ['status' => 'new']));
+
+        $this->followRedirects($updated)->assertOk()
+            ->assertViewIs('admin.feedback.index')->assertSee('1 unread');
+        $this->assertSame('new', $feedback->fresh()->status);
+        $this->assertNull($feedback->fresh()->reviewed_at);
+
+        $this->get("/admin/feedback/{$feedback->id}")->assertOk();
+        $this->assertSame('reviewed', $feedback->fresh()->status);
+        $this->assertNotNull($feedback->fresh()->reviewed_at);
     }
 
     public function test_spam_filter_keeps_category_and_pagination_and_normal_feedback_separate(): void

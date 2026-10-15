@@ -33,7 +33,7 @@
             <input class="form-control mb-3" type="email" name="email" value="{{ old('email', auth()->user()->email) }}" required>
             <label class="form-label">Current password</label>
             <div class="password-field"><input class="form-control" type="password" name="current_password" required autocomplete="current-password" data-password-input><button type="button" aria-label="Show password" aria-pressed="false" data-password-toggle><i class="bi bi-eye"></i></button></div>
-            @if($errors->hasAny(['name','email','current_password','avatar','media']))<div class="alert alert-danger mt-3">{{ $errors->first() }}</div>@endif
+            @if($errors->getBag('profile')->any())<div class="alert alert-danger mt-3">{{ $errors->getBag('profile')->first() }}</div>@endif
             <button class="btn btn-dearyou mt-4"><i class="bi bi-person-check"></i> Update profile</button>
         </form>
     </div>
@@ -48,7 +48,7 @@
             <div class="password-field mb-3"><input class="form-control" type="password" name="password" required autocomplete="new-password" data-password-input><button type="button" aria-label="Show password" aria-pressed="false" data-password-toggle><i class="bi bi-eye"></i></button></div>
             <label class="form-label">Confirm new password</label>
             <div class="password-field"><input class="form-control" type="password" name="password_confirmation" required autocomplete="new-password" data-password-input><button type="button" aria-label="Show password" aria-pressed="false" data-password-toggle><i class="bi bi-eye"></i></button></div>
-            @if($errors->hasAny(['password','password_confirmation']))<div class="alert alert-danger mt-3">{{ $errors->first() }}</div>@endif
+            @if($errors->getBag('password')->any())<div class="alert alert-danger mt-3">{{ $errors->getBag('password')->first() }}</div>@endif
             <button class="btn btn-dearyou mt-4"><i class="bi bi-shield-lock"></i> Change password</button>
         </form>
     </div>
@@ -69,7 +69,7 @@
                 <input class="form-control" id="delete-confirmation" name="confirmation" required autocomplete="off">
             </div>
         </div>
-        @if($errors->hasAny(['confirmation','current_password']))<div class="alert alert-danger mt-3">{{ $errors->first() }}</div>@endif
+        @if($errors->getBag('deletion')->any())<div class="alert alert-danger mt-3">{{ $errors->getBag('deletion')->first() }}</div>@endif
         <button class="btn btn-outline-danger mt-3"><i class="bi bi-person-x"></i> Delete my account</button>
     </form>
 </div>

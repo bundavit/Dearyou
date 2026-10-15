@@ -1758,7 +1758,7 @@ class DearYouFlowTest extends TestCase
             'current_password' => 'wrong-password',
             'password' => 'NewPassword2',
             'password_confirmation' => 'NewPassword2',
-        ])->assertSessionHasErrors('current_password');
+        ])->assertSessionHasErrorsIn('password', 'current_password');
 
         $this->assertTrue(Hash::check('OldPassword1', $user->fresh()->password));
     }
@@ -1931,7 +1931,7 @@ class DearYouFlowTest extends TestCase
             'email' => $creator->email,
             'current_password' => 'password',
             'avatar' => UploadedFile::fake()->image('large-profile.jpg')->size(2 * 1024),
-        ])->assertSessionHasErrors('avatar');
+        ])->assertSessionHasErrorsIn('profile', 'avatar');
 
         $this->actingAs($creator)->post('/letters', $this->letterPayload([
             'category' => 'birthday',
@@ -2173,12 +2173,12 @@ class DearYouFlowTest extends TestCase
         $this->actingAs($creator)->delete('/account', [
             'current_password' => 'wrong-password',
             'confirmation' => 'delete',
-        ])->assertSessionHasErrors(['current_password']);
+        ])->assertSessionHasErrorsIn('deletion', ['current_password']);
 
         $this->actingAs($creator)->delete('/account', [
             'current_password' => 'StrongPass1',
             'confirmation' => 'not delete',
-        ])->assertSessionHasErrors(['confirmation']);
+        ])->assertSessionHasErrorsIn('deletion', ['confirmation']);
 
         $this->assertNotSoftDeleted($creator);
         $this->assertAuthenticatedAs($creator);

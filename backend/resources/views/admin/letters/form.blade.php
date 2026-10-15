@@ -1,6 +1,18 @@
 @extends(auth()->user()->isAdmin() ? 'layouts.app' : 'layouts.creator')
 @section('content')
-@php($editing=$letter->exists)
+@php
+    $editing = $letter->exists;
+    $relationshipDateInput = old('relationship_started_at', $letter->relationship_started_at?->format('Y-m-d'));
+    $relationshipDateInput = is_string($relationshipDateInput) ? $relationshipDateInput : '';
+    $relationshipDateLabel = null;
+    if ($relationshipDateInput !== '' && ! $errors->has('relationship_started_at')) {
+        try {
+            $relationshipDateLabel = \Carbon\Carbon::parse($relationshipDateInput)->format('F j, Y');
+        } catch (\Carbon\Exceptions\InvalidFormatException) {
+            // Invalid flashed input must not prevent the validation errors from rendering.
+        }
+    }
+@endphp
 <a class="btn btn-link admin-back-link" href="{{ route(\App\Support\CreatorRoute::name('letters.index')) }}"><i class="bi bi-arrow-left"></i> Back to letters</a>
 <div class="admin-page-header">
     <div><p class="eyebrow">{{ $editing ? 'EDIT LETTER' : 'NEW LETTER' }}</p><h1>{{ $editing ? $letter->title : 'Create something meaningful' }}</h1></div>
@@ -120,7 +132,7 @@
 <details class="editor-section" open><summary><span><i class="bi bi-heart"></i> Accepted confession</span><small>Customize the positive response moment</small></summary>
 <div class="row g-3">
 <div class="col-12"><label class="form-label">Chapter heading</label><input name="chapter_heading" class="form-control" maxlength="150" value="{{ old('chapter_heading',$letter->chapter_heading ?: 'A beautiful new chapter begins.') }}" data-chapter-heading></div>
-<div class="col-md-4"><label class="form-label">Started from date</label><input type="date" name="relationship_started_at" class="form-control" value="{{ old('relationship_started_at',$letter->relationship_started_at?->format('Y-m-d')) }}" data-chapter-date></div>
+<div class="col-md-4"><label class="form-label">Started from date</label><input type="date" name="relationship_started_at" class="form-control" value="{{ $relationshipDateInput }}" data-chapter-date></div>
 <div class="col-md-4"><label class="form-label">Your profile image</label><input type="file" name="sender_profile" class="form-control @error('sender_profile') is-invalid @enderror" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" data-image-upload data-max-size-mb="{{ $creationSettings['profile_image_limit_mb'] }}" data-chapter-sender-image><div class="form-text">Up to {{ $creationSettings['profile_image_limit_mb'] }} MB.</div>@error('sender_profile')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror</div>
 <div class="col-md-4"><label class="form-label">Recipient profile image</label><input type="file" name="recipient_profile" class="form-control @error('recipient_profile') is-invalid @enderror" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" data-image-upload data-max-size-mb="{{ $creationSettings['profile_image_limit_mb'] }}" data-chapter-recipient-image><div class="form-text">Up to {{ $creationSettings['profile_image_limit_mb'] }} MB.</div>@error('recipient_profile')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror</div>
 @if($letter->sender_profile_path)<div class="col-md-6"><div class="profile-preview"><img src="{{ Storage::url($letter->sender_profile_path) }}" alt="Current sender profile"><label class="form-check"><input class="form-check-input" type="checkbox" name="remove_sender_profile" value="1"> Remove your profile image</label></div></div>@endif
@@ -146,8 +158,8 @@
         </div>
     </div>
     <p class="chapter-preview-date" data-chapter-date-label>
-        @if(old('relationship_started_at',$letter->relationship_started_at?->format('Y-m-d')))
-            Started from {{ \Carbon\Carbon::parse(old('relationship_started_at',$letter->relationship_started_at?->format('Y-m-d')))->format('F j, Y') }}
+        @if($relationshipDateLabel)
+            Started from {{ $relationshipDateLabel }}
         @else
             Add a start date to show it here
         @endif
