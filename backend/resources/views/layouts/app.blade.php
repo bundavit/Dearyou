@@ -33,6 +33,7 @@
         <form action="{{ route('logout') }}" method="post" class="mt-auto">@csrf<button class="btn btn-outline-light w-100"><i class="bi bi-box-arrow-left"></i> Log out</button></form>
     </aside>
     <main class="admin-main">
+        @include('partials.staging-banner')
         @if(session('success'))<div class="alert alert-success auto-dismiss-alert" role="status" data-auto-dismiss-alert>{{ session('success') }}</div>@endif
         @yield('content')
     </main>

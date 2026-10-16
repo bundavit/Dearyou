@@ -1,5 +1,8 @@
 .git
 .gitignore
+.cursor
+.local-archive
+Project Software Testing
 backend/.env
 backend/node_modules
 backend/vendor

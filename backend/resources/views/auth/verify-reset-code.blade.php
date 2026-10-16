@@ -12,6 +12,7 @@
 <body class="login-page">
 <main class="login-card">
     <img class="login-logo" src="{{ asset('assets/dearyou/dearyou-floral-envelope-logo-web.webp') }}" alt="DearYou floral envelope">
+    @include('partials.staging-banner')
     <p class="login-eyebrow">CHECK YOUR EMAIL</p>
     <h1>Enter your code</h1>
     <p class="text-secondary">Enter the six-digit code sent to <strong>{{ $email }}</strong>. It expires in 10 minutes.</p>

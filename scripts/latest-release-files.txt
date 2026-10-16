@@ -1,0 +1,35 @@
+.dockerignore
+.gitignore
+README.md
+Project Software Testing/PROJECT_PLAN.md
+Project Software Testing/README.md
+Project Software Testing/drafts/speaker-notes-member-3.md
+Project Software Testing/drafts/speaker-notes-member-4.md
+backend/resources/views/auth/forgot-password.blade.php
+backend/resources/views/auth/login.blade.php
+backend/resources/views/auth/register.blade.php
+backend/resources/views/auth/reset-password.blade.php
+backend/resources/views/auth/verify-reset-code.blade.php
+backend/resources/views/layouts/app.blade.php
+backend/resources/views/layouts/creator.blade.php
+backend/resources/views/public/letter.blade.php
+backend/resources/views/welcome.blade.php
+deploy/check-staging.php
+deploy/dearyou-staging-scheduler.service
+deploy/dearyou-staging-scheduler.timer
+deploy/dearyou-staging-worker.service
+deploy/deploy-staging.sh
+deploy/nginx-dearyou-staging.conf
+deploy/tests/check-staging-test.php
+docs/DEPLOYMENT.md
+docs/EMAIL_DELIVERY.md
+docs/EMAIL_RELEASE.md
+docs/FEEDBACK_SPAM.md
+docs/PRODUCTION_LAYOUT_MIGRATION.md
+docs/QA_FIX_RELEASE.md
+docs/REPOSITORY_CLEANUP.md
+docs/ROADMAP.md
+docs/STAGING.md
+docs/STATUS.md
+docs/TRANSFER.md
+scripts/latest-release-files.txt

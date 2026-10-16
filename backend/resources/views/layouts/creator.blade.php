@@ -15,6 +15,7 @@
     @include('partials.user-navbar')
     <main class="admin-main creator-main">
         <div class="creator-content">
+            @include('partials.staging-banner')
             <section class="creator-storage" aria-label="Media storage usage">
                 <div class="creator-storage-copy">
                     <span><i class="bi bi-cloud"></i> Media storage</span>

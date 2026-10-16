@@ -1,5 +1,41 @@
 # DearYou on DigitalOcean
 
+**Last confirmed production: 15 October 2026.** Release `8f1c618` runs from `/var/www/dearyou/backend`, with Nginx serving `/var/www/dearyou/backend/public`. The owner restarted the worker, confirmed three feedback emails, and the admin queue drained to zero. Verification remains untested. See [STATUS.md](STATUS.md) and [the remaining work list](ROADMAP.md). Preparing a new Git commit does not deploy it.
+
+## Updating the existing production website
+
+Production is already installed. Preserve its `.env`, APP_KEY, database, uploads, TLS configuration and backend-path services. The root-to-backend migration is complete; do not replay it.
+
+The owner performs Git and server operations. Each future deployment needs:
+
+1. A reviewed, pinned commit and a clean server checkout; inspect migrations and dependency changes before scheduling the update.
+2. A new private application/configuration/database backup with a verified restore into an isolated temporary database. Preserve newer data during any rollback.
+3. Maintenance and a controlled stop of background writers before the final data snapshot and release change. Record the existing scheduler/worker state.
+4. Locked dependencies and reviewed migrations. Keep the existing settings and key, do not seed production, and do not clear the feedback-budget cache.
+5. Separate `config:cache`, `event:cache`, `route:cache` and `view:cache` commands so a component failure can stop deployment. Keep runtime directories group-writable without making cached configuration readable to every local account.
+6. Validated Nginx/PHP settings, maintenance-response checks, then homepage/login/health and relevant feature checks before reopening and restoring background processing.
+
+The legacy `deploy/deploy.sh` is retained for history and its mock tests, but is **not the recommended production update path**. It follows moving `main`, does not supply a fresh verified backup or fully stop background writers, and applies overly broad cached-configuration permissions. It needs a separate hardening change before use as unattended deployment automation. The legacy backup helper also needs review before reuse; see the backup section below.
+
+Owner-run read-only checks for a future deployment session:
+
+```bash
+cd /var/www/dearyou
+git status --short --branch
+git rev-parse HEAD
+systemctl show dearyou-worker.service dearyou-scheduler.timer \
+  --property=Id,ActiveState,SubState,WorkingDirectory,ExecStart --no-pager
+nginx -t
+```
+
+Review private configuration and logs on the server; share only sanitized status. Do not print `.env` or raw queued messages.
+
+## New-server setup reference
+
+Sections 1-6 below are for an empty new server, not an update or USB restore. Generate keys and seed an administrator only during a genuinely new installation.
+
+For a separate testing website at `staging.dearyous.app`, use [the staging runbook](STAGING.md). Its database, environment file, storage, worker and scheduler are separate from the production setup below.
+
 Use an Ubuntu 24.04 Droplet with Nginx, PHP 8.4, and MySQL. A Droplet is used
 instead of App Platform because DearYou stores private images, GIFs, and music
 under `backend/storage/app/public`; a Droplet keeps those uploads on persistent disk.
@@ -103,7 +139,7 @@ Host github.com
 EOF'
 sudo -u deploy chmod 600 /home/deploy/.ssh/config
 
-sudo -u deploy git clone git@github.com:Vitkayo/Dearyou.git /var/www/dearyou
+sudo -u deploy git clone git@github.com:bundavit/Dearyou.git /var/www/dearyou
 cd /var/www/dearyou/backend
 composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
 cp .env.production.example .env
@@ -151,11 +187,15 @@ php artisan key:generate
 php artisan migrate --force
 php artisan db:seed --force
 php artisan storage:link
-php artisan optimize
+php artisan config:cache
+php artisan event:cache
+php artisan route:cache
+php artisan view:cache
 
 sudo chown -R deploy:www-data /var/www/dearyou/backend
-sudo find storage bootstrap/cache -type d -exec chmod 2775 {} \;
-sudo find storage bootstrap/cache -type f -exec chmod 0664 {} \;
+sudo find storage bootstrap/cache -type d -exec chmod 2770 {} \;
+sudo find storage bootstrap/cache -type f -exec chmod 0660 {} \;
+sudo chmod 0640 .env
 ```
 
 Run `db:seed` only for the initial installation. Running it repeatedly creates
@@ -195,7 +235,10 @@ Confirm `.env` uses `APP_URL=https://dearyous.app`, then run:
 
 ```bash
 cd /var/www/dearyou/backend
-php artisan optimize
+php artisan config:cache
+php artisan event:cache
+php artisan route:cache
+php artisan view:cache
 ```
 
 ## 7. Queue worker and updates
@@ -208,42 +251,15 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now dearyou-worker
 ```
 
-For future GitHub updates:
-
-```bash
-cd /var/www/dearyou
-chmod +x deploy/deploy.sh
-./deploy/deploy.sh
-```
-
-The deployment script pulls `main`, installs production dependencies, runs
-migrations, refreshes Laravel caches, fixes writable-directory permissions,
-and restarts PHP and the queue worker.
+For future source updates, use the owner-reviewed deployment process at the top of this guide. Installing the first worker does not make the legacy updater suitable for an existing-data release.
 
 ## 8. Backups
 
-The included backup script saves both MySQL and uploaded media:
+Keep application/settings/service/TLS and database backups private, outside the web root and repository. Use a protected MySQL option file or server socket authentication; do not source a Laravel `.env` as shell code or put its password on the command line. Verify SQL restoration into a separate temporary database and verify upload/configuration preservation before relying on the backup.
 
-```bash
-sudo chmod +x /var/www/dearyou/deploy/backup.sh
-sudo mkdir -p /var/backups/dearyou
-sudo /var/www/dearyou/deploy/backup.sh
-```
+`deploy/backup.sh` is a legacy helper. Its current implementation sources `.env`, exposes a database password as a command argument, and applies retention deletion to its destination. It is not the current backup recommendation and needs a separate reviewed replacement before scheduling. The existing verified production snapshots are historical recovery assets, not fresh backups for a later deployment.
 
-Schedule it only after testing a backup and restore:
-
-```bash
-sudo crontab -e
-```
-
-Example daily schedule:
-
-```cron
-30 2 * * * /var/www/dearyou/deploy/backup.sh >> /var/log/dearyou-backup.log 2>&1
-```
-
-Copy backups to a second location. A backup stored only on the same Droplet is
-not enough if the Droplet is lost.
+Keep an off-server copy and record the source revision, data snapshot time, service configuration and restore procedure. A code rollback does not authorize restoring an old database over newer records.
 
 ## Production checklist
 

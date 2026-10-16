@@ -140,6 +140,8 @@ __pycache__/
 /backend/storage/pail
 
 # IDE and operating-system files
+/.cursor/
+/.local-archive/
 .phpactor.json
 .phpunit.result.cache
 npm-debug.log*
@@ -154,3 +156,6 @@ yarn-error.log*
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Supplied course reference stays in the private USB copy, not the source release.
+/Project Software Testing/Software_Testing_Foundations_A_Study_Guide_for_the_Certified_Tester.PDF

@@ -1,0 +1,19 @@
+[Unit]
+Description=DearYou staging Laravel queue worker
+After=network.target mysql.service
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/dearyou-staging/backend
+# Keep --timeout below this environment's queue retry_after (90 seconds by default).
+ExecStart=/usr/bin/php /var/www/dearyou-staging/backend/artisan queue:work --sleep=3 --tries=3 --timeout=60 --max-time=3600
+Restart=always
+RestartSec=5
+KillSignal=SIGTERM
+TimeoutStopSec=90
+UMask=0027
+
+[Install]
+WantedBy=multi-user.target

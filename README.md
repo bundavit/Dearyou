@@ -198,7 +198,7 @@ Business logic lives in support classes where it would otherwise make controller
 - Account settings with profile picture, password update, API token controls, and account deletion
 - Admin user management with roles, status, verification tools, soft delete, restore, and permanent delete
 - Platform settings for categories, storage limits, expiry windows, feedback email, and feature controls
-- Feedback inbox for reviewing, resolving, and deleting visitor feedback
+- Feedback inbox with Mark all as read, reversible Potential spam classification, and capped email alerts
 - Moderation tools for revealing content with audit reasons, disabling public links, restoring letters, and overriding expiry
 - Audit logs for sensitive moderation and platform actions
 - Deployment health and email queue tools
@@ -208,12 +208,14 @@ Business logic lives in support classes where it would otherwise make controller
 
 ### Prerequisites
 
-- PHP 8.4+
+- PHP 8.4.1+
 - Composer
-- Node.js 18+ and npm
+- Node.js 20.19+ or 22.12+ and npm (as required by the locked Vite version)
 - MySQL 8+ or SQLite for local testing
 
 ### Install
+
+The following initialization commands are for a new local installation. For an existing project copied from USB, preserve its `.env`, `APP_KEY`, database, and uploads and follow [the transfer guide](docs/TRANSFER.md).
 
 **Windows (PowerShell):**
 
@@ -328,13 +330,11 @@ npm audit --omit=dev              # JavaScript production dependency audit
 npm run build                     # Production asset build
 ```
 
-Current project status:
+Local validation repeated during cleanup (16 October 2026):
 
-- Test suite: 85 tests, 761 assertions
+- Test suite: 171 tests, 1417 assertions
 - Laravel Pint: passing
-- Composer audit: no advisories
-- npm production audit: no vulnerabilities
-- Vite production build: passing
+- Dependency audits and production build passed the earlier audit; rerun them when dependencies change rather than treating this record as a current advisory check
 
 ## Portfolio Screenshots
 
@@ -424,10 +424,10 @@ The collection does not include real login credentials.
 
 - Set `APP_ENV=production` and `APP_DEBUG=false`
 - Set `APP_URL=https://dearyous.app`
-- Generate a fresh production `APP_KEY`
+- Generate `APP_KEY` only for a new installation; preserve the existing key during updates and restores
 - Use a dedicated production MySQL database user and password
 - Configure Resend through environment variables only
-- From `backend/`, run `php artisan migrate --force`, `php artisan storage:link`, and `php artisan optimize`
+- From `backend/`, apply reviewed migrations and rebuild configuration, event, route, and view caches separately; preserve shared cache state
 - Run the Laravel queue worker and scheduler
 - Configure upload limits for Nginx and PHP
 - Serve through Nginx and PHP-FPM 8.4 with HTTPS
@@ -436,19 +436,13 @@ The collection does not include real login credentials.
 
 Production deployment notes are in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
-The normal production update flow is:
+To test changes on a separate website before releasing them, follow [docs/STAGING.md](docs/STAGING.md). It prepares `staging.dearyous.app` with separate data, sessions, uploads, background processes and log-only email by default.
 
-```bash
-git pull --ff-only origin main
-cd backend
-composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
-php artisan migrate --force
-php artisan optimize:clear
-php artisan optimize
-sudo systemctl restart php8.4-fpm
-sudo systemctl restart dearyou-worker
-sudo systemctl reload nginx
-```
+For feedback notifications, verification codes and the admin queue diagnostics, see [docs/EMAIL_DELIVERY.md](docs/EMAIL_DELIVERY.md).
+
+For feedback protection and the 5-per-day feedback email cap, see [docs/FEEDBACK_SPAM.md](docs/FEEDBACK_SPAM.md). The controls are deployed. On 15 October, the owner restarted the worker, confirmed feedback receipts, and the live admin queue drained from 15 jobs to zero. Verification acceptance testing remains skipped. See [the dated status record](docs/STATUS.md).
+
+Production updates are owner-operated deployments of a reviewed commit with a verified backup, preserved settings/uploads, stopped background writers, and health checks before reopening. See [the current deployment guide](docs/DEPLOYMENT.md). The legacy `deploy/deploy.sh` is not the recommended production update path.
 
 ## Project Status
 
@@ -456,7 +450,11 @@ DearYou is deployed as a production Laravel website for [dearyous.app](https://d
 
 The codebase includes automated feature coverage for authentication, email verification, password reset, letter creation, publishing, expiring links, recipient responses, media uploads, storage limits, account actions, API endpoints, feedback, admin user management, moderation, audit logs, and production readiness checks.
 
-**Test suite:** 85 tests, 761 assertions (PHPUnit).
+**Latest local suite:** 171 tests, 1417 assertions (PHPUnit, 16 October 2026). Staging setup files are prepared, but the separate website has not been provisioned.
+
+See [updates and remaining work](docs/ROADMAP.md) for completed releases, pending email acceptance, staging setup, operations hardening and the paused class presentation.
+
+For the course case-study plan and partial draft notes, see [Project Software Testing](<Project Software Testing/README.md>). The supplied textbook remains local and should travel with the USB copy. See [the transfer guide](docs/TRANSFER.md) for what Git includes and what needs a separate copy.
 
 ## License
 

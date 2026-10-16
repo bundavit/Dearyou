@@ -12,6 +12,7 @@
 <body class="login-page">
 <main class="login-card">
     <img class="login-logo" src="{{ asset('assets/dearyou/dearyou-floral-envelope-logo-web.webp') }}" alt="DearYou floral envelope">
+    @include('partials.staging-banner')
     <p class="login-eyebrow">ACCOUNT RECOVERY</p>
     <h1>Reset your password</h1>
     <p class="text-secondary">Enter your account email and we will send a six-digit reset code.</p>

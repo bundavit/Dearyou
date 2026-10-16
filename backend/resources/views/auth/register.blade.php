@@ -12,6 +12,7 @@
 <body class="login-page">
 <main class="login-card">
     <img class="login-logo" src="{{ asset('assets/dearyou/dearyou-floral-envelope-logo-web.webp') }}" alt="DearYou floral envelope">
+    @include('partials.staging-banner')
     <p class="login-eyebrow">CREATE YOUR SPACE</p>
     <h1>Start writing</h1>
     <p class="text-secondary">Create private letters and share them with only the people you choose.</p>

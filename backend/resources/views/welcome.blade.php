@@ -21,6 +21,7 @@
 @include('partials.user-navbar')
 
 <main>
+    @include('partials.staging-banner')
     @if(session('success'))
         <div class="home-notice auto-dismiss-alert" role="status" data-auto-dismiss-alert>
             <i class="bi bi-check-circle" aria-hidden="true"></i>

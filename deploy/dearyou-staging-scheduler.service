@@ -1,0 +1,14 @@
+[Unit]
+Description=DearYou staging Laravel scheduler
+After=network.target mysql.service
+
+[Service]
+Type=oneshot
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/dearyou-staging/backend
+ExecStart=/usr/bin/php /var/www/dearyou-staging/backend/artisan schedule:run
+# A later timer tick retries after a failure; do not restart a completed schedule run.
+TimeoutStartSec=300
+TimeoutStopSec=90
+UMask=0027
