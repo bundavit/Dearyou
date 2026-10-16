@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Letter;
 use App\Models\LetterMemory;
 use App\Models\LetterMemoryImage;
+use App\Support\CreatorRoute;
 use App\Support\CreatorStorage;
 use App\Support\MediaFiles;
 use App\Support\PlatformSettings;
@@ -23,7 +24,7 @@ class MemoryController extends Controller
         $memory = $letter->memories()->create($data);
         $this->storeImages($request, $memory);
 
-        return back()->with('success', 'Memory added.');
+        return redirect()->route(CreatorRoute::name('letters.edit'), $letter)->with('success', 'Memory added.');
     }
 
     public function update(Request $request, LetterMemory $memory, CreatorStorage $storage)
@@ -51,7 +52,7 @@ class MemoryController extends Controller
         $this->removeImages($request, $memory);
         $this->storeImages($request, $memory);
 
-        return back()->with('success', 'Memory updated.');
+        return redirect()->route(CreatorRoute::name('letters.edit'), $memory->letter_id)->with('success', 'Memory updated.');
     }
 
     public function move(LetterMemory $memory, string $direction)
@@ -71,7 +72,7 @@ class MemoryController extends Controller
             $neighbor->update(['sort_order' => $memoryOrder]);
         }
 
-        return back();
+        return redirect()->route(CreatorRoute::name('letters.edit'), $memory->letter_id);
     }
 
     public function reorderMemories(Request $request, Letter $letter)
@@ -111,7 +112,7 @@ class MemoryController extends Controller
         ]));
         $memory->delete();
 
-        return back()->with('success', 'Memory deleted.');
+        return redirect()->route(CreatorRoute::name('letters.edit'), $memory->letter_id)->with('success', 'Memory deleted.');
     }
 
     private function validated(Request $request): array

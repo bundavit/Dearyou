@@ -6,10 +6,12 @@ use App\Http\Middleware\EnsureUserHasRole;
 use App\Http\Middleware\RedirectToCanonicalHost;
 use App\Http\Middleware\RestrictAdminNetwork;
 use App\Http\Middleware\SerializeMediaWrites;
+use App\Http\Middleware\StartWebSession;
 use Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Session\Middleware\StartSession;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -22,6 +24,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->web(append: [
             RedirectToCanonicalHost::class,
             EnsureSessionIsCurrent::class,
+        ], replace: [
+            StartSession::class => StartWebSession::class,
         ]);
 
         $middleware->prependToPriorityList(

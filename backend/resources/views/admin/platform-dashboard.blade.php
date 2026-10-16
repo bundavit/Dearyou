@@ -31,7 +31,7 @@
     'new_feedback' => ['New feedback', 'bi-chat-dots'],
     'feedback_rating' => ['Average rating', 'bi-star-fill'],
 ])
-<div class="dashboard-stats">
+<div class="dashboard-stats platform-dashboard-stats">
     @foreach($statCards as $key => [$label, $icon])
         <div class="stat-card dashboard-stat">
             <span class="dashboard-stat-icon"><i class="bi {{ $icon }}"></i></span>

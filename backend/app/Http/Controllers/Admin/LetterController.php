@@ -84,7 +84,7 @@ class LetterController extends Controller
             'allow_response' => false,
         ]);
 
-        return back()->with('success', 'Letter saved.');
+        return redirect()->route(CreatorRoute::name('letters.edit'), $letter)->with('success', 'Letter saved.');
     }
 
     public function preview(Letter $letter)
@@ -101,7 +101,7 @@ class LetterController extends Controller
         $this->authorize('update', $letter);
         $publisher->publish($letter);
 
-        return back()->with('success', "Letter published for {$letter->expiryDurationLabel()}.");
+        return redirect()->route(CreatorRoute::name('letters.edit'), $letter)->with('success', "Letter published for {$letter->expiryDurationLabel()}.");
     }
 
     public function unpublish(Letter $letter, LetterPublisher $publisher)
@@ -109,7 +109,7 @@ class LetterController extends Controller
         $this->authorize('update', $letter);
         $publisher->unpublish($letter);
 
-        return back()->with('success', 'Letter unpublished.');
+        return redirect()->route(CreatorRoute::name('letters.edit'), $letter)->with('success', 'Letter unpublished.');
     }
 
     public function regenerate(Letter $letter, LetterPublisher $publisher)
@@ -117,7 +117,7 @@ class LetterController extends Controller
         $this->authorize('update', $letter);
         $publisher->regenerate($letter);
 
-        return back()->with('success', "Private link regenerated for {$letter->expiryDurationLabel()}.");
+        return redirect()->route(CreatorRoute::name('letters.edit'), $letter)->with('success', "Private link regenerated for {$letter->expiryDurationLabel()}.");
     }
 
     public function disable(Letter $letter, LetterPublisher $publisher)
@@ -125,7 +125,7 @@ class LetterController extends Controller
         $this->authorize('update', $letter);
         $publisher->disable($letter);
 
-        return back()->with('success', 'Private link disabled.');
+        return redirect()->route(CreatorRoute::name('letters.edit'), $letter)->with('success', 'Private link disabled.');
     }
 
     public function destroy(Letter $letter)

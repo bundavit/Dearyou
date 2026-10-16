@@ -7,6 +7,7 @@ use App\Models\Letter;
 use App\Models\ModerationAudit;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class LetterModerationController extends Controller
@@ -127,11 +128,12 @@ class LetterModerationController extends Controller
             'expires_at' => ['required', 'date', 'after:now'],
             'reason' => ['required', 'string', 'min:5', 'max:500'],
         ]);
+        $expiresAt = Carbon::parse($validated['expires_at'])->setTimezone(config('app.timezone'));
 
-        $this->withLockedLetter($letter, function (Letter $current) use ($request, $validated): void {
+        $this->withLockedLetter($letter, function (Letter $current) use ($request, $validated, $expiresAt): void {
             abort_if($current->trashed(), 422, 'Restore this letter before changing its expiration.');
-            $current->update(['expires_at' => $validated['expires_at']]);
-            $current->link()->update(['expires_at' => $validated['expires_at']]);
+            $current->update(['expires_at' => $expiresAt]);
+            $current->link()->update(['expires_at' => $expiresAt]);
             $this->audit($request, $current, 'letter_expiry_overridden', $validated['reason'], [
                 'expires_at' => $current->expires_at?->toIso8601String(),
             ]);
