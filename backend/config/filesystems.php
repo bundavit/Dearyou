@@ -40,11 +40,25 @@ return [
 
         'public' => [
             'driver' => 'local',
-            'root' => storage_path('app/public'),
-            'url' => rtrim(env('APP_URL', 'http://localhost'), '/').'/storage',
-            'visibility' => 'public',
+            // Historical disk name retained for existing records and integrations.
+            // Upload bytes are private and delivered through authorized app routes.
+            'root' => storage_path('app/private/media'),
+            'url' => rtrim(env('PUBLIC_MEDIA_URL') ?: rtrim(env('APP_URL', 'http://localhost'), '/').'/storage', '/'),
+            'visibility' => 'private',
+            // Runtime and backup operators share the controlled application group.
+            'permissions' => [
+                'file' => ['public' => 0660, 'private' => 0660],
+                'dir' => ['public' => 0770, 'private' => 0770],
+            ],
             'throw' => false,
             'report' => false,
+        ],
+
+        'legacy_media' => [
+            'driver' => 'local',
+            'root' => storage_path('app/public'),
+            'visibility' => 'private',
+            'throw' => false,
         ],
 
         's3' => [

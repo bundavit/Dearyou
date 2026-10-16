@@ -21,11 +21,15 @@
             return null;
         }
 
-        $disk = Storage::disk('public');
+        $disk = app(\App\Support\MediaAccess::class)->disk($path);
 
         if (! $disk->exists($path)) {
             return null;
         }
+
+        static $embeddedBytes = 0;
+        $embeddedBytes += $disk->size($path);
+        if ($embeddedBytes > config('dearyou.keepsake_max_media_bytes')) return null;
 
         $extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
         $extensionMimes = [

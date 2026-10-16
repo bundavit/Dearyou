@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Letter;
 use App\Models\ModerationAudit;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -14,14 +15,14 @@ class LetterModerationController extends Controller
     {
         $letters = Letter::query()
             ->withTrashed()
-            ->with('user')
+            ->with(['user' => fn ($query) => $query->withTrashed()])
             ->withCount('responses');
 
         if ($request->filled('search')) {
             $search = $request->string('search')->toString();
             $letters->where(fn ($query) => $query
                 ->where('title', 'like', "%{$search}%")
-                ->orWhereHas('user', fn ($user) => $user
+                ->orWhereHas('user', fn ($user) => $user->withTrashed()
                     ->where('name', 'like', "%{$search}%")
                     ->orWhere('email', 'like', "%{$search}%")));
         }
@@ -65,80 +66,102 @@ class LetterModerationController extends Controller
 
     public function disable(Request $request, int $letter)
     {
-        $letter = $this->letter($letter);
         $validated = $this->reason($request);
 
-        DB::transaction(function () use ($letter, $request) {
-            $letter->update([
+        $this->withLockedLetter($letter, function (Letter $current) use ($request, $validated): void {
+            abort_if($current->trashed(), 422, 'Restore this letter before changing public access.');
+            $current->update([
                 'moderation_disabled_at' => now(),
                 'moderation_disabled_by' => $request->user()->id,
             ]);
-            $letter->link?->update(['is_active' => false]);
+            $current->link()->update(['is_active' => false]);
+            $this->audit($request, $current, 'letter_disabled', $validated['reason']);
         });
-        $this->audit($request, $letter, 'letter_disabled', $validated['reason']);
 
         return back()->with('success', 'Letter access disabled.');
     }
 
     public function enable(Request $request, int $letter)
     {
-        $letter = $this->letter($letter);
         $validated = $this->reason($request);
-        $letter->update([
-            'moderation_disabled_at' => null,
-            'moderation_disabled_by' => null,
-        ]);
-        $this->audit($request, $letter, 'letter_reenabled', $validated['reason']);
+        $this->withLockedLetter($letter, function (Letter $current) use ($request, $validated): void {
+            abort_if($current->trashed(), 422, 'Restore this letter before changing public access.');
+            $current->update([
+                'moderation_disabled_at' => null,
+                'moderation_disabled_by' => null,
+            ]);
+            $current->link()->update(['is_active' => false]);
+            $this->audit($request, $current, 'letter_reenabled', $validated['reason']);
+        });
 
         return back()->with('success', 'Moderation block removed. The creator can republish the link.');
     }
 
     public function destroy(Request $request, int $letter)
     {
-        $letter = $this->letter($letter);
-        abort_if($letter->trashed(), 422);
         $validated = $this->reason($request);
-        $this->audit($request, $letter, 'letter_soft_deleted', $validated['reason']);
-        $letter->delete();
+        $this->withLockedLetter($letter, function (Letter $current) use ($request, $validated): void {
+            abort_if($current->trashed(), 422);
+            $current->delete();
+            $this->audit($request, $current, 'letter_soft_deleted', $validated['reason']);
+        });
 
         return redirect()->route('admin.moderation.index')->with('success', 'Letter moved to moderated deletion.');
     }
 
     public function restore(Request $request, int $letter)
     {
-        $letter = $this->letter($letter);
-        abort_unless($letter->trashed(), 422);
         $validated = $this->reason($request);
-        $letter->restore();
-        $this->audit($request, $letter, 'letter_restored', $validated['reason']);
+        $this->withLockedLetter($letter, function (Letter $current) use ($request, $validated): void {
+            abort_unless($current->trashed(), 422);
+            $current->restore();
+            $this->audit($request, $current, 'letter_restored', $validated['reason']);
+        });
 
         return back()->with('success', 'Letter restored.');
     }
 
     public function overrideExpiry(Request $request, int $letter)
     {
-        $letter = $this->letter($letter);
         $validated = $request->validate([
             'expires_at' => ['required', 'date', 'after:now'],
             'reason' => ['required', 'string', 'min:5', 'max:500'],
         ]);
 
-        DB::transaction(function () use ($letter, $validated) {
-            $letter->update(['expires_at' => $validated['expires_at']]);
-            $letter->link?->update(['expires_at' => $validated['expires_at']]);
+        $this->withLockedLetter($letter, function (Letter $current) use ($request, $validated): void {
+            abort_if($current->trashed(), 422, 'Restore this letter before changing its expiration.');
+            $current->update(['expires_at' => $validated['expires_at']]);
+            $current->link()->update(['expires_at' => $validated['expires_at']]);
+            $this->audit($request, $current, 'letter_expiry_overridden', $validated['reason'], [
+                'expires_at' => $current->expires_at?->toIso8601String(),
+            ]);
         });
-        $this->audit($request, $letter, 'letter_expiry_overridden', $validated['reason'], [
-            'expires_at' => $letter->fresh()->expires_at?->toIso8601String(),
-        ]);
 
         return back()->with('success', 'Letter expiration updated.');
+    }
+
+    private function withLockedLetter(int $id, callable $operation): void
+    {
+        // Locate ownership before starting the transaction so SQLite acquires
+        // its writer lock before any transactional reads. All media writers
+        // and cleanup use the same owner-then-letter lock order.
+        $ownerId = Letter::withTrashed()->whereKey($id)->value('user_id');
+        abort_if($ownerId === null, 404);
+
+        DB::transaction(function () use ($id, $ownerId, $operation): void {
+            User::withTrashed()->whereKey($ownerId)->update(['id' => DB::raw('id')]);
+            User::withTrashed()->lockForUpdate()->findOrFail($ownerId);
+            $current = Letter::withTrashed()->where('user_id', $ownerId)
+                ->lockForUpdate()->findOrFail($id);
+            $operation($current);
+        }, 3);
     }
 
     private function letter(int $id): Letter
     {
         return Letter::query()
             ->withTrashed()
-            ->with(['user', 'link'])
+            ->with(['user' => fn ($query) => $query->withTrashed(), 'link'])
             ->withCount('responses')
             ->findOrFail($id);
     }

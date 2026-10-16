@@ -50,7 +50,7 @@ DearYou has three main areas:
 | Auth | Laravel sessions, email verification codes, password reset codes, Laravel Sanctum API tokens |
 | Email | Resend in production |
 | Queue | Laravel queue worker |
-| Storage | Laravel filesystem storage, public storage link, upload limits, cleanup logs |
+| Storage | Private Laravel media, authorized delivery, upload limits, durable deletion retries and cleanup logs |
 | Testing | PHPUnit feature tests, Laravel Pint |
 | Deployment | DigitalOcean, Nginx, PHP-FPM 8.4, systemd worker/scheduler, Certbot |
 
@@ -105,7 +105,7 @@ Login, registration, verification, password reset, roles, active-account checks,
 
 ### Storage & Media
 
-Uploaded files, public storage links, keepsake media, and storage policy.
+Private uploaded files, authorized media routes, bounded keepsake exports and storage policy.
 
 - Letter media supports images, GIFs, MP4, and Telegram WebM-style uploads
 - Memories can include multiple media items with ordering
@@ -144,7 +144,7 @@ Production hosting, environment setup, and server responsibilities.
 - MySQL database
 - systemd queue worker and scheduler
 - Certbot SSL certificate
-- Name.com DNS
+- Name.com registrar; Cloudflare Free DNS/proxy rollout prepared for owner setup
 - `deploy/` - Nginx, worker, scheduler, upload, backup, and deploy files
 - `backend/.env.example` - local environment template
 - `backend/.env.production.example` - production environment template without secrets
@@ -436,13 +436,15 @@ The collection does not include real login credentials.
 
 Production deployment notes are in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
-To test changes on a separate website before releasing them, follow [docs/STAGING.md](docs/STAGING.md). It prepares `staging.dearyous.app` with separate data, sessions, uploads, background processes and log-only email by default.
+The selected Cloudflare setup keeps DigitalOcean and adds Cloudflare Free. [Phase 5](docs/CLOUDFLARE.md) must reconcile DNS-only audio/video delivery with the new private attachment access checks before proxying the application. DNS, nameservers and installed server configuration have not changed.
+
+Staging is the next setup, before Cloudflare: follow [docs/STAGING.md](docs/STAGING.md) to prepare `staging.dearyous.app` using the existing DNS provider, separate data/sessions/uploads/services and log-only email. Its updater requires a clean checkout matching `REVISION=<full reviewed commit hash>` and only targets staging.
 
 For feedback notifications, verification codes and the admin queue diagnostics, see [docs/EMAIL_DELIVERY.md](docs/EMAIL_DELIVERY.md).
 
 For feedback protection and the 5-per-day feedback email cap, see [docs/FEEDBACK_SPAM.md](docs/FEEDBACK_SPAM.md). The controls are deployed. On 15 October, the owner restarted the worker, confirmed feedback receipts, and the live admin queue drained from 15 jobs to zero. Verification acceptance testing remains skipped. See [the dated status record](docs/STATUS.md).
 
-Production updates are owner-operated deployments of a reviewed commit with a verified backup, preserved settings/uploads, stopped background writers, and health checks before reopening. See [the current deployment guide](docs/DEPLOYMENT.md). The legacy `deploy/deploy.sh` is not the recommended production update path.
+Production updates remain owner-operated. The new [operations guide](docs/OPERATIONS.md) covers exact-commit deployment, private backup/restore verification, stopped writers and service-account checks. [Phases 1–4](docs/PHASES_1_TO_4.md) are implemented locally and require three migrations plus protected-media migration and server static denials before release.
 
 ## Project Status
 
@@ -450,9 +452,9 @@ DearYou is deployed as a production Laravel website for [dearyous.app](https://d
 
 The codebase includes automated feature coverage for authentication, email verification, password reset, letter creation, publishing, expiring links, recipient responses, media uploads, storage limits, account actions, API endpoints, feedback, admin user management, moderation, audit logs, and production readiness checks.
 
-**Latest local suite:** 171 tests, 1417 assertions (PHPUnit, 16 October 2026). Staging setup files are prepared, but the separate website has not been provisioned.
+**Latest local application suite:** 276 tests, 2,233 assertions (PHPUnit, 16 October 2026). Concurrent API upload/rollback probes, offline browser recovery tests, the frontend build, Nginx integration (162 assertions) and isolated operations checks passed. The later staging-first preparation passed 129 Linux boundary assertions, 32 real-configuration integration assertions and 9 mocked staging-updater tests. Provisioning and real server restore/mail/device acceptance remain owner-run.
 
-See [updates and remaining work](docs/ROADMAP.md) for completed releases, pending email acceptance, staging setup, operations hardening and the paused class presentation.
+See [updates and remaining work](docs/ROADMAP.md) for completed releases, dependency security updates, Cloudflare preparation, pending email acceptance, staging setup, operations hardening and the paused class presentation.
 
 For the course case-study plan and partial draft notes, see [Project Software Testing](<Project Software Testing/README.md>). The supplied textbook remains local and should travel with the USB copy. See [the transfer guide](docs/TRANSFER.md) for what Git includes and what needs a separate copy.
 

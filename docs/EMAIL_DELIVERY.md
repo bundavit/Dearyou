@@ -61,7 +61,7 @@ When the owner resumes verification testing, use one fresh synthetic account or 
 
 The old root-to-backend migration is complete for the last confirmed production deployment. Do not apply its one-time cutover again or use `/var/www/dearyou/artisan` as the current application path.
 
-Follow [DEPLOYMENT.md](DEPLOYMENT.md) for owner-reviewed deployment preparation. The general `deploy/deploy.sh` is not an unconditional production recommendation: its automatic service actions and cached-configuration permissions require review, and updates need a current private backup and a pinned release. Preserve the production `.env`, APP_KEY, database, uploads, TLS configuration and correct service paths.
+Follow [DEPLOYMENT.md](DEPLOYMENT.md) and [OPERATIONS.md](OPERATIONS.md) for owner-reviewed pinned deployment, private backup/restore verification and controlled service actions. Preserve production `.env`, APP_KEY, database, media, TLS and correct service paths. The new warning cleanup grace starts after a delivering transport accepts its warning; log/array mail and failover chains containing them cannot authorize destructive cleanup.
 
 Staging infrastructure and banner additions are prepared locally for separate review. This does not establish that `staging.dearyous.app` is provisioned. Staging must have independent data, sessions, storage, services and controlled mail settings before real testing.
 

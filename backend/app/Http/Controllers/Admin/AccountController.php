@@ -3,12 +3,14 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Rules\UniqueEmailIdentity;
 use App\Support\CreatorStorage;
+use App\Support\EmailIdentity;
+use App\Support\MediaFiles;
 use App\Support\PlatformSettings;
+use App\Support\SessionSecurity;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
 
@@ -25,14 +27,19 @@ class AccountController extends Controller
     {
         $user = $request->user();
         $settings = app(PlatformSettings::class);
+
+        if (is_string($request->input('email'))) {
+            $request->merge(['email' => EmailIdentity::normalize($request->input('email'))]);
+        }
+
         $data = $request->validateWithBag('profile', [
             'name' => 'required|string|max:100',
-            'email' => ['required', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
+            'email' => ['required', 'email', 'max:255', new UniqueEmailIdentity($user->id)],
             'current_password' => 'required|current_password',
             'avatar' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:'.$settings->kilobytes($settings->profileImageLimitMb())],
             'remove_avatar' => ['nullable', 'boolean'],
         ]);
-        $emailChanged = $data['email'] !== $user->email;
+        $emailChanged = ! EmailIdentity::same($data['email'], $user->email);
         $oldAvatar = $user->avatar_path;
         $avatarPath = $oldAvatar;
 
@@ -44,7 +51,7 @@ class AccountController extends Controller
             } catch (ValidationException $exception) {
                 throw $exception->errorBag('profile');
             }
-            $avatarPath = $request->file('avatar')->store('avatars', 'public');
+            $avatarPath = app(MediaFiles::class)->store($request->file('avatar'), 'avatars');
         }
 
         $user->forceFill([
@@ -55,7 +62,7 @@ class AccountController extends Controller
         ])->save();
 
         if ($oldAvatar && $oldAvatar !== $avatarPath) {
-            Storage::disk('public')->delete($oldAvatar);
+            app(MediaFiles::class)->deleteAfterCommit([$oldAvatar]);
         }
 
         if ($emailChanged) {
@@ -74,9 +81,11 @@ class AccountController extends Controller
             'password' => ['required', 'confirmed', Password::min(10)->letters()->mixedCase()->numbers()],
         ]);
 
-        $request->user()->update(['password' => $data['password']]);
-        $request->user()->tokens()->delete();
-        $request->session()->regenerate();
+        try {
+            app(SessionSecurity::class)->changePassword($request->user(), $data['password'], $request);
+        } catch (ValidationException $exception) {
+            throw $exception->errorBag('password');
+        }
 
         return back()->with('success', 'Password changed successfully.');
     }

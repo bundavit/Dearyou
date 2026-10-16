@@ -1,6 +1,6 @@
 # DearYou updates and remaining work
 
-Updated 16 October 2026, Asia/Bangkok. Production facts were last checked on 15 October. This is a work list, not a live service-status page. See [STATUS.md](STATUS.md) for the evidence boundary.
+Updated 16 October 2026, Asia/Bangkok. Historical release/recovery observations are dated 15 October; public, selected authenticated read-only and isolated security/QA checks ran on 16 October. This is a work list, not a live service-status page. See [STATUS.md](STATUS.md) for the evidence boundary.
 
 ## Completed
 
@@ -14,16 +14,38 @@ Updated 16 October 2026, Asia/Bangkok. Production facts were last checked on 15 
 | Feedback delivery recovery | Owner restarted the worker and received three emails; the live queue drained from 15 jobs to zero |
 | Class project organization | Five-member, 50-minute plan, textbook and two partial draft scripts grouped under `Project Software Testing/` |
 | Repository cleanup | Old one-off deployment files and the initial audit report moved to a local archive; status and transfer guidance refreshed |
+| Staging preparation and repository sync | Cleanup/staging release committed and pushed as `7d149ad`; local tracked files matched `origin/main` before the new Cloudflare work |
 
 These are selected completed changes and checks. Feedback receipt does not establish successful registration verification or password-reset delivery.
 
-## Prepared locally; owner commit and push pending
+## Local implementation through Phase 4
 
-The current selected release adds the staging guard/updater, Nginx and systemd templates, staging-only page banners, updated docs, class plan and partial draft notes. It does not deploy a staging website or change production.
+The owner requested implementation through Phase 4. Application changes and operations helpers are now prepared locally, with permanent regressions and isolated failure/concurrency checks. See [PHASES_1_TO_4.md](PHASES_1_TO_4.md) for behavior, validation, three migrations and the required private-media rollout; see [OPERATIONS.md](OPERATIONS.md) for backup/restore and pinned deployment.
 
-Use `scripts/latest-release-files.txt` for this release. The full textbook, private archive, credentials, databases, uploads, dependencies and local QA evidence stay outside Git. The owner performs commit/push and deployment steps.
+The folder differs from baseline `7d149ad`. This work does not commit, push, deploy, move production files, change DNS or confirm the installed server revision. The owner performs those actions. Private QA artifacts, credentials, runtime data, dependencies and the full textbook remain outside Git.
 
-## Priority 1: complete the email acceptance checks when resumed
+## Six update phases
+
+| Phase | Current status | Evidence or next gate |
+| --- | --- | --- |
+| 1. Security and account recovery | Implemented locally | Patched locks, zero known advisories at audit time, session/recovery/API scope regressions |
+| 2. Storage, privacy and cleanup | Implemented locally | Authorized private media, verified migration command, overlapping API upload test, rollback/deletion/mail failure regressions |
+| 3. Features, routing and responsive UI | Implemented locally | Adjacent memory ordering, permitted login destinations, clipboard/draft recovery, platform logo, populated responsive acceptance |
+| 4. Admin and operations | Implemented locally | Admin lifecycle/configuration regressions, guarded seeding, protected backup/restore/pinned updater, resilient workers, 18 mocked operations tests |
+| 5. Cloudflare readiness | Deferred until staging works | DNS-only audio/video delivery with private access checks; proxy/cache/IP/CORS/origin policy |
+| 6. Staging acceptance and owner release | Staging preparation first; owner rollout pending | Independent staging config/updater and isolated validation now; owner provisioning, actual restore/mail/media/device checks and release remain separate |
+
+Local implementation does not replace live acceptance. [Cloudflare Free](CLOUDFLARE.md) remains the chosen plan with DigitalOcean hosting. Keep the application DNS only until protected media delivery is ready; the former public static media-host setup cannot serve the new private attachments.
+
+The owner selected staging setup before Cloudflare. Use [STAGING.md](STAGING.md) to add `staging.dearyous.app` at the existing DNS provider, provision separate data/services and test updates while production stays on its current release. The original phase numbers identify work packages; staging acceptance is being brought forward without changing production or Cloudflare settings.
+
+## Security/QA evidence
+
+Earlier 16 October audits reproduced session, API, reset, quota, export, cleanup and admin defects locally and recorded selected live read-only coverage. Those historical diagnostics intentionally asserted some faulty behavior. They remain under ignored `graphify-out/qa-security-2026-10-16/`, while new tracked regressions assert fixed behavior. This implementation does not establish that production received any fix.
+
+The private-media release requires static server denials before reopening, all three database migrations, checksum-verified media migration, private runtime permissions and a fresh verified backup. The third migration resets old enqueue-only cleanup deadlines so a fresh accepted warning starts grace. Follow the new release notes rather than reusing an old selected-file release manifest.
+
+## Email acceptance when resumed
 
 | Remaining item | Next action | Completion evidence |
 | --- | --- | --- |
@@ -33,7 +55,7 @@ Use `scripts/latest-release-files.txt` for this release. The full textbook, priv
 
 Verification is currently deferred at the owner's request, not recorded as a confirmed new failure. Do not replay expired codes, manually verify the account to substitute for the real flow, or retry all failed jobs.
 
-## Priority 2: provision the separate staging website
+## Separate staging website
 
 | Remaining item | Next action | Completion evidence |
 | --- | --- | --- |
@@ -42,9 +64,9 @@ Verification is currently deferred at the owner's request, not recorded as a con
 | Background processes | Install and validate the staging worker and scheduler units | Correct staging paths, active worker/timer and private log-email processing |
 | Staging acceptance | Run the agreed creator/admin/media/expiry tests and inspect headers/access controls | Results tied to the exact reviewed commit, with live data and services preserved |
 
-The local guard passed 75 boundary assertions; DNS, real TLS, installed systemd execution and server-side isolation remain unverified. Follow [STAGING.md](STAGING.md).
+The baseline local guard passed 75 boundary assertions; the extended guard passed 84 after the Cloudflare media-boundary checks. DNS, real TLS, installed systemd execution and server-side isolation remain unverified. Follow [STAGING.md](STAGING.md).
 
-## Priority 3: harden operations before unattended automation
+## Operations before unattended automation
 
 | Remaining item | Existing gap | Desired result |
 | --- | --- | --- |
@@ -56,7 +78,7 @@ These are separate future changes. The cleanup records the gaps and does not cla
 
 ## Later validation and optional improvements
 
-- Broaden the selected QA coverage to audio/video lifecycles and additional browser engines. Those areas were outside the latest focused live pass.
+- Broaden real audio/video codec/device testing and additional browser engines. Local synthetic upload lifecycles and generated WAV controls passed, but actual video playback/device acceptance remains open.
 - Add type-aware static analysis with framework-aware configuration if useful; PHP syntax/Pint checks do not supply that coverage, and PHPStan has not been demonstrated here.
 - Re-run dependency audits when dependencies change and before a later release; historical audit results are not current advisory checks.
 
@@ -66,8 +88,4 @@ The plan and two partial scripts exist. Member names, the final examples, the re
 
 ## Suggested order
 
-1. Review and commit/push the selected cleanup/staging/docs files yourself.
-2. Keep a private USB copy of the textbook and local runtime data that Git does not carry.
-3. Resume email verification/reset acceptance when ready, and provision staging for future tests.
-4. Harden deployment/backup automation before relying on it for unattended updates.
-5. Resume the class presentation and later QA extensions when requested.
+Review the local Phase 1–4 implementation, then complete Phase 5 and Phase 6 before owner rollout. Keep a private USB copy of the textbook and runtime data outside Git. Class presentation work remains separate and paused until resumed.

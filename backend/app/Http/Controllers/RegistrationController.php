@@ -3,6 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Rules\UniqueEmailIdentity;
+use App\Support\EmailIdentity;
+use App\Support\SessionSecurity;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -19,9 +22,13 @@ class RegistrationController extends Controller
 
     public function store(Request $request)
     {
+        if (is_string($request->input('email'))) {
+            $request->merge(['email' => EmailIdentity::normalize($request->input('email'))]);
+        }
+
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:100'],
-            'email' => ['required', 'email', 'max:255', 'unique:users,email'],
+            'email' => ['required', 'email', 'max:255', new UniqueEmailIdentity],
             'password' => ['required', 'confirmed', Password::min(10)->mixedCase()->numbers()],
         ]);
 
@@ -34,6 +41,7 @@ class RegistrationController extends Controller
 
         Auth::login($user);
         $request->session()->regenerate();
+        app(SessionSecurity::class)->establish($request, $user);
         try {
             event(new Registered($user));
         } catch (Throwable $exception) {

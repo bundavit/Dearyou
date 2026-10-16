@@ -15,7 +15,7 @@ The owner performs Git and server operations. Each future deployment needs:
 5. Separate `config:cache`, `event:cache`, `route:cache` and `view:cache` commands so a component failure can stop deployment. Keep runtime directories group-writable without making cached configuration readable to every local account.
 6. Validated Nginx/PHP settings, maintenance-response checks, then homepage/login/health and relevant feature checks before reopening and restoring background processing.
 
-The legacy `deploy/deploy.sh` is retained for history and its mock tests, but is **not the recommended production update path**. It follows moving `main`, does not supply a fresh verified backup or fully stop background writers, and applies overly broad cached-configuration permissions. It needs a separate hardening change before use as unattended deployment automation. The legacy backup helper also needs review before reuse; see the backup section below.
+The new owner-run `deploy/deploy.sh` requires an exact commit, stopped writers and a fresh restore-verified private backup. It preserves maintenance on failure, migrates protected media before reopening and checks the runtime service account. Follow [OPERATIONS.md](OPERATIONS.md) and [the Phase 1–4 release notes](PHASES_1_TO_4.md); these helpers have been tested locally with mocked operations, not deployed.
 
 Owner-run read-only checks for a future deployment session:
 
@@ -30,15 +30,23 @@ nginx -t
 
 Review private configuration and logs on the server; share only sanitized status. Do not print `.env` or raw queued messages.
 
+## Adding Cloudflare Free to the existing server
+
+The selected plan keeps DigitalOcean as the Laravel/MySQL/upload/worker host and adds Cloudflare Free DNS, CDN and protection in front of the application. Follow [CLOUDFLARE.md](CLOUDFLARE.md) for the owner-run DNS migration, Resend-record preservation, Full (strict) TLS, restricted visitor-IP restoration, upload/cache limits and rollback.
+
+Private attachments now use authorized application routes. Leave `PUBLIC_MEDIA_URL` blank; the former static media-host plan is superseded. Phase 5 must provide DNS-only audio/video delivery with the same access checks before the application proxy is enabled. Preserve `APP_URL`, APP_KEY and stored paths, and follow the checksum-verified private-media migration in [PHASES_1_TO_4.md](PHASES_1_TO_4.md).
+
+For an existing deployment, merge reviewed Nginx changes into the installed **HTTPS** virtual host; never overwrite its working Certbot/TLS configuration with the HTTP new-server template below. The Cloudflare real-IP snippet is opt-in and belongs only in application blocks that receive proxied traffic. Review effective PHP/application request limits alongside the template's `95m` complete-body cap. No Cloudflare settings or live deployment have been performed by preparing these files.
+
 ## New-server setup reference
 
-Sections 1-6 below are for an empty new server, not an update or USB restore. Generate keys and seed an administrator only during a genuinely new installation.
+Sections 1-6 below are for an empty new server, not an update or USB restore. Generate a key and provision an administrator only during an initial installation. The sample database seeder is restricted to local/testing environments.
 
 For a separate testing website at `staging.dearyous.app`, use [the staging runbook](STAGING.md). Its database, environment file, storage, worker and scheduler are separate from the production setup below.
 
 Use an Ubuntu 24.04 Droplet with Nginx, PHP 8.4, and MySQL. A Droplet is used
 instead of App Platform because DearYou stores private images, GIFs, and music
-under `backend/storage/app/public`; a Droplet keeps those uploads on persistent disk.
+under `backend/storage/app/private/media`; legacy uploads migrate from `storage/app/public`. A Droplet keeps those files on persistent disk.
 
 ## 1. Create the Droplet
 
@@ -162,9 +170,6 @@ DB_DATABASE=dearyou
 DB_USERNAME=dearyou
 DB_PASSWORD="YOUR_LONG_DB_PASSWORD"
 
-ADMIN_EMAIL=YOUR_ADMIN_EMAIL
-ADMIN_PASSWORD="YOUR_ADMIN_PASSWORD"
-
 MAIL_MAILER=resend
 RESEND_API_KEY="YOUR_RESEND_API_KEY"
 MAIL_FROM_ADDRESS=hello@dearyous.app
@@ -185,7 +190,6 @@ Initialize Laravel and the first admin:
 ```bash
 php artisan key:generate
 php artisan migrate --force
-php artisan db:seed --force
 php artisan storage:link
 php artisan config:cache
 php artisan event:cache
@@ -198,8 +202,7 @@ sudo find storage bootstrap/cache -type f -exec chmod 0660 {} \;
 sudo chmod 0640 .env
 ```
 
-Run `db:seed` only for the initial installation. Running it repeatedly creates
-more sample data.
+Create the first administrator using [INITIAL_ACCOUNTS.md](INITIAL_ACCOUNTS.md) after checking the empty installation. Do not run sample seeding in production or staging; it is restricted to local/testing.
 
 ## 5. Configure Nginx
 
@@ -257,7 +260,7 @@ For future source updates, use the owner-reviewed deployment process at the top 
 
 Keep application/settings/service/TLS and database backups private, outside the web root and repository. Use a protected MySQL option file or server socket authentication; do not source a Laravel `.env` as shell code or put its password on the command line. Verify SQL restoration into a separate temporary database and verify upload/configuration preservation before relying on the backup.
 
-`deploy/backup.sh` is a legacy helper. Its current implementation sources `.env`, exposes a database password as a command argument, and applies retention deletion to its destination. It is not the current backup recommendation and needs a separate reviewed replacement before scheduling. The existing verified production snapshots are historical recovery assets, not fresh backups for a later deployment.
+The new `deploy/backup.sh` uses protected MySQL option files, a private checksum bundle and no automatic pruning. `verify-backup.sh` imports into a newly created, separately scoped scratch database and writes a receipt bound to that backup. Follow [OPERATIONS.md](OPERATIONS.md) for required variables, stopped writers and restore verification. Earlier production snapshots remain historical assets, not fresh backups for a later release.
 
 Keep an off-server copy and record the source revision, data snapshot time, service configuration and restore procedure. A code rollback does not authorize restoring an old database over newer records.
 

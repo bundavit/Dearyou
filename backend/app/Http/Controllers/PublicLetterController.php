@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\LetterLink;
+use App\Support\CreatorStorage;
+use App\Support\MediaAccess;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -31,6 +33,12 @@ class PublicLetterController extends Controller
         $filename = Str::slug($letter->title ?: 'dearyou-letter') ?: 'dearyou-letter';
 
         if ($request->query('format') === 'html') {
+            $paths = app(MediaAccess::class)->paths($letter)->reject(fn ($path) => $path === $letter->audio_path);
+            $bytes = $paths->sum(fn ($path) => app(CreatorStorage::class)->pathSize($path));
+            if ($bytes > config('dearyou.keepsake_max_media_bytes') || $paths->count() > config('dearyou.keepsake_max_media_files')) {
+                return response()->view('public.download-too-large', ['token' => $token], 413);
+            }
+
             return response()
                 ->view('public.download', ['letter' => $letter], 200, [
                     'Content-Type' => 'text/html; charset=UTF-8',

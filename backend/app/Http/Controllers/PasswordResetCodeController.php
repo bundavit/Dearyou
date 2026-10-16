@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\EmailIdentity;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -31,26 +32,53 @@ class PasswordResetCodeController extends Controller
             return redirect()->route('password.request');
         }
 
-        $record = DB::table('password_reset_codes')->where('email', $email)->first();
+        $request->session()->forget('password_reset_authorized');
+        $authorization = DB::transaction(function () use ($email, $validated) {
+            $user = EmailIdentity::findActive($email);
 
-        if (! $record || now()->greaterThan(Carbon::parse($record->expires_at)) || $record->attempts >= 5) {
-            DB::table('password_reset_codes')->where('email', $email)->delete();
+            if ($user === null) {
+                DB::table('password_reset_codes')->whereRaw('LOWER(TRIM(email)) = ?', [EmailIdentity::normalize($email)])->delete();
 
+                return null;
+            }
+
+            $records = DB::table('password_reset_codes')->where('email', $user->email);
+            $record = (clone $records)->lockForUpdate()->first();
+
+            if ($record === null || now()->greaterThanOrEqualTo(Carbon::parse($record->expires_at)) || (int) $record->attempts >= 5) {
+                $records->delete();
+
+                return null;
+            }
+
+            if (! Hash::check($validated['code'], $record->code)) {
+                $records->increment('attempts');
+
+                return null;
+            }
+
+            // Consume the exact issuance before granting session authorization.
+            if ($records->where('code', $record->code)->delete() !== 1) {
+                return null;
+            }
+
+            return [
+                'user_id' => $user->id,
+                'email' => EmailIdentity::normalize($user->email),
+                'password_fingerprint' => hash('sha256', $user->getAuthPassword()),
+                'session_version' => (int) $user->session_version,
+                'expires_at' => now()->addMinutes(10)->timestamp,
+            ];
+        });
+
+        if ($authorization === null) {
             return back()->withErrors(['code' => 'This code is invalid or expired. Request a new code.']);
         }
 
-        if (! Hash::check($validated['code'], $record->code)) {
-            DB::table('password_reset_codes')->where('email', $email)->increment('attempts');
-
-            return back()->withErrors(['code' => 'This code is invalid or expired.']);
-        }
-
-        DB::table('password_reset_codes')->where('email', $email)->delete();
         $request->session()->forget('password_reset_email');
-        $request->session()->put('password_reset_authorized', [
-            'email' => $email,
-            'expires_at' => now()->addMinutes(10)->timestamp,
-        ]);
+        $request->session()->regenerate();
+        $request->session()->regenerateToken();
+        $request->session()->put('password_reset_authorized', $authorization);
 
         return redirect()->route('password.reset');
     }

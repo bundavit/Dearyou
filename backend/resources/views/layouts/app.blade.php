@@ -12,7 +12,7 @@
 <body class="admin-body">
 <div class="admin-shell">
     <aside class="sidebar">
-        <a class="brand d-flex align-items-center gap-2 mb-4" href="{{ route('admin.dashboard') }}"><img class="sidebar-brand-logo" src="{{ asset('assets/dearyou/dearyou-floral-envelope-logo-web.webp') }}" alt=""><span>DearYou</span></a>
+        <a class="brand d-flex align-items-center gap-2 mb-4" href="{{ route('admin.platform') }}"><img class="sidebar-brand-logo" src="{{ asset('assets/dearyou/dearyou-floral-envelope-logo-web.webp') }}" alt=""><span>DearYou</span></a>
         <nav class="nav flex-column gap-2">
             @if(auth()->user()->isAdmin())
                 <a class="nav-link {{ request()->routeIs('admin.platform') ? 'active' : '' }}" href="{{ route('admin.platform') }}"><i class="bi bi-bar-chart"></i> Platform</a>

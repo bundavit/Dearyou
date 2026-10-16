@@ -18,6 +18,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\EmailVerificationController;
 use App\Http\Controllers\FeedbackController;
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\MediaController;
 use App\Http\Controllers\NewPasswordController;
 use App\Http\Controllers\PasswordResetCodeController;
 use App\Http\Controllers\PasswordResetLinkController;
@@ -49,14 +50,19 @@ Route::middleware(['auth', 'active'])->group(function () {
 Route::post('/logout', [AuthController::class, 'destroy'])->middleware('auth')->name('logout');
 Route::post('/admin/logout', [AuthController::class, 'destroy'])->middleware('auth')->name('logout.legacy');
 Route::get('/l/{token}', [PublicLetterController::class, 'show'])->name('letters.public');
-Route::get('/l/{token}/download', [PublicLetterController::class, 'download'])->name('letters.download');
+Route::get('/l/{token}/media/{media}', [MediaController::class, 'public'])->where('media', '[a-f0-9]{64}')->name('media.public');
+Route::middleware(['auth', 'active', 'verified'])->group(function () {
+    Route::get('/media/letters/{letter}/{media}', [MediaController::class, 'owner'])->where('media', '[a-f0-9]{64}')->name('media.owner');
+    Route::get('/media/avatar', [MediaController::class, 'avatar'])->name('media.avatar');
+});
+Route::get('/l/{token}/download', [PublicLetterController::class, 'download'])->middleware('throttle:keepsakes')->name('letters.download');
 Route::post('/l/{token}/response', [PublicLetterController::class, 'respond'])->middleware('throttle:recipient-responses')->name('letters.respond');
 
 Route::get('/dashboard', function () {
     return redirect()->route(auth()->user()->isAdmin() ? 'admin.platform' : 'letters.index');
 })->middleware(['auth', 'active', 'verified'])->name('dashboard');
 
-Route::middleware(['auth', 'active', 'verified', 'role:user'])->group(function () {
+Route::middleware(['auth', 'active', 'verified', 'role:user', 'media.write'])->group(function () {
     Route::get('/account', [AccountController::class, 'edit'])->name('account.edit');
     Route::put('/account/profile', [AccountController::class, 'updateProfile'])->name('account.profile');
     Route::put('/account/password', [AccountController::class, 'updatePassword'])->name('account.password');
@@ -82,7 +88,7 @@ Route::middleware(['auth', 'active', 'verified', 'role:user'])->group(function (
     Route::delete('/responses/{response}', [InboxController::class, 'destroy'])->name('responses.destroy');
 });
 
-Route::prefix('admin')->name('admin.')->middleware(['admin.network', 'auth', 'active', 'verified', 'role:admin'])->group(function () {
+Route::prefix('admin')->name('admin.')->middleware(['admin.network', 'auth', 'active', 'verified', 'role:admin', 'media.write'])->group(function () {
     Route::get('/platform', PlatformDashboardController::class)->name('platform');
     Route::get('/users', [PlatformUserController::class, 'index'])->name('users.index');
     Route::get('/users/{user}', [PlatformUserController::class, 'show'])->name('users.show');

@@ -14,7 +14,7 @@
             <p class="account-verification-status {{ auth()->user()->hasVerifiedEmail() ? 'is-verified' : 'is-pending' }}"><i class="bi bi-{{ auth()->user()->hasVerifiedEmail() ? 'patch-check-fill' : 'exclamation-circle' }}"></i> {{ auth()->user()->hasVerifiedEmail() ? 'Email verified' : 'Email verification pending' }}</p>
             <div class="account-avatar-editor">
                 @if(auth()->user()->avatar_path)
-                    <img src="{{ Storage::url(auth()->user()->avatar_path) }}" alt="Current profile picture">
+                    <img src="{{ route('media.avatar') }}" alt="Current profile picture">
                 @else
                     <span aria-hidden="true">{{ Str::upper(Str::substr(auth()->user()->name, 0, 1)) }}</span>
                 @endif

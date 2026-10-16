@@ -3,9 +3,11 @@
 namespace Database\Seeders;
 
 use App\Models\User;
+use App\Support\EmailIdentity;
 use App\Support\PlatformSettings;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
 
 class DatabaseSeeder extends Seeder
 {
@@ -16,6 +18,31 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        if (! app()->environment(['local', 'testing'])) {
+            throw new \RuntimeException('Sample seeding is restricted to local/testing environments. Provision production administrators explicitly.');
+        }
+
+        DB::transaction(fn () => $this->seedSamples());
+    }
+
+    private function seedSamples(): void
+    {
+        $email = EmailIdentity::normalize((string) env('ADMIN_EMAIL', 'admin@dearyou.test'));
+        $matches = EmailIdentity::query($email)->lockForUpdate()->limit(2)->get();
+        $admin = $matches->first();
+
+        if ($matches->count() > 1 || ($admin && (! $admin->isAdmin() || $admin->trashed() || $admin->disabled_at))) {
+            throw new \RuntimeException('The configured sample administrator email is already reserved by an ambiguous, creator, deleted, or disabled account. No account or settings were changed.');
+        }
+
+        $admin ??= User::create([
+            'email' => $email,
+            'name' => 'DearYou Admin',
+            'password' => env('ADMIN_PASSWORD', 'change-me-local-admin-password'),
+            'role' => User::ROLE_ADMIN,
+            'email_verified_at' => now(),
+        ]);
+
         app(PlatformSettings::class)->update([
             'allowed_expiry_minutes' => PlatformSettings::DEFAULT_EXPIRY_OPTIONS,
             'default_expiry_minutes' => 60,
@@ -30,18 +57,6 @@ class DatabaseSeeder extends Seeder
             'memory_files_per_upload' => 10,
         ]);
 
-        $admin = User::firstOrCreate(
-            ['email' => env('ADMIN_EMAIL', 'admin@dearyou.test')],
-            [
-                'name' => 'DearYou Admin',
-                'password' => env('ADMIN_PASSWORD', 'change-me-local-admin-password'),
-                'role' => User::ROLE_ADMIN,
-                'email_verified_at' => now(),
-            ],
-        );
-        if (! $admin->isAdmin()) {
-            $admin->update(['role' => User::ROLE_ADMIN]);
-        }
         if (! $admin->hasVerifiedEmail()) {
             $admin->markEmailAsVerified();
         }

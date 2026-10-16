@@ -2528,3 +2528,105 @@ linear-gradient(145deg,color-mix(in srgb,var(--paper),white 24%),color-mix(in sr
     border-top: 4px dashed color-mix(in srgb, var(--accent), #6b4b3b 28%);
     clip-path: none;
 }
+
+/* Keep populated workspaces usable with long names, links and larger totals. */
+.creator-content,
+.platform-user-list,
+.admin-record-list {
+    min-width: 0;
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.admin-main .dashboard-stats {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+
+.creator-main .letter-card,
+.creator-main .response-card > .flex-grow-1,
+.platform-user-card,
+.platform-user-heading,
+.admin-main .admin-page-header > div,
+.admin-main .response-detail,
+.admin-record-card {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.creator-main .letter-card,
+.creator-main .response-card,
+.platform-user-heading strong,
+.admin-main .admin-page-header h1,
+.admin-main .admin-page-header p,
+.admin-main .stat-card strong,
+.admin-main .response-message,
+.admin-record-message,
+.admin-record-meta span,
+.admin-main .letter-detail-list dd {
+    overflow-wrap: anywhere;
+}
+
+.platform-user-heading strong,
+.admin-record-heading strong,
+.admin-record-meta span,
+.moderation-category,
+.admin-main .letter-detail-list dd {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.moderation-category {
+    overflow-wrap: anywhere;
+}
+
+.creator-main .response-card > .btn {
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+.admin-main .response-detail form.d-flex {
+    min-width: 0;
+    flex-wrap: wrap;
+}
+
+.admin-main .response-detail form.d-flex .form-select {
+    flex: 1 1 10rem;
+    min-width: 0;
+    max-width: 100%;
+}
+
+@media (max-width: 1100px) {
+    .admin-main .dashboard-stat strong {
+        font-size: 1.25rem;
+    }
+}
+
+@media (max-width: 650px) {
+    .platform-user-metrics {
+        min-width: 0;
+        max-width: 100%;
+        flex-wrap: wrap;
+        justify-content: flex-start;
+        gap: .6rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .admin-main .dashboard-stats,
+    .admin-main .response-detail > .d-flex:last-child,
+    .admin-main .admin-record-card {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .admin-main .admin-record-side {
+        grid-column: 1;
+    }
+
+    .admin-main .admin-page-header > .d-flex {
+        flex-wrap: wrap;
+        width: 100%;
+    }
+
+    .admin-main .admin-page-header > .d-flex > .btn {
+        flex: 1 1 100%;
+    }
+}

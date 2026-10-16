@@ -6,7 +6,6 @@ use App\Models\User;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Throwable;
 
@@ -85,11 +84,13 @@ class CreatorStorage
     public function pathSize(string $path): int
     {
         try {
-            return Storage::disk('public')->exists($path)
-                ? (int) Storage::disk('public')->size($path)
+            $disk = app(MediaAccess::class)->disk($path);
+
+            return $disk->exists($path)
+                ? (int) $disk->size($path)
                 : 0;
-        } catch (Throwable) {
-            return 0;
+        } catch (Throwable $exception) {
+            throw new \RuntimeException('Storage usage is temporarily unavailable. Please try again.', previous: $exception);
         }
     }
 
@@ -97,7 +98,6 @@ class CreatorStorage
     {
         $letterPaths = DB::table('letters')
             ->where('user_id', $user->id)
-            ->whereNull('deleted_at')
             ->get(['image_path', 'audio_path', 'sender_profile_path', 'recipient_profile_path'])
             ->flatMap(fn ($letter) => [
                 $letter->image_path,
@@ -109,17 +109,19 @@ class CreatorStorage
         $legacyMemoryPaths = DB::table('letter_memories')
             ->join('letters', 'letters.id', '=', 'letter_memories.letter_id')
             ->where('letters.user_id', $user->id)
-            ->whereNull('letters.deleted_at')
             ->pluck('letter_memories.image_path');
 
         $memoryImagePaths = DB::table('letter_memory_images')
             ->join('letter_memories', 'letter_memories.id', '=', 'letter_memory_images.letter_memory_id')
             ->join('letters', 'letters.id', '=', 'letter_memories.letter_id')
             ->where('letters.user_id', $user->id)
-            ->whereNull('letters.deleted_at')
             ->pluck('letter_memory_images.image_path');
 
+        $pendingPaths = DB::table('media_deletions')->where('owner_id', $user->id)->pluck('paths')
+            ->flatMap(fn ($paths) => json_decode($paths, true, flags: JSON_THROW_ON_ERROR));
+
         return $letterPaths
+            ->merge($pendingPaths)
             ->merge($legacyMemoryPaths)
             ->merge($memoryImagePaths)
             ->push($user->avatar_path)

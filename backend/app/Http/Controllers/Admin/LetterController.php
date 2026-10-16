@@ -8,9 +8,9 @@ use App\Models\Letter;
 use App\Support\CreatorRoute;
 use App\Support\LetterData;
 use App\Support\LetterPublisher;
+use App\Support\MediaFiles;
 use App\Support\PlatformSettings;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 
 class LetterController extends Controller
 {
@@ -131,18 +131,7 @@ class LetterController extends Controller
     public function destroy(Letter $letter)
     {
         $this->authorize('delete', $letter);
-        $memoryImages = $letter->memories()->with('images')->get()
-            ->flatMap(fn ($memory) => $memory->images->pluck('image_path'))
-            ->all();
-
-        Storage::disk('public')->delete(array_filter([
-            $letter->image_path,
-            $letter->audio_path,
-            $letter->sender_profile_path,
-            $letter->recipient_profile_path,
-            ...$letter->memories()->pluck('image_path')->filter()->all(),
-            ...$memoryImages,
-        ]));
+        app(MediaFiles::class)->detachLetter($letter);
         $letter->delete();
 
         return redirect()->route(CreatorRoute::name('letters.index'))->with('success', 'Letter deleted.');

@@ -8,7 +8,8 @@ use App\Models\Letter;
 use App\Models\Response;
 use App\Support\LetterData;
 use App\Support\LetterPublisher;
-use Illuminate\Support\Facades\Storage;
+use App\Support\MediaAccess;
+use App\Support\MediaFiles;
 
 class LetterController extends Controller
 {
@@ -31,7 +32,15 @@ class LetterController extends Controller
         $this->authorize('view', $letter);
         $this->requireAbility('letters:read');
 
-        return $letter->load('link', 'responses', 'memories.images');
+        $letter->load('link', 'memories.images');
+
+        if (request()->user()->tokenCan('responses:read')) {
+            $letter->load('responses');
+        } else {
+            $letter->unsetRelation('responses');
+        }
+
+        return $letter;
     }
 
     public function update(LetterRequest $request, Letter $letter, LetterData $data)
@@ -43,22 +52,19 @@ class LetterController extends Controller
         return $letter;
     }
 
+    public function media(Letter $letter, string $media, MediaAccess $files)
+    {
+        $this->authorize('view', $letter);
+        $this->requireAbility('letters:read');
+
+        return $files->response($letter, $media);
+    }
+
     public function destroy(Letter $letter)
     {
         $this->authorize('delete', $letter);
         $this->requireAbility('letters:write');
-        $memoryImages = $letter->memories()->with('images')->get()
-            ->flatMap(fn ($memory) => $memory->images->pluck('image_path'))
-            ->all();
-
-        Storage::disk('public')->delete(array_filter([
-            $letter->image_path,
-            $letter->audio_path,
-            $letter->sender_profile_path,
-            $letter->recipient_profile_path,
-            ...$letter->memories()->pluck('image_path')->filter()->all(),
-            ...$memoryImages,
-        ]));
+        app(MediaFiles::class)->detachLetter($letter);
         $letter->delete();
 
         return response()->noContent();

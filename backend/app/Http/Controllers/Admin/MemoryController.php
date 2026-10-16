@@ -7,9 +7,9 @@ use App\Models\Letter;
 use App\Models\LetterMemory;
 use App\Models\LetterMemoryImage;
 use App\Support\CreatorStorage;
+use App\Support\MediaFiles;
 use App\Support\PlatformSettings;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 
 class MemoryController extends Controller
 {
@@ -44,7 +44,7 @@ class MemoryController extends Controller
         );
         unset($data['memory_image'], $data['memory_images'], $data['remove_memory_images']);
         if ($request->boolean('remove_memory_image') || $request->hasFile('memory_image')) {
-            Storage::disk('public')->delete($memory->image_path);
+            app(MediaFiles::class)->deleteAfterCommit([$memory->image_path]);
             $data['image_path'] = null;
         }
         $memory->update($data);
@@ -62,7 +62,7 @@ class MemoryController extends Controller
         $order = $direction === 'up' ? 'desc' : 'asc';
         $neighbor = $memory->letter->memories()
             ->where('sort_order', $comparison, $memory->sort_order)
-            ->orderBy('sort_order', $order)
+            ->reorder('sort_order', $order)
             ->first();
 
         if ($neighbor) {
@@ -105,7 +105,7 @@ class MemoryController extends Controller
     public function destroy(LetterMemory $memory)
     {
         $this->authorize('delete', $memory);
-        Storage::disk('public')->delete(array_filter([
+        app(MediaFiles::class)->deleteAfterCommit(array_filter([
             $memory->image_path,
             ...$memory->images()->pluck('image_path')->all(),
         ]));
@@ -141,7 +141,7 @@ class MemoryController extends Controller
         $nextOrder = ($memory->images()->max('sort_order') ?? -1) + 1;
         foreach ($files as $file) {
             $memory->images()->create([
-                'image_path' => $file->store('letters/memories', 'public'),
+                'image_path' => app(MediaFiles::class)->store($file, 'letters/memories'),
                 'sort_order' => $nextOrder++,
             ]);
         }
@@ -150,7 +150,7 @@ class MemoryController extends Controller
     private function removeImages(Request $request, LetterMemory $memory): void
     {
         $images = $memory->images()->whereIn('id', $request->input('remove_memory_images', []))->get();
-        Storage::disk('public')->delete($images->pluck('image_path')->all());
+        app(MediaFiles::class)->deleteAfterCommit($images->pluck('image_path')->all());
         $memory->images()->whereKey($images->modelKeys())->delete();
     }
 

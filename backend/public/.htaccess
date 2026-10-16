@@ -5,6 +5,9 @@
 
     RewriteEngine On
 
+    # Legacy letter uploads and avatars must pass application authorization.
+    RewriteRule ^storage/(?:letters|avatars|memories)(?:/|$) - [R=404,L,NC]
+
     # Handle Authorization Header
     RewriteCond %{HTTP:Authorization} .
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]

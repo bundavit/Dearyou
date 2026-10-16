@@ -74,7 +74,7 @@
     @if($letter->audio_path)
         <div class="letter-audio-player">
             <button type="button" data-audio-toggle aria-label="Play background music"><i class="bi bi-play-fill"></i><span>Play music</span></button>
-            <audio data-letter-audio loop preload="metadata" src="{{ Storage::url($letter->audio_path) }}"></audio>
+            <audio data-letter-audio loop preload="metadata" src="{{ $letter->mediaUrl($letter->audio_path) }}"></audio>
         </div>
     @endif
     @if(!empty($preview))<div class="preview-ribbon">Preview</div>@endif
@@ -134,7 +134,7 @@
                             <h3>{{ $memory->title }}</h3>
                             @if($memory->images->isNotEmpty())
                                 <div class="memory-gallery memory-gallery-{{ min($memory->images->count(), 4) }}">
-                                    @foreach($memory->images as $image)<button type="button" class="memory-gallery-button" data-lightbox-image="{{ Storage::url($image->image_path) }}" data-lightbox-type="{{ \App\Models\Letter::isVideoMediaPath($image->image_path) ? 'video' : 'image' }}" data-lightbox-alt="{{ $memory->title }} picture {{ $loop->iteration }}">@if(\App\Models\Letter::isVideoMediaPath($image->image_path))<video src="{{ Storage::url($image->image_path) }}" preload="metadata" muted loop playsinline data-letter-video data-autoplay-when-visible aria-label="{{ $memory->title }} picture {{ $loop->iteration }}"></video>@else<img src="{{ Storage::url($image->image_path) }}" alt="{{ $memory->title }} picture {{ $loop->iteration }}" loading="lazy" decoding="async">@endif</button>@endforeach
+                                    @foreach($memory->images as $image)<button type="button" class="memory-gallery-button" data-lightbox-image="{{ $letter->mediaUrl($image->image_path) }}" data-lightbox-type="{{ \App\Models\Letter::isVideoMediaPath($image->image_path) ? 'video' : 'image' }}" data-lightbox-alt="{{ $memory->title }} picture {{ $loop->iteration }}">@if(\App\Models\Letter::isVideoMediaPath($image->image_path))<video src="{{ $letter->mediaUrl($image->image_path) }}" preload="metadata" muted loop playsinline data-letter-video data-autoplay-when-visible aria-label="{{ $memory->title }} picture {{ $loop->iteration }}"></video>@else<img src="{{ $letter->mediaUrl($image->image_path) }}" alt="{{ $memory->title }} picture {{ $loop->iteration }}" loading="lazy" decoding="async">@endif</button>@endforeach
                                 </div>
                             @endif
                             @if($memory->caption)<p>{{ $memory->caption }}</p>@endif
@@ -145,7 +145,7 @@
         @endif
         <p class="letter-signoff">With care,<br><strong>{{ $letter->senderLabel() }}</strong></p>
         @if($letter->image_path)
-            <figure class="letter-image letter-image-after-message">@if(\App\Models\Letter::isVideoMediaPath($letter->image_path))<video src="{{ Storage::url($letter->image_path) }}" preload="metadata" muted loop playsinline data-letter-video data-autoplay-when-visible aria-label="{{ $letter->image_alt ?: 'Letter video' }}"></video>@else<img src="{{ Storage::url($letter->image_path) }}" alt="{{ $letter->image_alt ?: '' }}" loading="lazy" decoding="async">@endif @if($letter->image_alt)<figcaption>{{ $letter->image_alt }}</figcaption>@endif</figure>
+            <figure class="letter-image letter-image-after-message">@if(\App\Models\Letter::isVideoMediaPath($letter->image_path))<video src="{{ $letter->mediaUrl($letter->image_path) }}" preload="metadata" muted loop playsinline data-letter-video data-autoplay-when-visible aria-label="{{ $letter->image_alt ?: 'Letter video' }}"></video>@else<img src="{{ $letter->mediaUrl($letter->image_path) }}" alt="{{ $letter->image_alt ?: '' }}" loading="lazy" decoding="async">@endif @if($letter->image_alt)<figcaption>{{ $letter->image_alt }}</figcaption>@endif</figure>
         @endif
         @if(empty($preview) && isset($link))
             <div class="letter-keepsake-actions">

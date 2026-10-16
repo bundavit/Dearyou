@@ -95,15 +95,24 @@ function stagingConfigErrors(array $config): array
     $expect($get('app.previous_keys', []) === [], 'Do not copy previous application keys into staging.');
 
     $expect(in_array($get('filesystems.default'), ['local', 'public'], true), 'The default filesystem must be local or public.');
-    foreach (['local' => 'private', 'public' => 'public'] as $disk => $directory) {
+    foreach (['local' => 'private', 'public' => 'private/media', 'legacy_media' => 'public'] as $disk => $directory) {
         $expect($get('filesystems.disks.'.$disk.'.driver') === 'local', 'The '.$disk.' disk must use the local driver.');
         $expect($get('filesystems.disks.'.$disk.'.root') === STAGING_APP.'/storage/app/'.$directory, 'The '.$disk.' disk root must be inside staging storage.');
+    }
+    foreach (['public', 'legacy_media'] as $disk) {
+        $expect($get('filesystems.disks.'.$disk.'.visibility') === 'private', 'The '.$disk.' disk visibility must be private.');
+        $expect($get('filesystems.disks.'.$disk.'.serve', false) === false, 'Managed media must be served only by authorized application routes.');
     }
     $expect($get('filesystems.disks.public.url') === 'https://staging.dearyous.app/storage', 'Public storage URL must use the staging hostname.');
     $expect($get('filesystems.links') === [STAGING_APP.'/public/storage' => STAGING_APP.'/storage/app/public'], 'Only the staging public/storage link may be configured.');
 
-    foreach (['session.files', 'cache.stores.file.path', 'cache.stores.file.lock_path', 'view.compiled'] as $pathKey) {
-        $expect(isStagingPath($get($pathKey)), $pathKey.' must be inside staging.');
+    foreach ([
+        'session.files' => 'sessions',
+        'cache.stores.file.path' => 'cache/data',
+        'cache.stores.file.lock_path' => 'cache/data',
+        'view.compiled' => 'views',
+    ] as $pathKey => $directory) {
+        $expect($get($pathKey) === STAGING_APP.'/storage/framework/'.$directory, $pathKey.' must use its dedicated staging framework directory.');
     }
     foreach ($get('filesystems.disks', []) as $disk) {
         if (is_array($disk) && array_key_exists('root', $disk)) {
@@ -124,6 +133,14 @@ function stagingConfigErrors(array $config): array
     $resendKey = $get('services.resend.key');
     if ($mailer === 'log') {
         $expect($blank($resendKey), 'Leave the Resend key blank while using log mail.');
+        foreach ([
+            'mail.mailers.log.channel' => 'mail',
+            'logging.channels.mail.driver' => 'single',
+            'logging.channels.mail.path' => STAGING_APP.'/storage/logs/dearyou-mail.log',
+            'logging.channels.mail.level' => 'debug',
+        ] as $path => $value) {
+            $expect($get($path) === $value, 'Log mail must use the dedicated staging debug file channel.');
+        }
     } elseif ($mailer === 'resend') {
         $expect(is_string($resendKey) && trim($resendKey) !== '', 'Resend delivery testing requires a dedicated nonblank key.');
         $expect(filter_var($get('mail.from.address'), FILTER_VALIDATE_EMAIL) !== false, 'Resend delivery testing requires a valid sender address.');
@@ -139,31 +156,49 @@ function isStagingPath(mixed $path): bool
         && ! preg_match('~(?:^|/)\.\.(?:/|$)|[\\\\\x00]~', $path);
 }
 
+/** Shell values must not mask the .env configuration used by staging services. */
+function assertNoStagingEnvironmentOverrides(array $environment): void
+{
+    foreach ($environment as $name => $value) {
+        if (preg_match('/^(APP_|DB_|DATABASE_URL$|SESSION_|CACHE_|QUEUE_|MAIL_|RESEND_|FILESYSTEM_|PUBLIC_MEDIA_URL$|LOG_|LARAVEL_|VIEW_)/', $name)
+            && ! ($name === 'APP_ENV' && $value === 'staging')) {
+            throw new \RuntimeException('Remove inherited application environment overrides before running staging deployment.');
+        }
+    }
+}
+
 /** Refuse symlinked writable trees, including nested links to another application. */
 function assertStagingFilesystem(): void
 {
-    foreach ([STAGING_REPO, STAGING_APP, STAGING_APP.'/storage', STAGING_APP.'/bootstrap/cache', STAGING_APP.'/public'] as $path) {
-        if (realpath($path) !== $path || ! is_dir($path)) {
+    assertStagingFilesystemAt(STAGING_REPO);
+}
+
+/** Internal boundary validator accepts an isolated fixture root for filesystem tests. */
+function assertStagingFilesystemAt(string $repository): void
+{
+    $application = $repository.'/backend';
+    foreach ([$repository, $application, $application.'/storage', $application.'/bootstrap/cache', $application.'/public'] as $path) {
+        if (resolvedStagingPath($path) !== $path || ! is_dir($path)) {
             throw new \RuntimeException('Staging directories must exist at their fixed, non-symlinked paths.');
         }
     }
-    if (is_link(STAGING_APP.'/.env') || ! is_file(STAGING_APP.'/.env')) {
+    if (is_link($application.'/.env') || ! is_file($application.'/.env')) {
         throw new \RuntimeException('Staging requires its own regular backend/.env file.');
     }
     foreach (['artisan', 'bootstrap/app.php', 'composer.json', 'package.json'] as $file) {
-        if (realpath(STAGING_APP.'/'.$file) !== STAGING_APP.'/'.$file) {
+        if (resolvedStagingPath($application.'/'.$file) !== $application.'/'.$file) {
             throw new \RuntimeException('Deployment entry points/manifests must be regular staging files.');
         }
     }
     foreach (['vendor', 'node_modules', 'public/build'] as $directory) {
-        if (! existingAncestorIsStaging(STAGING_APP.'/'.$directory)) {
+        if (! existingAncestorInside($application.'/'.$directory, $application)) {
             throw new \RuntimeException('Dependency/build directories must resolve inside staging.');
         }
     }
-    if (file_exists(STAGING_APP.'/.env.staging') || is_link(STAGING_APP.'/.env.staging')) {
+    if (file_exists($application.'/.env.staging') || is_link($application.'/.env.staging')) {
         throw new \RuntimeException('Use backend/.env only; alternate .env.staging files are not allowed.');
     }
-    foreach ([STAGING_APP.'/storage', STAGING_APP.'/bootstrap/cache'] as $directory) {
+    foreach ([$application.'/storage', $application.'/bootstrap/cache'] as $directory) {
         $files = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($directory, \FilesystemIterator::SKIP_DOTS), \RecursiveIteratorIterator::SELF_FIRST);
         foreach ($files as $file) {
             if ($file->isLink()) {
@@ -171,9 +206,15 @@ function assertStagingFilesystem(): void
             }
         }
     }
-    $link = STAGING_APP.'/public/storage';
-    if ((file_exists($link) || is_link($link)) && (! is_link($link) || realpath($link) !== STAGING_APP.'/storage/app/public')) {
+    $link = $application.'/public/storage';
+    if ((file_exists($link) || is_link($link)) && (! is_link($link) || resolvedStagingPath($link) !== $application.'/storage/app/public')) {
         throw new \RuntimeException('public/storage must link only to staging storage/app/public.');
+    }
+    $files = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($application.'/public', \FilesystemIterator::SKIP_DOTS), \RecursiveIteratorIterator::SELF_FIRST);
+    foreach ($files as $file) {
+        if ($file->isLink() && str_replace('\\', '/', $file->getPathname()) !== $link) {
+            throw new \RuntimeException('Additional symlinks in the web public directory are not allowed.');
+        }
     }
 }
 
@@ -193,13 +234,7 @@ function runStagingPreflight(): int
     });
     try {
         assertStagingFilesystem();
-        // Prevent shell-only credentials from masking unsafe .env values used by services.
-        foreach (array_keys(getenv()) as $name) {
-            if (preg_match('/^(APP_|DB_|DATABASE_URL$|SESSION_|CACHE_|QUEUE_|MAIL_|RESEND_|FILESYSTEM_|LOG_|LARAVEL_|VIEW_)/', $name)
-                && ! ($name === 'APP_ENV' && getenv($name) === 'staging')) {
-                throw new \RuntimeException('Remove inherited application environment overrides before running staging deployment.');
-            }
-        }
+        assertNoStagingEnvironmentOverrides(getenv());
         foreach (['COMPOSER', 'COMPOSER_VENDOR_DIR', 'COMPOSER_BIN_DIR'] as $name) {
             if (! in_array(getenv($name), [false, ''], true)) {
                 throw new \RuntimeException('Remove Composer manifest/output-path overrides before staging deployment.');
@@ -225,9 +260,9 @@ function runStagingPreflight(): int
         if (($fileEnvironment['APP_ENV'] ?? null) !== 'staging') {
             throw new \RuntimeException('The staging environment file must explicitly set APP_ENV=staging.');
         }
-        foreach (['APP_CONFIG_CACHE', 'APP_SERVICES_CACHE', 'APP_PACKAGES_CACHE', 'APP_ROUTES_CACHE', 'APP_EVENTS_CACHE', 'LARAVEL_STORAGE_PATH', 'APP_BASE_PATH', 'DB_URL', 'DATABASE_URL'] as $name) {
+        foreach (['APP_CONFIG_CACHE', 'APP_SERVICES_CACHE', 'APP_PACKAGES_CACHE', 'APP_ROUTES_CACHE', 'APP_EVENTS_CACHE', 'LARAVEL_STORAGE_PATH', 'APP_BASE_PATH', 'DB_URL', 'DATABASE_URL', 'PUBLIC_MEDIA_URL'] as $name) {
             if (! in_array(Env::get($name), [null, ''], true)) {
-                throw new \RuntimeException('Path/database URL overrides are not allowed in the staging environment.');
+                throw new \RuntimeException('Path/database/static media URL overrides are not allowed in the staging environment.');
             }
         }
 
@@ -302,6 +337,12 @@ function runStagingPreflight(): int
 
 function existingAncestorIsStaging(string $path): bool
 {
+    return existingAncestorInside($path, STAGING_APP);
+}
+
+/** No directory creation or writes: resolve only the nearest existing ancestor. */
+function existingAncestorInside(string $path, string $application): bool
+{
     while (! file_exists($path) && ! is_link($path)) {
         $parent = dirname($path);
         if ($parent === $path) {
@@ -309,9 +350,16 @@ function existingAncestorIsStaging(string $path): bool
         }
         $path = $parent;
     }
+    $resolved = resolvedStagingPath($path);
+
+    return $resolved === $application || (is_string($resolved) && str_starts_with($resolved, $application.'/'));
+}
+
+function resolvedStagingPath(string $path): string|false
+{
     $resolved = realpath($path);
 
-    return $resolved === STAGING_APP || isStagingPath($resolved);
+    return is_string($resolved) ? str_replace('\\', '/', $resolved) : false;
 }
 
 if (realpath($_SERVER['SCRIPT_FILENAME'] ?? '') === __FILE__) {

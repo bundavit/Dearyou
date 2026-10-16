@@ -4,7 +4,6 @@ namespace App\Support;
 
 use App\Http\Requests\LetterRequest;
 use App\Models\Letter;
-use Illuminate\Support\Facades\Storage;
 
 class LetterData
 {
@@ -43,13 +42,13 @@ class LetterData
         foreach (self::UPLOADS as [$input, $column, $removeInput, $directory]) {
             if ($letter && ($request->boolean($removeInput) || $request->hasFile($input))) {
                 if ($letter->{$column}) {
-                    Storage::disk('public')->delete($letter->{$column});
+                    app(MediaFiles::class)->deleteAfterCommit([$letter->{$column}]);
                 }
                 $data[$column] = null;
             }
 
             if ($request->hasFile($input)) {
-                $data[$column] = $request->file($input)->store($directory, 'public');
+                $data[$column] = app(MediaFiles::class)->store($request->file($input), $directory);
             }
         }
 

@@ -3,11 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Support\EmailIdentity;
+use App\Support\SessionSecurity;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password as PasswordRule;
+use Illuminate\Validation\ValidationException;
 
 class NewPasswordController extends Controller
 {
@@ -15,7 +16,7 @@ class NewPasswordController extends Controller
     {
         $authorization = $request->session()->get('password_reset_authorized');
 
-        if (! $this->validAuthorization($authorization)) {
+        if (! $this->authorizedUser($authorization)) {
             $request->session()->forget('password_reset_authorized');
 
             return redirect()->route('password.request');
@@ -30,7 +31,9 @@ class NewPasswordController extends Controller
     {
         $authorization = $request->session()->get('password_reset_authorized');
 
-        if (! $this->validAuthorization($authorization)) {
+        $user = $this->authorizedUser($authorization);
+
+        if (! $user) {
             $request->session()->forget('password_reset_authorized');
 
             return redirect()->route('password.request')
@@ -41,33 +44,39 @@ class NewPasswordController extends Controller
             'password' => ['required', 'confirmed', PasswordRule::min(10)->mixedCase()->numbers()],
         ]);
 
-        $user = User::where('email', $authorization['email'])
-            ->whereNull('disabled_at')
-            ->first();
-
-        if (! $user) {
+        try {
+            app(SessionSecurity::class)->changePassword($user, $credentials['password']);
+        } catch (ValidationException $exception) {
             $request->session()->forget('password_reset_authorized');
 
             return redirect()->route('password.request')
                 ->withErrors(['email' => 'This password reset request is invalid.']);
         }
 
-        $user->forceFill([
-            'password' => Hash::make($credentials['password']),
-            'remember_token' => Str::random(60),
-        ])->save();
-        $user->tokens()->delete();
-        $request->session()->forget('password_reset_authorized');
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
 
         event(new PasswordReset($user));
 
         return redirect()->route('login')->with('status', 'Your password has been reset.');
     }
 
-    private function validAuthorization(mixed $authorization): bool
+    private function authorizedUser(mixed $authorization): ?User
     {
-        return is_array($authorization)
-            && isset($authorization['email'], $authorization['expires_at'])
-            && (int) $authorization['expires_at'] >= now()->timestamp;
+        if (! is_array($authorization)
+            || ! isset($authorization['user_id'], $authorization['email'], $authorization['password_fingerprint'], $authorization['session_version'], $authorization['expires_at'])
+            || ! is_string($authorization['email'])
+            || ! is_string($authorization['password_fingerprint'])
+            || (int) $authorization['expires_at'] <= now()->timestamp) {
+            return null;
+        }
+
+        $user = EmailIdentity::findActive($authorization['email']);
+
+        return $user
+            && (int) $authorization['user_id'] === (int) $user->id
+            && (int) $authorization['session_version'] === $user->session_version
+            && hash_equals(hash('sha256', $user->getAuthPassword()), $authorization['password_fingerprint'])
+                ? $user : null;
     }
 }

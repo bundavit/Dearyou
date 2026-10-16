@@ -1,13 +1,19 @@
 [Unit]
 Description=DearYou Laravel queue worker
 After=network.target mysql.service
+StartLimitIntervalSec=0
 
 [Service]
 User=www-data
 Group=www-data
 Restart=always
-ExecStart=/usr/bin/php /var/www/dearyou/backend/artisan queue:work --sleep=3 --tries=3 --max-time=3600
+RestartSec=10
+# Keep --timeout below the configured queue retry_after (90s by default).
+ExecStart=/usr/bin/php /var/www/dearyou/backend/artisan queue:work --sleep=3 --tries=3 --backoff=10 --timeout=60 --max-time=3600
 WorkingDirectory=/var/www/dearyou/backend
+KillSignal=SIGTERM
+TimeoutStopSec=120
+UMask=0027
 
 [Install]
 WantedBy=multi-user.target

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\MediaAccess;
 use App\Support\PlatformSettings;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -58,6 +59,11 @@ class Letter extends Model
     public function recipientLabel(): string
     {
         return $this->recipient_name ?: 'Someone special';
+    }
+
+    public function mediaUrl(string $path): string
+    {
+        return app(MediaAccess::class)->url($this, $path);
     }
 
     public function senderLabel(): string

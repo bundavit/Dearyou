@@ -8,7 +8,7 @@ use App\Models\User;
 use App\Notifications\StorageCleanupCompleted;
 use App\Notifications\StorageLimitWarning;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
 
 class StorageAllowanceManager
 {
@@ -19,30 +19,58 @@ class StorageAllowanceManager
 
     public function process(User $user): array
     {
+        return DB::transaction(function () use ($user) {
+            $user->newQuery()->whereKey($user->id)->update(['id' => DB::raw('id')]);
+            $current = $user->fresh();
+            if (! $current || $current->trashed() || $current->disabled_at) {
+                return ['status' => 'unavailable', 'bytes_freed' => 0, 'letters_affected' => 0];
+            }
+
+            return $this->processLocked($current);
+        });
+    }
+
+    private function processLocked(User $user): array
+    {
         $usage = $this->storage->usage($user);
 
         if ($usage['used_bytes'] <= $usage['limit_bytes']) {
-            if ($user->storage_warning_at || $user->storage_cleanup_due_at) {
-                $user->update([
+            if ($user->storage_warning_at || $user->storage_cleanup_due_at || $user->storage_warning_queued_at) {
+                $user->forceFill([
                     'storage_warning_at' => null,
                     'storage_cleanup_due_at' => null,
-                ]);
+                    'storage_warning_queued_at' => null,
+                    'storage_warning_token' => null,
+                ])->save();
             }
 
             return ['status' => 'within-limit', 'bytes_freed' => 0, 'letters_affected' => 0];
         }
 
         if (! $user->storage_warning_at) {
+            if ($user->storage_warning_queued_at?->greaterThan(now()->subDay())) {
+                return ['status' => 'warning-pending', 'bytes_freed' => 0, 'letters_affected' => 0];
+            }
             $graceDays = $this->settings->cleanupGraceDays();
-            $user->update([
-                'storage_warning_at' => now(),
-                'storage_cleanup_due_at' => now()->addDays($graceDays),
-            ]);
-            $user->notify(new StorageLimitWarning(
-                $usage['used_label'],
-                $usage['limit_label'],
-                $graceDays,
-            ));
+            $token = bin2hex(random_bytes(32));
+            $user->forceFill(['storage_warning_queued_at' => now(), 'storage_warning_token' => $token, 'storage_cleanup_due_at' => null])->save();
+            $notification = (new StorageLimitWarning($usage['used_label'], $usage['limit_label'], $graceDays, $token))->beforeCommit();
+            $queue = config('queue.connections.'.config('queue.default'), []);
+            $sameDatabase = ($queue['driver'] ?? null) === 'database'
+                && ($queue['connection'] ?? config('database.default')) === config('database.default');
+            if ($sameDatabase || ($queue['driver'] ?? null) === 'sync') {
+                $user->notify($notification);
+            } else {
+                DB::afterCommit(function () use ($user, $notification, $token) {
+                    try {
+                        $user->notify($notification);
+                    } catch (\Throwable $exception) {
+                        DB::table('users')->where('id', $user->id)->where('storage_warning_token', $token)->whereNull('storage_warning_at')
+                            ->update(['storage_warning_queued_at' => null, 'storage_warning_token' => null]);
+                        throw $exception;
+                    }
+                });
+            }
 
             return ['status' => 'warned', 'bytes_freed' => 0, 'letters_affected' => 0];
         }
@@ -89,17 +117,22 @@ class StorageAllowanceManager
 
         $remainingUsage = $this->storage->usedBytes($user);
         if ($remainingUsage <= $this->storage->limitBytes()) {
-            $user->update([
+            $user->forceFill([
                 'storage_warning_at' => null,
                 'storage_cleanup_due_at' => null,
-            ]);
+                'storage_warning_queued_at' => null,
+                'storage_warning_token' => null,
+            ])->save();
         }
 
         if ($bytesFreed > 0) {
-            $user->notify(new StorageCleanupCompleted(
-                $this->storage->formatBytes($bytesFreed),
-                $lettersAffected,
-            ));
+            DB::afterCommit(function () use ($user, $bytesFreed, $lettersAffected) {
+                try {
+                    $user->notify(new StorageCleanupCompleted($this->storage->formatBytes($bytesFreed), $lettersAffected));
+                } catch (\Throwable $exception) {
+                    Log::warning('Storage cleanup completed but its notice could not be queued.', ['user_id' => $user->id, 'exception_type' => $exception::class]);
+                }
+            });
         }
 
         return [
@@ -121,7 +154,14 @@ class StorageAllowanceManager
         ])->filter()->unique()->values();
 
         $bytesFreed = $paths->sum(fn (string $path) => $this->storage->pathSize($path));
-        Storage::disk('public')->delete($paths->all());
+        if (! app(MediaFiles::class)->deleteNow($paths)) {
+            // Keep the references and grace state as the durable retry record.
+            // The next storage run re-checks expiry/usage under the owner lock;
+            // an unconditional deletion job could erase republished media.
+            Log::warning('Expired media cleanup remains pending.', ['letter_id' => $letter->id]);
+
+            return ['bytes_freed' => 0, 'files_removed' => 0];
+        }
 
         DB::transaction(function () use ($letter) {
             $letter->update([

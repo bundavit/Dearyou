@@ -38,7 +38,7 @@
 
         @if($letter->image_path)
             <figure class="letter-detail-image">
-                @if(\App\Models\Letter::isVideoMediaPath($letter->image_path))<video src="{{ Storage::url($letter->image_path) }}" preload="metadata" muted loop playsinline data-autoplay-when-visible aria-label="{{ $letter->image_alt ?: 'Letter video' }}"></video>@else<img src="{{ Storage::url($letter->image_path) }}" alt="{{ $letter->image_alt ?: 'Letter image' }}" decoding="async">@endif
+                @if(\App\Models\Letter::isVideoMediaPath($letter->image_path))<video src="{{ $letter->mediaUrl($letter->image_path) }}" preload="metadata" muted loop playsinline data-autoplay-when-visible aria-label="{{ $letter->image_alt ?: 'Letter video' }}"></video>@else<img src="{{ $letter->mediaUrl($letter->image_path) }}" alt="{{ $letter->image_alt ?: 'Letter image' }}" decoding="async">@endif
                 @if($letter->image_alt)<figcaption>{{ $letter->image_alt }}</figcaption>@endif
             </figure>
         @endif
@@ -99,7 +99,7 @@
     <div class="letter-detail-memories">
         @foreach($letter->memories as $memory)
             <article class="memory-card">
-                @if($memory->images->isNotEmpty())<div class="memory-gallery memory-gallery-{{ min($memory->images->count(), 4) }}">@foreach($memory->images as $image)@if(\App\Models\Letter::isVideoMediaPath($image->image_path))<video src="{{ Storage::url($image->image_path) }}" preload="metadata" muted loop playsinline data-autoplay-when-visible aria-label="{{ $memory->title }} memory {{ $loop->iteration }}"></video>@else<img src="{{ Storage::url($image->image_path) }}" alt="{{ $memory->title }} memory {{ $loop->iteration }}" loading="lazy" decoding="async">@endif @endforeach</div>@endif
+                @if($memory->images->isNotEmpty())<div class="memory-gallery memory-gallery-{{ min($memory->images->count(), 4) }}">@foreach($memory->images as $image)@if(\App\Models\Letter::isVideoMediaPath($image->image_path))<video src="{{ $letter->mediaUrl($image->image_path) }}" preload="metadata" muted loop playsinline data-autoplay-when-visible aria-label="{{ $memory->title }} memory {{ $loop->iteration }}"></video>@else<img src="{{ $letter->mediaUrl($image->image_path) }}" alt="{{ $memory->title }} memory {{ $loop->iteration }}" loading="lazy" decoding="async">@endif @endforeach</div>@endif
                 @if($memory->memory_date)<time datetime="{{ $memory->memory_date->format('Y-m-d') }}">{{ $memory->memory_date->format('F j, Y') }}</time>@endif
                 <h3>{{ $memory->title }}</h3>
                 @if($memory->caption)<p>{{ $memory->caption }}</p>@endif

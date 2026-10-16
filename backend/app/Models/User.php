@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Notifications\VerifyEmail;
+use App\Support\EmailIdentity;
 use App\Support\LocalSecurityCodeLogger;
 use Database\Factories\UserFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
@@ -17,7 +18,7 @@ use Illuminate\Support\Facades\Hash;
 use Laravel\Sanctum\HasApiTokens;
 
 #[Fillable(['name', 'email', 'avatar_path', 'password', 'role', 'disabled_at', 'storage_warning_at', 'storage_cleanup_due_at', 'email_verified_at'])]
-#[Hidden(['password', 'remember_token'])]
+#[Hidden(['password', 'remember_token', 'session_version', 'storage_warning_token'])]
 class User extends Authenticatable implements MustVerifyEmail
 {
     /** @use HasFactory<UserFactory> */
@@ -26,6 +27,11 @@ class User extends Authenticatable implements MustVerifyEmail
     public const ROLE_ADMIN = 'admin';
 
     public const ROLE_USER = 'user';
+
+    public function setEmailAttribute(string $email): void
+    {
+        $this->attributes['email'] = EmailIdentity::normalize($email);
+    }
 
     public function isAdmin(): bool
     {
@@ -91,9 +97,11 @@ class User extends Authenticatable implements MustVerifyEmail
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'session_version' => 'integer',
             'disabled_at' => 'datetime',
             'deleted_at' => 'datetime',
             'storage_warning_at' => 'datetime',
+            'storage_warning_queued_at' => 'datetime',
             'storage_cleanup_due_at' => 'datetime',
         ];
     }

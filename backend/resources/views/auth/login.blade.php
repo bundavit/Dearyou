@@ -3,7 +3,7 @@
 @include('partials.staging-banner')
 <p class="login-eyebrow">{{ $adminLogin ? 'PLATFORM ADMINISTRATION' : 'YOUR PRIVATE SPACE' }}</p><h1>{{ $adminLogin ? 'Admin sign in' : 'Welcome back' }}</h1><p class="text-secondary">{{ $adminLogin ? 'Authorized DearYou administrators only.' : 'Your private letters are waiting.' }}</p>
 <form method="post" action="{{ request()->routeIs('login.legacy') ? route('login.legacy.store') : route('login.store') }}" class="text-start mt-4">@csrf
-<label class="form-label">Email</label><input class="form-control mb-3" type="email" name="email" value="{{ old('email') }}" required autofocus>
+<label class="form-label" for="login-email">Email</label><input class="form-control mb-3" id="login-email" type="email" name="email" value="{{ old('email') }}" autocomplete="username" required autofocus>
 <div class="d-flex justify-content-between align-items-center"><label class="form-label" for="login-password">Password</label><a class="auth-inline-link" href="{{ route('password.request') }}">Forgot password?</a></div><div class="password-field mb-3"><input class="form-control" id="login-password" type="password" name="password" required autocomplete="current-password" data-password-input><button type="button" aria-label="Show password" aria-pressed="false" data-password-toggle><i class="bi bi-eye"></i></button></div>
 @if(session('status'))<div class="alert alert-success auto-dismiss-alert mb-3" role="status" data-auto-dismiss-alert>{{ session('status') }}</div>@endif
 @error('email')<div class="text-danger small mb-3">{{ $message }}</div>@enderror

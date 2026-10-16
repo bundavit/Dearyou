@@ -4,10 +4,16 @@ namespace App\Providers;
 
 use App\Models\Feedback;
 use App\Models\Response;
+use App\Notifications\StorageLimitWarning;
 use App\Support\CreatorStorage;
+use App\Support\MediaFiles;
+use App\Support\WarningMailDelivery;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Mail\SentMessage;
+use Illuminate\Notifications\Events\NotificationSent;
 use Illuminate\Pagination\Paginator;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
@@ -20,7 +26,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->scoped(MediaFiles::class);
     }
 
     /**
@@ -29,6 +35,13 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Paginator::useBootstrapFive();
+
+        Event::listen(NotificationSent::class, function ($event) {
+            if ($event->channel === 'mail' && $event->notification instanceof StorageLimitWarning
+                && $event->response instanceof SentMessage && WarningMailDelivery::configured()) {
+                $event->notification->recordDelivery($event->notifiable);
+            }
+        });
 
         RateLimiter::for('login', fn (Request $request) => Limit::perMinute(5)->by(
             Str::lower((string) $request->input('email')).'|'.$request->ip(),
@@ -52,6 +65,7 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('feedback', fn (Request $request) => Limit::perHour(5)->by(
             (string) ($request->user()?->id ?? $request->ip()),
         ));
+        RateLimiter::for('keepsakes', fn (Request $request) => Limit::perMinute(6)->by($request->ip()));
 
         View::composer('layouts.creator', function ($view) {
             $view->with('creatorStorage', app(CreatorStorage::class)->usage(auth()->user()));

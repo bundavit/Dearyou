@@ -46,7 +46,7 @@
         <details class="home-profile-menu" data-navbar-panel>
             <summary aria-label="Open account menu">
                 @if($navUser?->avatar_path)
-                    <img class="user-nav-avatar" src="{{ Storage::url($navUser->avatar_path) }}" alt="">
+                    <img class="user-nav-avatar" src="{{ route('media.avatar') }}" alt="">
                 @elseif($navUser)
                     <span class="user-nav-avatar user-nav-initial" aria-hidden="true">{{ Str::upper(Str::substr($navUser->name, 0, 1)) }}</span>
                 @else

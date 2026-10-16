@@ -3,10 +3,11 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Support\EmailQueueDiagnostics;
 use App\Support\PlatformSettings;
+use App\Support\WarningMailDelivery;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\View\View;
 use Throwable;
 
@@ -15,6 +16,7 @@ class HealthController extends Controller
     public function __invoke(): View
     {
         $failedJobs = $this->failedJobCount();
+        $pendingMedia = $this->pendingMediaDeletions();
 
         $checks = [
             $this->check(
@@ -29,7 +31,7 @@ class HealthController extends Controller
             ),
             $this->check(
                 'Mail transport',
-                ! in_array(config('mail.default'), ['log', 'array'], true),
+                WarningMailDelivery::configured(),
                 'MAIL_MAILER is '.config('mail.default').'.',
             ),
             $this->check(
@@ -51,21 +53,27 @@ class HealthController extends Controller
             ),
             $this->check(
                 'Queue configuration',
-                ! in_array(config('queue.default'), ['sync', 'null'], true) && $this->tableExists('jobs'),
+                $this->queueIsConfigured(),
                 'QUEUE_CONNECTION is '.config('queue.default').'. Confirm dearyou-worker is running on the server.',
             ),
             $this->check(
                 'Failed queue jobs',
                 $failedJobs === 0,
                 $failedJobs === null
-                    ? 'failed_jobs table was not found.'
+                    ? 'Configured failed-job storage is disabled or unavailable.'
                     : "{$failedJobs} failed job(s) currently recorded.",
                 true,
             ),
             $this->check(
-                'Storage link',
-                file_exists(public_path('storage')),
-                'public/storage should point to storage/app/public.',
+                'Private media storage',
+                $this->privateMediaIsReady(),
+                'Letter attachments use private storage and authorized application routes. The configured media directory must be writable and outside public paths.',
+            ),
+            $this->check(
+                'Pending media deletions',
+                $pendingMedia === 0,
+                ($pendingMedia ?? 'Unavailable').' pending deletion manifest(s). The hourly cleanup retries these; repeated failures require storage repair.',
+                true,
             ),
             $this->check(
                 'Backup directory',
@@ -75,8 +83,8 @@ class HealthController extends Controller
             ),
             $this->check(
                 'Scheduler tasks',
-                $this->scheduled('dearyou:process-storage') && $this->scheduled('dearyou:prune-security-codes'),
-                'Storage cleanup and security-code pruning are registered.',
+                $this->scheduled('dearyou:process-storage') && $this->scheduled('dearyou:prune-security-codes') && $this->scheduled('dearyou:retry-media-deletions'),
+                'Storage cleanup, deletion retries and security-code pruning are registered.',
             ),
         ];
 
@@ -96,6 +104,15 @@ class HealthController extends Controller
             'detail' => $detail,
             'state' => $passed ? 'ok' : ($warningWhenFailed ? 'warning' : 'bad'),
         ];
+    }
+
+    private function pendingMediaDeletions(): ?int
+    {
+        try {
+            return DB::table('media_deletions')->count();
+        } catch (Throwable) {
+            return null;
+        }
     }
 
     private function databaseIsReachable(): bool
@@ -166,26 +183,73 @@ class HealthController extends Controller
         return 'Latest backup: '.basename($latest['path']).' at '.date('M j, Y g:i A', $latest['time']);
     }
 
-    private function tableExists(string $table): bool
+    private function privateMediaIsReady(): bool
     {
-        try {
-            return Schema::hasTable($table);
-        } catch (Throwable) {
+        $disk = config('filesystems.disks.public', []);
+        $root = $disk['root'] ?? null;
+        if (($disk['driver'] ?? null) !== 'local' || ! is_string($root) || $root === '') {
             return false;
         }
+
+        // A new install may not have uploaded anything yet. Check the nearest
+        // existing parent without creating files during a health-page request.
+        $existing = $root;
+        $suffix = '';
+        while (! file_exists($existing)) {
+            $parent = dirname($existing);
+            if ($parent === $existing) {
+                return false;
+            }
+            $suffix = '/'.basename($existing).$suffix;
+            $existing = $parent;
+        }
+
+        if (! is_dir($existing) || ! is_writable($existing)) {
+            return false;
+        }
+        $resolved = $this->normalizedPath((realpath($existing) ?: $existing).$suffix);
+        $publicRoots = array_merge([public_path(), storage_path('app/public')], array_values(config('filesystems.links', [])));
+
+        foreach ($publicRoots as $publicRoot) {
+            if (! is_string($publicRoot)) {
+                continue;
+            }
+            $publicRoot = $this->normalizedPath(realpath($publicRoot) ?: $publicRoot);
+            if ($resolved === $publicRoot || str_starts_with($resolved, $publicRoot.'/')) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private function normalizedPath(string $path): string
+    {
+        $normalized = rtrim(str_replace('\\', '/', $path), '/');
+
+        return PHP_OS_FAMILY === 'Windows' ? strtolower($normalized) : $normalized;
     }
 
     private function failedJobCount(): ?int
     {
-        if (! $this->tableExists('failed_jobs')) {
-            return null;
-        }
-
         try {
-            return DB::table('failed_jobs')->count();
+            $db = DB::connection(config('queue.failed.database'));
+            $table = config('queue.failed.table', 'failed_jobs');
+
+            return in_array(config('queue.failed.driver'), ['database', 'database-uuids'], true)
+                && $db->getSchemaBuilder()->hasTable($table) ? $db->table($table)->count() : null;
         } catch (Throwable) {
             return null;
         }
+    }
+
+    private function queueIsConfigured(): bool
+    {
+        $driver = config('queue.connections.'.config('queue.default').'.driver');
+
+        return $driver === 'database'
+            ? app(EmailQueueDiagnostics::class)->pending()['available']
+            : in_array($driver, ['redis', 'sqs', 'beanstalkd'], true);
     }
 
     private function scheduled(string $command): bool

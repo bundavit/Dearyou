@@ -18,6 +18,7 @@ use App\Support\CreatorStorage;
 use App\Support\PlatformSettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Notifications\Events\NotificationSent;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
@@ -1010,6 +1011,7 @@ class DearYouFlowTest extends TestCase
         config([
             'dearyou.storage_limit_mb' => 1,
             'dearyou.storage_cleanup_grace_days' => 7,
+            'mail.default' => 'smtp',
         ]);
         $user = User::factory()->create();
         $letter = $this->letter($user);
@@ -1018,6 +1020,13 @@ class DearYouFlowTest extends TestCase
 
         $this->artisan('dearyou:process-storage')->assertSuccessful();
 
+        $user->refresh();
+        $this->assertNotNull($user->storage_warning_queued_at);
+        $this->assertNull($user->storage_warning_at);
+        $this->assertNull($user->storage_cleanup_due_at);
+        $notification = Notification::sent($user, StorageLimitWarning::class)->first();
+        $this->travel(2)->days();
+        event(new NotificationSent($user, $notification, 'mail', $this->acceptedMailResponse()));
         $user->refresh();
         $this->assertNotNull($user->storage_warning_at);
         $this->assertTrue($user->storage_cleanup_due_at->between(now()->addDays(6), now()->addDays(8)));
@@ -1385,7 +1394,7 @@ class DearYouFlowTest extends TestCase
         $link = $letter->link()->create(['token' => str_repeat('v', 64), 'is_active' => true]);
         $this->get("/l/{$link->token}")
             ->assertOk()
-            ->assertSee('<video src="'.Storage::url($letter->image_path).'" preload="metadata" muted loop playsinline data-letter-video data-autoplay-when-visible', false)
+            ->assertSee('<video src="'.$letter->mediaUrl($letter->image_path).'" preload="metadata" muted loop playsinline data-letter-video data-autoplay-when-visible', false)
             ->assertSee('data-lightbox-type="video"', false);
     }
 
@@ -1427,8 +1436,8 @@ class DearYouFlowTest extends TestCase
             ->assertOk()
             ->assertSee('A beautiful new chapter begins.')
             ->assertSee('Started from June 10, 2026')
-            ->assertSee(Storage::url($senderPath), false)
-            ->assertSee(Storage::url($recipientPath), false);
+            ->assertSee($letter->mediaUrl($senderPath), false)
+            ->assertSee($letter->mediaUrl($recipientPath), false);
     }
 
     public function test_confession_profiles_can_be_uploaded_and_are_deleted_with_letter(): void
@@ -1682,7 +1691,7 @@ class DearYouFlowTest extends TestCase
 
         $this->actingAs($user)->get('/')
             ->assertOk()
-            ->assertSee(Storage::url($firstAvatar), false);
+            ->assertSee(route('media.avatar'), false);
 
         $this->actingAs($user)->put('/account/profile', [
             'name' => $user->name,

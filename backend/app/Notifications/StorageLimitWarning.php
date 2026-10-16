@@ -2,10 +2,12 @@
 
 namespace App\Notifications;
 
+use App\Support\WarningMailDelivery;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
+use Illuminate\Support\Facades\DB;
 
 class StorageLimitWarning extends Notification implements ShouldQueue
 {
@@ -21,11 +23,29 @@ class StorageLimitWarning extends Notification implements ShouldQueue
         private readonly string $used,
         private readonly string $limit,
         private readonly int $graceDays,
+        private readonly ?string $issuance = null,
     ) {}
 
     public function via(object $notifiable): array
     {
         return ['mail'];
+    }
+
+    public function shouldSend(object $notifiable, string $channel): bool
+    {
+        $user = $notifiable->fresh();
+
+        return WarningMailDelivery::configured() && $this->issuance !== null && $user && ! $user->trashed() && ! $user->disabled_at
+            && $user->storage_warning_token === $this->issuance && ! $user->storage_warning_at;
+    }
+
+    public function recordDelivery(object $notifiable): void
+    {
+        if ($this->issuance !== null) {
+            DB::table('users')->where('id', $notifiable->id)
+                ->where('storage_warning_token', $this->issuance)->whereNull('storage_warning_at')->whereNull('deleted_at')
+                ->update(['storage_warning_at' => now(), 'storage_warning_queued_at' => null, 'storage_cleanup_due_at' => now()->addDays($this->graceDays)]);
+        }
     }
 
     public function toMail(object $notifiable): MailMessage

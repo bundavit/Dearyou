@@ -1,6 +1,10 @@
 # Live and staging websites
 
+**Current priority: staging first, Cloudflare afterward.** Add the staging DNS record at the current authoritative DNS provider. Keep the existing nameservers and production DNS records. Cloudflare setup is not required to prepare or launch this staging site.
+
 The intended setup is two independent deployments of the same repository. Test a reviewed commit on staging, then promote that same commit to production after QA. Do not copy staging databases, uploads, `.env`, or cached configuration into production.
+
+For everyday updates, leave the live checkout and production services running while deploying new feature code to staging. Use synthetic accounts and test data on the password-protected staging site. After acceptance, the owner promotes the same tested commit through the separate production release workflow. Updating staging does not deploy production. The current production updater uses a maintenance window; this two-site setup keeps production available during feature testing, but does not make the final production deployment zero downtime.
 
 | Resource | Live | Staging |
 | --- | --- | --- |
@@ -18,16 +22,19 @@ The intended setup is two independent deployments of the same repository. Test a
 
 **Current status:** templates and deployment checks are prepared locally. The staging DNS record, server checkout, database, certificate, and services have not been provisioned. Existing production settings were not changed. The hostname is a proposed default and must be configured before it will work.
 
-This plan can use the existing Ubuntu/Nginx/PHP 8.4 server, subject to available capacity. Composer and a Node/npm version compatible with the locked Vite dependencies are also required. It separates application data and configuration but still shares the machine, PHP-FPM, and `www-data` identity. Use a separate server or separately isolated processes if staging will execute untrusted code or load tests. The staging updater does not reload shared PHP-FPM or edit production services.
+This plan can use the existing Ubuntu/Nginx/PHP 8.4.1+ server, subject to available capacity. Composer and a Node/npm version compatible with the locked Vite dependencies are also required. It separates application data and configuration but still shares the machine, PHP-FPM, and `www-data` identity. Use a separate server or separately isolated processes if staging will execute untrusted code or load tests. The staging updater does not reload shared PHP-FPM or edit production services.
 
 ## 1. Provision a fresh staging checkout and database
 
-The following commands are a server runbook, not commands already executed. Use the existing deployment user, replacing `deploy` if needed. Publish the reviewed staging setup files to the repository before cloning. Replace `REPOSITORY_URL` with the repository URL and select the commit intended for testing.
+The following commands are a server runbook, not commands already executed. Use the existing deployment user, replacing `deploy` if needed, in a clean SSH shell without exported production `APP_*`, `DB_*` or other application overrides. Review, commit and push the local changes yourself before cloning; the uncommitted local setup cannot be fetched by the server. Choose the complete reviewed commit hash containing the updated staging files. Inspect any existing staging directory before creating a fresh checkout; preserve its environment/data rather than overwriting it.
 
 ```bash
 sudo install -d -o deploy -g www-data -m 0750 /var/www/dearyou-staging
-git clone REPOSITORY_URL /var/www/dearyou-staging
+git clone https://github.com/bundavit/Dearyou.git /var/www/dearyou-staging
 cd /var/www/dearyou-staging
+export REVISION=replace_with_the_reviewed_40_character_commit_hash
+git checkout --detach "$REVISION"
+git status --short
 git rev-parse HEAD
 ```
 
@@ -49,7 +56,7 @@ chmod 640 .env
 nano .env
 ```
 
-Set a unique `DB_PASSWORD` and `ADMIN_PASSWORD`. Keep the exact staging database/user, hostname, cookie and cache-prefix values from the example. Keep `MAIL_MAILER=log`, `MAIL_LOG_CHANNEL=mail`, `LOG_LEVEL=debug`, and an empty Resend key for initial testing. Do not copy the production `.env` or its key.
+Set a unique `DB_PASSWORD`. Keep the exact staging database/user, hostname, cookie and cache-prefix values from the example. Provision synthetic accounts separately as described below. Keep `MAIL_MAILER=log`, `MAIL_LOG_CHANNEL=mail`, `LOG_LEVEL=debug`, and an empty Resend key for initial testing. Do not copy the production `.env` or its key.
 
 Generate the staging encryption key once, then run the read-only configuration check:
 
@@ -60,15 +67,21 @@ php ../deploy/check-staging.php
 
 The check validates the effective configuration and filesystem boundaries without writing to a database. It cannot prove a key differs from production without inspecting production secrets; generating a new key here provides that separation. If it reports an error, correct staging configuration before continuing.
 
-Create the staging schema and initial administrator **before** caching configuration:
+Build and create only the staging schema:
 
 ```bash
 php artisan package:discover --ansi
-npm ci
+npm ci --ignore-scripts
 npm run build
 php artisan migrate --force
-php artisan db:seed --force
 php artisan storage:link
+```
+
+Provision the first synthetic administrator using [INITIAL_ACCOUNTS.md](INITIAL_ACCOUNTS.md) now, then finish the runtime setup:
+
+```bash
+cd /var/www/dearyou-staging/backend
+sudo install -d -o deploy -g www-data -m 2770 storage/app/private/media
 php artisan config:cache
 php artisan event:cache
 php artisan route:cache
@@ -78,13 +91,16 @@ sudo find storage bootstrap/cache -type d -exec chmod 2770 {} \;
 sudo find storage bootstrap/cache -type f -exec chmod 0660 {} \;
 chmod 640 .env
 php ../deploy/check-staging.php
+sudo -u www-data php ../deploy/check-staging.php
 ```
 
-Seed only once. The current seeder reads admin credentials directly from `.env` and resets platform defaults, so do not add seeding to routine deployments. Cached configuration skips loading `.env`; clear staging configuration first if a failed initial setup needs seeding again. Laravel documents this behavior in its [deployment guidance](https://laravel.com/framework/docs/deployment).
+The sample seeder is restricted to local/testing and must not run with `APP_ENV=staging` or production. Register other synthetic creators through the normal flow. Keep the log mailer and inspect only private staging mail logs for codes. Do not change the environment to bypass the seeder guard. The historical `public` disk name now points to `storage/app/private/media`; the separate `legacy_media` disk stays in staging's `storage/app/public`. Neither may point at production or be linked through the public web root.
 
 ## 2. Create staging DNS and HTTPS
 
-Create an `A` record for `staging.dearyous.app` pointing to the selected server. Add an `AAAA` record only if that server's IPv6 address is configured. Preserve the existing production and Resend DNS records.
+At the current authoritative DNS provider, create an `A` record named `staging` for `staging.dearyous.app`, pointing to the selected DigitalOcean server's public IPv4 address. Keep the provider's ordinary TTL. Add an `AAAA` record only if the server's IPv6 address is configured. Preserve production and Resend DNS records and nameservers. No new domain or Cloudflare migration is required for this subdomain.
+
+Cloudflare is deferred until staging is working. If the zone is already on Cloudflare, keep this record DNS only and leave the real-IP include disabled for this initial setup. Leave `PUBLIC_MEDIA_URL` blank so protected media stays on staging. Follow [CLOUDFLARE.md](CLOUDFLARE.md) separately when that work resumes. The template's `95m` body limit must agree with effective PHP and application limits.
 
 The final Nginx template requires a certificate before it can load. First install an HTTP-only challenge site that does not expose the application:
 
@@ -144,10 +160,10 @@ Both processes must run from `/var/www/dearyou-staging/backend`. A separate work
 
 Email and verification are the first feature priority. Use [the email delivery runbook](EMAIL_DELIVERY.md) to test the updated diagnostics and the complete queued verification flow before promoting changes.
 
-- Without the staging access password, verify `/`, `/login`, `/up`, a static asset and a known synthetic upload return 401 on HTTPS.
+- Without the staging access password, verify `/`, `/login`, `/up`, a static asset and a synthetic `/l/{token}/media/{hash}` URL return 401 on HTTPS. Historical managed `/storage/letters/`, `/storage/avatars/` and `/storage/memories/` paths are intentionally 404 even with the password.
 - With access, verify the homepage and both creator/admin login paths. The staging badge should appear, and the session cookie should be `dearyou_staging_session` without a parent-domain cookie.
 - Register a synthetic creator; read the verification email from the private staging mail log and complete verification. `dearyou:codes` is local-only and does not work in staging.
-- Create a synthetic letter, upload an image/audio file, publish it, reply, and test expiry. All generated links and uploads must use `staging.dearyous.app`.
+- Create a synthetic letter, upload image/audio/video media, publish it, reply, and test expiry/disable/regeneration. New public media requests must fail after revocation; authenticated owner previews should still work. Generated links must use `staging.dearyous.app`, with authorized media routes rather than direct static storage URLs.
 - Submit marked feedback. Check the staging saved recipient setting and its queued message in the mail log. Log output tests the application/queue flow; it does not test inbox delivery.
 - Inspect staging worker logs, `php artisan schedule:list`, and the staging timer's last run. Verify only the staging database gained the synthetic records.
 - Confirm the live homepage and existing live accounts still work, with no staging records or sessions present.
@@ -163,10 +179,10 @@ Review and check out the intended commit in `/var/www/dearyou-staging`, then run
 cd /var/www/dearyou-staging
 git status --short
 git rev-parse HEAD
-bash deploy/deploy-staging.sh
+REVISION=replace_with_the_reviewed_40_character_commit_hash bash deploy/deploy-staging.sh
 ```
 
-The staging updater deploys the code already checked out. It does not fetch, switch branches, seed data, modify Nginx, or restart production services. It validates staging settings and service paths before changing anything, stops staging background tasks, installs locked PHP/Node dependencies, builds frontend assets, migrates staging, refreshes caches and restarts staging processes. A preflight rejection leaves the running site untouched. After deployment begins, failures leave staging in maintenance with its worker/timer stopped; inspect the failure, correct it and rerun. Do not blindly run `artisan up` against a partially migrated deployment. Authenticate sudo before running it; service operations use noninteractive sudo and refuse before changes if authorization is unavailable.
+The staging updater requires `REVISION` to match the clean checkout's full 40-character lowercase commit hash. It does not fetch, switch branches, seed data, modify Nginx, reload shared PHP-FPM or restart production services. It validates staging settings and unit definitions before changing anything, stops staging background tasks, installs locked dependencies without automatic install scripts, explicitly discovers packages, builds frontend assets and migrates staging. It then retries pending deletions and checksum-migrates staging legacy media to private storage as `www-data`, refreshes caches and restarts only staging services. A preflight rejection leaves the running site untouched. Later failures, including failures after reopening, enforce staging maintenance and stop its worker/timer. Inspect and repair the failure before rerunning. Authenticate sudo before running; service actions use noninteractive sudo.
 
 The current UI also serves checked-in assets under `backend/public/assets`; include those files when reviewing UI changes even though the updater builds the Vite bundle. Shared PHP-FPM must use timestamp validation for changed files; deployments with disabled OPcache timestamp validation need a staging-specific PHP process/reload plan.
 
@@ -179,12 +195,32 @@ The seven confirmed live QA defects were fixed in production release `8f1c618` a
 Staging starts with synthetic data. If staging backups are needed, use a dedicated destination and explicitly configure the backup script's variables. `DEARYOU_BACKUP_DIR` configures the application health display; it does not configure `deploy/backup.sh`.
 
 ```bash
-sudo env APP_DIR=/var/www/dearyou-staging/backend BACKUP_DIR=/var/backups/dearyou-staging /bin/bash /var/www/dearyou-staging/deploy/backup.sh
+APP_DIR=/var/www/dearyou-staging/backend \
+BACKUP_DIR=/var/backups/dearyou-staging \
+DB_NAME=dearyou_staging \
+MYSQL_DEFAULTS_FILE=/absolute/private/staging-backup-client.cnf \
+WORKER_SERVICE=dearyou-staging-worker.service \
+SCHEDULER_SERVICE=dearyou-staging-scheduler.service \
+SCHEDULER_TIMER=dearyou-staging-scheduler.timer \
+WRITERS_PAUSED=1 bash /var/www/dearyou-staging/deploy/backup.sh
 ```
 
-Inspect the backup script and ensure only staging credentials and paths are used before scheduling it. Its retention policy applies to `BACKUP_DIR`. Verify restoration into a disposable staging database; never point a staging restore at production. Rollbacks must account for schema changes, not just switch code commits.
+Follow [OPERATIONS.md](OPERATIONS.md), supplying the staging database, protected MySQL option file, private backup destination and all three staging service names. Enter staging maintenance and stop/drain staging writers first. There is no automatic retention deletion. Verify restoration with a separately restricted scratch account; never target production. Rollbacks must account for schema and private-media changes.
 
 ## Local validation completed
+
+The staging-first update passed **129 boundary assertions on Linux PHP** (115 configuration assertions on Windows, with Linux-only filesystem cases skipped), **32 integration assertions using the real Laravel fresh/cached configuration**, and **9 mocked staging-deployment tests**. The integration fixture checked poisoned caches and inherited/fresh environment overrides without changing fixture files or booting application providers/database clients. Deployment regressions checked early rejections, exact commit/clean checkout, unit guards, install flags, media migration, and recovery from failures both before and after reopening. Git, database, dependency installers and service writers were mocked in those deployment tests.
+
+To repeat on Linux/WSL with PHP 8.4.1+ and this checkout's Composer dependencies:
+
+```bash
+php deploy/tests/check-staging-test.php
+php scripts/test-staging-config.php
+python3 deploy/tests/staging-deploy-test.py
+bash -n deploy/deploy-staging.sh
+```
+
+The staging Nginx template is unchanged by this update. Its earlier isolated Nginx checks remain historical evidence; DNS, real HTTPS certificates, installed services, MySQL privileges and server capacity still need owner verification. No staging website, commit, deployment, production change or Cloudflare change was performed during local preparation.
 
 On 14 October 2026, the staging guard passed 75 boundary assertions, PHP/Bash syntax checks and rejection checks from a non-staging path. An isolated Ubuntu Nginx 1.24 test passed its syntax check and 12 localhost authentication/header/routing checks using a synthetic certificate and password; its temporary server was stopped afterward. All 11 changed staging-badge views compiled and passed PHP lint, and the badge rendered only for staging. The combined backend suite passed 107 tests and 890 assertions after the email changes.
 

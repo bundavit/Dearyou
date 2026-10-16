@@ -61,11 +61,31 @@ document.querySelector("#close-letter")?.addEventListener("click", () => {
   document.querySelector("#open-letter")?.setAttribute("aria-expanded", "false");
   document.querySelector("#open-letter-text")?.focus();
 });
-document.querySelectorAll("[data-copy]").forEach(button => button.addEventListener("click", async () => {
-  const input = document.querySelector(button.dataset.copy);
-  await navigator.clipboard.writeText(input.value);
-  button.textContent = "Copied";
-}));
+document.querySelectorAll("[data-copy]").forEach(button => {
+  const label = button.textContent;
+  button.addEventListener("click", async () => {
+    const input = document.querySelector(button.dataset.copy);
+    if (!input) return;
+    let notice = button.parentElement.querySelector("[data-copy-status]");
+    if (!notice) {
+      notice = document.createElement("p");
+      notice.dataset.copyStatus = "";
+      notice.className = "small mt-2";
+      notice.setAttribute("role", "status");
+      button.parentElement.append(notice);
+    }
+    try {
+      await navigator.clipboard.writeText(input.value);
+      button.textContent = "Copied";
+      notice.textContent = "Link copied.";
+    } catch {
+      button.textContent = label;
+      notice.textContent = "Copy is unavailable. Select and copy the link manually.";
+      input.focus();
+      input.select?.();
+    }
+  });
+});
 
 document.querySelectorAll("[data-auto-dismiss-alert]").forEach(alert => {
   setTimeout(() => {
@@ -100,6 +120,10 @@ document.querySelectorAll("[data-user-navbar]").forEach(navbar => {
         if (other !== panel) other.open = false;
       });
     });
+  });
+
+  navbar.querySelectorAll("[data-navbar-panel] a[href]").forEach(link => {
+    link.addEventListener("click", () => panels.forEach(panel => panel.open = false));
   });
 
   document.addEventListener("click", event => {
@@ -585,7 +609,27 @@ updateFontPreview();
 document.querySelectorAll("[data-letter-editor-form]").forEach(form => {
   const key = form.dataset.autosaveKey;
   const status = form.querySelector("[data-draft-autosave-status]");
-  if (!key || !window.localStorage) return;
+  if (!key) return;
+  status?.setAttribute("role", "status");
+  const storageFailed = () => {
+    if (status) status.textContent = "Draft autosave is unavailable on this device. Save your letter before leaving.";
+  };
+  let draftStorage;
+  try {
+    draftStorage = window.localStorage;
+  } catch {
+    storageFailed();
+    return;
+  }
+  const discard = () => {
+    try {
+      draftStorage.removeItem(key);
+      return true;
+    } catch {
+      storageFailed();
+      return false;
+    }
+  };
 
   const fields = () => Array.from(form.querySelectorAll("input, textarea, select"))
     .filter(field => {
@@ -621,10 +665,12 @@ document.querySelectorAll("[data-letter-editor-form]").forEach(form => {
     });
   };
 
-  const saved = localStorage.getItem(key);
+  let saved;
+  try { saved = draftStorage.getItem(key); } catch { storageFailed(); return; }
   if (saved) {
     try {
       const parsed = JSON.parse(saved);
+      if (!parsed || typeof parsed.data !== "object" || parsed.data === null || Array.isArray(parsed.data)) throw new Error("Invalid draft");
       const banner = document.createElement("div");
       banner.className = "draft-restore-banner";
       banner.innerHTML = `<div><strong>Saved draft found</strong><span>Restore the text and choices saved on this device?</span></div><button type="button" class="btn btn-sm btn-dearyou" data-draft-restore>Restore</button><button type="button" class="btn btn-sm btn-outline-secondary" data-draft-ignore>Ignore</button>`;
@@ -635,12 +681,12 @@ document.querySelectorAll("[data-letter-editor-form]").forEach(form => {
         if (status) status.textContent = "Draft restored.";
       });
       banner.querySelector("[data-draft-ignore]")?.addEventListener("click", () => {
-        localStorage.removeItem(key);
+        const discarded = discard();
         banner.remove();
-        if (status) status.textContent = "Draft autosave is on for this device.";
+        if (discarded && status) status.textContent = "Draft autosave is on for this device.";
       });
     } catch {
-      localStorage.removeItem(key);
+      discard();
     }
   }
 
@@ -648,14 +694,16 @@ document.querySelectorAll("[data-letter-editor-form]").forEach(form => {
   const save = () => {
     clearTimeout(timer);
     timer = setTimeout(() => {
-      localStorage.setItem(key, JSON.stringify({ data: snapshot(), savedAt: new Date().toISOString() }));
-      if (status) status.textContent = "Draft saved just now.";
+      try {
+        draftStorage.setItem(key, JSON.stringify({ data: snapshot(), savedAt: new Date().toISOString() }));
+        if (status) status.textContent = "Draft saved just now.";
+      } catch { storageFailed(); }
     }, 650);
   };
 
   form.addEventListener("input", save);
   form.addEventListener("change", save);
-  form.addEventListener("submit", () => localStorage.removeItem(key));
+  form.addEventListener("submit", () => { clearTimeout(timer); discard(); });
 });
 
 const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;

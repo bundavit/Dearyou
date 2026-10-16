@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Deploy only the code already checked out in this fixed staging directory.
+# Deploy an exact reviewed commit already checked out in the fixed staging directory.
 set -euo pipefail
 umask 0027
 
@@ -16,10 +16,17 @@ fail() { printf '%s\n' "$1" >&2; exit 1; }
 [[ "$(realpath -- "$STAGING_APP")" == "$STAGING_APP" ]] || fail 'Refused: staging application directory is missing or symlinked.'
 cd "$STAGING_APP"
 
-for tool in composer npm systemctl cmp; do
+for tool in composer npm systemctl cmp git; do
     command -v "$tool" >/dev/null || fail "Required tool is missing: $tool"
 done
 [[ -x "$STAGING_PHP" ]] || fail 'Required /usr/bin/php is missing.'
+[[ "${REVISION:-}" =~ ^[0-9a-f]{40}$ ]] || fail 'Set REVISION to the complete reviewed 40-character lowercase commit hash already checked out in staging.'
+check_revision() {
+    [[ "$(git -C "$STAGING_REPO" rev-parse --show-toplevel)" == "$STAGING_REPO" ]] || fail 'The fixed staging directory must be its own Git checkout.'
+    [[ "$(git -C "$STAGING_REPO" rev-parse --verify HEAD)" == "$REVISION" ]] || fail 'Staging HEAD does not match REVISION. Check out the reviewed commit before running this script.'
+    [[ -z "$(GIT_OPTIONAL_LOCKS=0 git -C "$STAGING_REPO" status --porcelain --untracked-files=normal)" ]] || fail 'The staging checkout must be clean before deployment.'
+}
+check_revision
 "$STAGING_PHP" "$STAGING_REPO/deploy/check-staging.php"
 
 unit_property() { systemctl show "$1" --property="$2" --value; }
@@ -43,7 +50,7 @@ check_unit() {
 }
 
 # These are read-only checks. No service is touched until every guard passes.
-check_unit "$STAGING_WORKER" '/usr/bin/php /var/www/dearyou-staging/backend/artisan queue:work --sleep=3 --tries=3 --timeout=60 --max-time=3600'
+check_unit "$STAGING_WORKER" '/usr/bin/php /var/www/dearyou-staging/backend/artisan queue:work --sleep=3 --tries=3 --backoff=10 --timeout=60 --max-time=3600'
 check_unit "$STAGING_SCHEDULER" '/usr/bin/php /var/www/dearyou-staging/backend/artisan schedule:run'
 check_unit "$STAGING_TIMER"
 [[ "$(unit_property "$STAGING_TIMER" Unit)" == "$STAGING_SCHEDULER" ]] || fail 'Staging timer targets an unexpected service.'
@@ -84,14 +91,21 @@ sudo -n systemctl stop "$STAGING_TIMER" "$STAGING_SCHEDULER" "$STAGING_WORKER"
 # Runtime directories retain their separate group-only permissions.
 (
     umask 0022
-    composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
-    npm --prefix "$STAGING_APP" --global=false ci
+    composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader --no-scripts
+    npm --prefix "$STAGING_APP" --global=false ci --ignore-scripts
     npm --prefix "$STAGING_APP" --global=false run build
 )
+# Dependency installation must not silently change the reviewed application code.
+check_revision
 "$STAGING_PHP" "$STAGING_REPO/deploy/check-staging.php"
+"$STAGING_PHP" artisan package:discover --ansi
 "$STAGING_PHP" artisan config:clear
 "$STAGING_PHP" "$STAGING_REPO/deploy/check-staging.php"
 "$STAGING_PHP" artisan migrate --force
+# Run as the service account so private media remains readable by PHP. The
+# preflight above verifies both media disks belong exclusively to staging.
+sudo -n -u www-data "$STAGING_PHP" artisan dearyou:retry-media-deletions
+sudo -n -u www-data "$STAGING_PHP" artisan dearyou:secure-media --apply --remove-public
 "$STAGING_PHP" artisan storage:link
 
 # Run optimize's component commands separately so each failure stops deployment.
@@ -99,11 +113,15 @@ sudo -n systemctl stop "$STAGING_TIMER" "$STAGING_SCHEDULER" "$STAGING_WORKER"
 "$STAGING_PHP" artisan event:cache
 "$STAGING_PHP" artisan route:cache
 "$STAGING_PHP" artisan view:cache
+[[ ! -f bootstrap/cache/config.php ]] || chmod 0640 -- bootstrap/cache/config.php
 "$STAGING_PHP" "$STAGING_REPO/deploy/check-staging.php"
 sudo -n -u www-data "$STAGING_PHP" "$STAGING_REPO/deploy/check-staging.php"
-sudo -n systemctl start "$STAGING_WORKER" "$STAGING_TIMER"
+sudo -n systemctl start "$STAGING_WORKER"
 systemctl is-active --quiet "$STAGING_WORKER"
-systemctl is-active --quiet "$STAGING_TIMER"
 "$STAGING_PHP" artisan up
+sudo -n systemctl start "$STAGING_TIMER"
+systemctl is-active --quiet "$STAGING_TIMER"
+"$STAGING_PHP" "$STAGING_REPO/deploy/check-staging.php"
+sudo -n -u www-data "$STAGING_PHP" "$STAGING_REPO/deploy/check-staging.php"
 trap - EXIT INT TERM
-printf '%s\n' 'Staging deployment complete. Only staging application files, database, and services were targeted.'
+printf '%s\n' "Staging deployment complete at $REVISION. Only staging application files, database, and services were targeted."

@@ -5,20 +5,25 @@ namespace App\Support;
 use App\Models\User;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 
 class AccountDeletion
 {
-    public function permanentlyDelete(User $user): void
+    public function permanentlyDelete(User $user, bool $mustBeTrashed = false): void
     {
-        $paths = $this->mediaPaths($user);
-
-        DB::transaction(function () use ($user): void {
+        DB::transaction(function () use ($user, $mustBeTrashed): void {
+            $user->newQuery()->withTrashed()->whereKey($user->id)->update(['id' => DB::raw('id')]);
+            $fresh = $user->newQuery()->withTrashed()->find($user->id);
+            if (! $fresh || ($mustBeTrashed && ! $fresh->trashed())
+                || (! $mustBeTrashed && ($fresh->trashed() || $fresh->disabled_at || (int) $fresh->session_version !== (int) $user->session_version))) {
+                throw ValidationException::withMessages(['confirmation' => 'The account changed. Refresh the page before trying again.']);
+            }
+            $user = $fresh;
+            $paths = $this->mediaPaths($user);
+            app(MediaFiles::class)->deleteAfterCommit($paths, $user->id);
             $user->tokens()->delete();
             $user->forceDelete();
         });
-
-        Storage::disk('public')->delete($paths->all());
     }
 
     private function mediaPaths(User $user): Collection

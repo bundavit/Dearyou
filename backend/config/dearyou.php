@@ -13,4 +13,6 @@ return [
     'backup_dir' => env('DEARYOU_BACKUP_DIR', '/var/backups/dearyou'),
     'storage_limit_mb' => (int) env('DEARYOU_STORAGE_LIMIT_MB', 250),
     'storage_cleanup_grace_days' => (int) env('DEARYOU_STORAGE_CLEANUP_GRACE_DAYS', 7),
+    'keepsake_max_media_bytes' => 4 * 1024 * 1024,
+    'keepsake_max_media_files' => 20,
 ];

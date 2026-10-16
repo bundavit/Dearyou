@@ -26,12 +26,16 @@
                 </div>
                 <small>{{ $creatorStorage['percentage'] }}% used</small>
             </section>
-            @if(auth()->user()->storage_cleanup_due_at)
+            @if(auth()->user()->storage_cleanup_due_at || auth()->user()->storage_warning_queued_at)
                 <div class="storage-warning" role="alert">
                     <i class="bi bi-exclamation-triangle"></i>
                     <div>
                         <strong>Media storage needs attention.</strong>
-                        <span>You are over the {{ $creatorStorage['limit_label'] }} allowance. Remove media before {{ auth()->user()->storage_cleanup_due_at->format('F j, Y g:i A') }}. After that, DearYou may remove media from your oldest expired letters.</span>
+                        @if(auth()->user()->storage_cleanup_due_at)
+                            <span>You are over the {{ $creatorStorage['limit_label'] }} allowance. Remove media before {{ auth()->user()->storage_cleanup_due_at->format('F j, Y g:i A') }}. After that, DearYou may remove media from your oldest expired letters.</span>
+                        @else
+                            <span>You are over the {{ $creatorStorage['limit_label'] }} allowance. Remove unused media to make room for new uploads.</span>
+                        @endif
                     </div>
                 </div>
             @endif

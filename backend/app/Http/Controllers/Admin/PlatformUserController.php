@@ -158,7 +158,6 @@ class PlatformUserController extends Controller
         $user = $this->user($user);
         abort_if($request->user()->is($user), 422, 'You cannot delete your own account.');
         abort_if($user->trashed(), 422, 'This account is already deleted.');
-        abort_if($user->isAdmin() && User::where('role', User::ROLE_ADMIN)->count() <= 1, 422, 'The platform must always have at least one administrator.');
 
         $validated = $request->validate(['reason' => ['required', 'string', 'min:5', 'max:500']]);
         $this->audit($request, $user, 'user_soft_deleted', [], $validated['reason']);
@@ -186,8 +185,6 @@ class PlatformUserController extends Controller
         $user = $this->user($user);
         abort_if($request->user()->is($user), 422, 'You cannot permanently delete your own account.');
         abort_unless($user->trashed(), 422, 'Soft-delete this account before permanently deleting it.');
-        abort_if($user->isAdmin() && User::where('role', User::ROLE_ADMIN)->count() <= 1, 422, 'The platform must always have at least one administrator.');
-
         $validated = $request->validate([
             'confirmation' => ['required', 'string', Rule::in([$user->email])],
             'reason' => ['required', 'string', 'min:5', 'max:500'],
@@ -198,9 +195,9 @@ class PlatformUserController extends Controller
             'deleted_user_id' => $user->id,
             'deleted_user_email' => $user->email,
         ], $validated['reason']);
-        $deletion->permanentlyDelete($user);
+        $deletion->permanentlyDelete($user, mustBeTrashed: true);
 
-        return redirect()->route('admin.users.index')->with('success', "{$name}'s account and stored data were permanently deleted.");
+        return redirect()->route('admin.users.index')->with('success', "{$name}'s account was permanently deleted. Media cleanup is recorded and retried if necessary.");
     }
 
     private function user(int $id): User
